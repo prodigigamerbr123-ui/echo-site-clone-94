@@ -1,8 +1,6 @@
-
-
-
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import workoutLogo from "@/assets/workout-logo.png";
 
 export function AppHeader() {
   return (
@@ -11,9 +9,9 @@ export function AppHeader() {
         <div className="flex items-center gap-4">
           <SidebarTrigger />
           <div className="flex items-center gap-1">
-            <img 
-              src="/lovable-uploads/7c1bda60-c827-4e54-99c3-c6836bf4f3c7.png" 
-              alt="Workout Academy" 
+            <img
+              src={workoutLogo}
+              alt="Workout Academy"
               className="h-8 w-auto"
             />
             <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
@@ -21,7 +19,7 @@ export function AppHeader() {
             </h1>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <ThemeToggle />
         </div>
@@ -29,5 +27,3 @@ export function AppHeader() {
     </header>
   );
 }
-
-
