@@ -25,6 +25,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Student {
   id: string;
@@ -55,6 +56,9 @@ export default function AvaliacaoFisica() {
   const [formDate, setFormDate] = useState<string>("");
   const [formStatus, setFormStatus] = useState<boolean>(false);
   const [formNotes, setFormNotes] = useState<string>("");
+  const [scheduleNext, setScheduleNext] = useState(false);
+  const [nextEvalDate, setNextEvalDate] = useState("");
+  const [followUpType, setFollowUpType] = useState<"reminder" | "followup">("reminder");
   const [saving, setSaving] = useState(false);
 
   const { data: students, isLoading } = useQuery({
@@ -92,13 +96,19 @@ export default function AvaliacaoFisica() {
     setFormDate(s.last_evaluation_date ?? "");
     setFormStatus(s.had_evaluation);
     setFormNotes(s.evaluation_notes ?? "");
+    setScheduleNext(false);
+    setNextEvalDate("");
+    setFollowUpType("reminder");
   };
 
   const openSchedule = (s: Student) => {
     setEditing(s);
-    setFormDate(new Date().toISOString().split("T")[0]);
-    setFormStatus(false);
+    setFormDate(s.last_evaluation_date ?? "");
+    setFormStatus(s.had_evaluation);
     setFormNotes(s.evaluation_notes ?? "");
+    setScheduleNext(true);
+    setNextEvalDate("");
+    setFollowUpType("reminder");
   };
 
   const handleSave = async () => {
