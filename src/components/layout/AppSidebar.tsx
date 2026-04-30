@@ -10,6 +10,8 @@ import {
   Bot,
   Mail,
   CalendarClock,
+  HeartPulse,
+  Activity,
 } from "lucide-react";
 
 import {
@@ -29,6 +31,12 @@ const menuGroups = [
     items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
       { title: "Cadastrar / Ver Alunos", url: "/alunos", icon: UserPlus },
+    ],
+  },
+  {
+    label: "Saúde",
+    items: [
+      { title: "Avaliação Física", url: "/avaliacao-fisica", icon: Activity },
     ],
   },
   {

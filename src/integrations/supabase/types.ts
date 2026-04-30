@@ -124,6 +124,7 @@ export type Database = {
         Row: {
           birth_date: string | null
           created_at: string
+          evaluation_notes: string | null
           had_evaluation: boolean | null
           id: string
           last_evaluation_date: string | null
@@ -134,6 +135,7 @@ export type Database = {
         Insert: {
           birth_date?: string | null
           created_at?: string
+          evaluation_notes?: string | null
           had_evaluation?: boolean | null
           id?: string
           last_evaluation_date?: string | null
@@ -144,6 +146,7 @@ export type Database = {
         Update: {
           birth_date?: string | null
           created_at?: string
+          evaluation_notes?: string | null
           had_evaluation?: boolean | null
           id?: string
           last_evaluation_date?: string | null
