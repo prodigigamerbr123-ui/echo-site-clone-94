@@ -186,66 +186,6 @@ export function CadastrarAlunoForm() {
         </CardContent>
       </Card>
 
-      {/* Avaliação Física — agendar próxima avaliação */}
-      <Card className="w-full shadow-card border-l-4 border-l-primary/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Avaliação Física
-          </CardTitle>
-          <CardDescription>
-            Agende a primeira avaliação física do aluno (opcional)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
-            <div className="flex items-center gap-3">
-              <CalendarPlus className="h-5 w-5 text-primary" />
-              <div>
-                <Label className="cursor-pointer">Agendar avaliação física</Label>
-                <p className="text-xs text-muted-foreground">
-                  Cria automaticamente uma mensagem programada para o aluno
-                </p>
-              </div>
-            </div>
-            <Switch checked={scheduleEval} onCheckedChange={setScheduleEval} />
-          </div>
-
-          {scheduleEval && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="space-y-2">
-                <Label htmlFor="next-eval">Data da próxima avaliação <span className="text-destructive">*</span></Label>
-                <Input
-                  id="next-eval"
-                  type="date"
-                  value={nextEvalDate}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setNextEvalDate(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de acompanhamento</Label>
-                <Select value={followUpType} onValueChange={(v: "reminder" | "followup") => setFollowUpType(v)}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="reminder">Lembrete de avaliação</SelectItem>
-                    <SelectItem value="followup">Mensagem de acompanhamento</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {followUpType === "reminder"
-                    ? "Lembrete enviado no dia da avaliação"
-                    : "Mensagem de acompanhamento após a avaliação"}
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
         {isLoading ? (
           <>
