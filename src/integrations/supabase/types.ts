@@ -73,6 +73,9 @@ export type Database = {
           created_at: string
           id: string
           message_type: string
+          recurrence_count: number | null
+          recurrence_interval_days: number | null
+          recurrence_parent_id: string | null
           scheduled_for: string
           sent_at: string | null
           status: string
@@ -84,6 +87,9 @@ export type Database = {
           created_at?: string
           id?: string
           message_type?: string
+          recurrence_count?: number | null
+          recurrence_interval_days?: number | null
+          recurrence_parent_id?: string | null
           scheduled_for: string
           sent_at?: string | null
           status?: string
@@ -95,6 +101,9 @@ export type Database = {
           created_at?: string
           id?: string
           message_type?: string
+          recurrence_count?: number | null
+          recurrence_interval_days?: number | null
+          recurrence_parent_id?: string | null
           scheduled_for?: string
           sent_at?: string | null
           status?: string

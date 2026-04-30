@@ -101,8 +101,13 @@ export function CadastrarAlunoForm() {
   };
 
   const handlePickContact = (c: WhatsAppContact) => {
-    let phone = c.phone;
-    if (phone.startsWith('55') && phone.length > 11) phone = phone.slice(2);
+    let phone = (c.phone || '').replace(/\D/g, '');
+    // Remove código do país Brasil (55) se presente
+    if (phone.startsWith('55') && (phone.length === 12 || phone.length === 13)) {
+      phone = phone.slice(2);
+    }
+    // Garante DDD + número (10 ou 11 dígitos)
+    if (phone.length > 11) phone = phone.slice(-11);
     setFormData(prev => ({
       ...prev,
       nome: c.name || prev.nome,
