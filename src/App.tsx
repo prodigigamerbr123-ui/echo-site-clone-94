@@ -14,6 +14,7 @@ import MensagensAgendadas from "./pages/MensagensAgendadas";
 import MensagensPredefinidas from "./pages/MensagensPredefinidas";
 import MensagensEnviadas from "./pages/MensagensEnviadas";
 import AssistenteIA from "./pages/AssistenteIA";
+import AvaliacaoFisica from "./pages/AvaliacaoFisica";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,11 @@ const App = () => (
             <Route path="/assistente-ia" element={
               <AppLayout>
                 <AssistenteIA />
+              </AppLayout>
+            } />
+            <Route path="/avaliacao-fisica" element={
+              <AppLayout>
+                <AvaliacaoFisica />
               </AppLayout>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
