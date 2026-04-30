@@ -8,15 +8,23 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Calendar, CheckCircle, Cake, MessageSquare } from "lucide-react";
+import { Phone, Calendar, CheckCircle, Cake, MessageSquare, Smartphone, Search, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+
+interface WhatsAppContact { jid: string; phone: string; name: string; }
+
 
 export function CadastrarAlunoForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [contacts, setContacts] = useState<WhatsAppContact[]>([]);
+  const [contactSearch, setContactSearch] = useState("");
   const [formData, setFormData] = useState({
     nome: "",
     telefone: "",
@@ -69,6 +77,39 @@ export function CadastrarAlunoForm() {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     handleInputChange('telefone', formatted);
+  };
+
+  const loadWhatsAppContacts = async () => {
+    setContactsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-contacts');
+      if (error) throw error;
+      setContacts(data?.contacts || []);
+      if (!data?.contacts?.length) {
+        toast({ title: "Nenhum contato encontrado", description: "Verifique se o WhatsApp está conectado." });
+      }
+    } catch (e: any) {
+      toast({ title: "Erro ao buscar contatos", description: e.message, variant: "destructive" });
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
+  const handleOpenContacts = (open: boolean) => {
+    setContactsOpen(open);
+    if (open && contacts.length === 0) loadWhatsAppContacts();
+  };
+
+  const handlePickContact = (c: WhatsAppContact) => {
+    let phone = c.phone;
+    if (phone.startsWith('55') && phone.length > 11) phone = phone.slice(2);
+    setFormData(prev => ({
+      ...prev,
+      nome: c.name || prev.nome,
+      telefone: formatPhone(phone),
+    }));
+    setContactsOpen(false);
+    toast({ title: "Contato importado", description: `${c.name || phone} preenchido no formulário.` });
   };
 
   const updateMessageConfig = (field: string, value: any) => {
@@ -345,6 +386,72 @@ export function CadastrarAlunoForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Importar do WhatsApp */}
+          <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Smartphone className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Importar do WhatsApp</p>
+                <p className="text-xs text-muted-foreground">Selecione um contato e pré-preencha o formulário</p>
+              </div>
+            </div>
+            <Dialog open={contactsOpen} onOpenChange={handleOpenContacts}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm">
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  Importar
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Contatos do WhatsApp</DialogTitle>
+                </DialogHeader>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou telefone..."
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-1 mt-2">
+                  {contactsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : contacts.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-8">
+                      Nenhum contato carregado. Verifique se o WhatsApp está conectado.
+                    </p>
+                  ) : (
+                    contacts
+                      .filter(c =>
+                        !contactSearch ||
+                        c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+                        c.phone.includes(contactSearch)
+                      )
+                      .slice(0, 200)
+                      .map(c => (
+                        <button
+                          key={c.jid}
+                          type="button"
+                          onClick={() => handlePickContact(c)}
+                          className="w-full text-left p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+                        >
+                          <p className="font-medium text-sm">{c.name || "(sem nome)"}</p>
+                          <p className="text-xs text-muted-foreground">{c.phone}</p>
+                        </button>
+                      ))
+                  )}
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={loadWhatsAppContacts} disabled={contactsLoading}>
+                  Recarregar contatos
+                </Button>
+              </DialogContent>
+            </Dialog>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Nome */}
             <div className="space-y-2">
