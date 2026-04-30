@@ -2,12 +2,13 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Users,
+  UserPlus,
   Clock,
-  MessageSquare,
+  FileText,
   Send,
-  BarChart3,
+  LayoutDashboard,
   Bot,
-  MessageCircle,
+  Mail,
   CalendarClock,
 } from "lucide-react";
 
@@ -22,15 +23,28 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const menuItems = [
-  { title: "Dashboard", url: "/", icon: BarChart3 },
-  { title: "Alunos", url: "/alunos", icon: Users },
-  { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: Clock },
-  { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
-  { title: "Enviar Mensagem", url: "/enviar-mensagem", icon: Send },
-  { title: "Mensagens Enviadas", url: "/mensagens-enviadas", icon: MessageCircle },
-  { title: "Mensagens Pré-definidas", url: "/mensagens-predefinidas", icon: MessageSquare },
-  { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
+const menuGroups = [
+  {
+    label: "Principal",
+    items: [
+      { title: "Dashboard", url: "/", icon: LayoutDashboard },
+      { title: "Cadastrar / Ver Alunos", url: "/alunos", icon: UserPlus },
+    ],
+  },
+  {
+    label: "Mensagens",
+    items: [
+      { title: "Enviar Mensagem", url: "/enviar-mensagem", icon: Send },
+      { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: Clock },
+      { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
+      { title: "Mensagens Enviadas", url: "/mensagens-enviadas", icon: Mail },
+      { title: "Pré-definidas", url: "/mensagens-predefinidas", icon: FileText },
+    ],
+  },
+  {
+    label: "Inteligência",
+    items: [{ title: "Assistente IA", url: "/assistente-ia", icon: Bot }],
+  },
 ];
 
 export function AppSidebar() {
@@ -42,30 +56,33 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Gerenciar Academia</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      end 
-                      className={isActive(item.url) 
-                        ? "bg-primary text-primary-foreground font-medium" 
-                        : "text-foreground"
-                      }
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menuGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={
+                          isActive(item.url)
+                            ? "bg-primary text-primary-foreground font-medium"
+                            : "text-foreground"
+                        }
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

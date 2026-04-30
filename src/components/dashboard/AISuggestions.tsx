@@ -1,94 +1,124 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Users, MessageCircle, Calendar, TrendingUp } from "lucide-react";
+import {
+  Sparkles,
+  Users,
+  MessageCircle,
+  Calendar,
+  TrendingUp,
+  AlertCircle,
+  ArrowRight,
+  Bot,
+} from "lucide-react";
 import { useTodayActions, useDashboardStats } from "@/hooks/useDashboardData";
+import { useNavigate } from "react-router-dom";
+
+type Priority = "high" | "medium" | "low";
+
+interface Suggestion {
+  id: string;
+  title: string;
+  description: string;
+  example: string;
+  priority: Priority;
+  icon: React.ComponentType<{ className?: string }>;
+  action: string;
+  accent: string; // gradient for icon
+  border: string;
+}
 
 export function AISuggestions() {
+  const navigate = useNavigate();
   const { data: todayActions = [], isLoading: actionsLoading } = useTodayActions();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
-  const generateSuggestions = () => {
-    const suggestions = [];
+  const generateSuggestions = (): Suggestion[] => {
+    const suggestions: Suggestion[] = [];
 
-    // Aniversariantes hoje
     if (stats?.birthdaysToday && stats.birthdaysToday > 0) {
       suggestions.push({
-        id: 'birthday',
-        title: 'Enviar Parabéns de Aniversário',
-        description: `${stats.birthdaysToday} aluno(s) fazem aniversário hoje. Que tal enviar uma mensagem especial?`,
-        priority: 'high',
+        id: "birthday",
+        title: "Enviar Parabéns de Aniversário",
+        description: `${stats.birthdaysToday} aluno(s) fazem aniversário hoje.`,
+        example: `Ex.: "Gere uma mensagem carinhosa de parabéns para os ${stats.birthdaysToday} aniversariantes de hoje."`,
+        priority: "high",
         icon: Calendar,
-        action: 'Envie mensagens de parabéns para os aniversariantes de hoje',
-        color: 'bg-purple-100 text-purple-700 border-purple-200'
+        action: `Envie mensagens de parabéns para os ${stats.birthdaysToday} aniversariante(s) de hoje`,
+        accent: "bg-gradient-to-br from-purple-500 to-pink-600",
+        border: "border-l-purple-500",
       });
     }
 
-    // Alunos precisando de acompanhamento
-    const needsFollow = todayActions.filter(action => 
-      action.type === 'daqui_7_dias' || action.type === 'daqui_21_dias'
+    const needsFollow = todayActions.filter(
+      (a) => a.type === "daqui_7_dias" || a.type === "daqui_21_dias"
     );
     if (needsFollow.length > 0) {
       suggestions.push({
-        id: 'followup',
-        title: 'Acompanhar Novos Alunos',
-        description: `${needsFollow.length} aluno(s) precisam de mensagens de acompanhamento.`,
-        priority: 'medium',
+        id: "followup",
+        title: "Acompanhar Novos Alunos",
+        description: `${needsFollow.length} aluno(s) precisam de acompanhamento.`,
+        example: `Ex.: "Crie uma mensagem de check-in para os ${needsFollow.length} alunos novos."`,
+        priority: "medium",
         icon: Users,
-        action: 'Envie mensagens de acompanhamento para novos alunos',
-        color: 'bg-blue-100 text-blue-700 border-blue-200'
+        action: `Envie mensagens de acompanhamento para ${needsFollow.length} aluno(s) novo(s)`,
+        accent: "bg-gradient-to-br from-blue-500 to-cyan-600",
+        border: "border-l-blue-500",
       });
     }
 
-    // Avaliações pendentes
-    const needsEvaluation = todayActions.filter(action => action.type === 'evaluation');
+    const needsEvaluation = todayActions.filter((a) => a.type === "evaluation");
     if (needsEvaluation.length > 0) {
       suggestions.push({
-        id: 'evaluation',
-        title: 'Lembrar de Avaliações',
-        description: `${needsEvaluation.length} aluno(s) precisam fazer avaliação física.`,
-        priority: 'medium',
+        id: "evaluation",
+        title: "Lembrar de Avaliações Físicas",
+        description: `${needsEvaluation.length} aluno(s) precisam fazer avaliação.`,
+        example: `Ex.: "Lembre os ${needsEvaluation.length} alunos de marcarem a avaliação física comigo essa semana."`,
+        priority: "high",
         icon: TrendingUp,
-        action: 'Envie lembretes de avaliação física',
-        color: 'bg-orange-100 text-orange-700 border-orange-200'
+        action: `Envie lembretes de avaliação física para ${needsEvaluation.length} aluno(s)`,
+        accent: "bg-gradient-to-br from-[hsl(var(--warning))] to-orange-600",
+        border: "border-l-[hsl(var(--warning))]",
       });
     }
 
-    // Mensagens motivacionais gerais
-    if (stats?.totalStudents && stats.totalStudents > 0) {
+    if (stats?.totalStudents && stats.totalStudents > 0 && suggestions.length < 3) {
       suggestions.push({
-        id: 'motivation',
-        title: 'Motivar Todos os Alunos',
-        description: 'Envie uma mensagem motivacional geral para manter o engajamento.',
-        priority: 'low',
+        id: "motivation",
+        title: "Motivar Todos os Alunos",
+        description: "Envie uma mensagem motivacional geral para manter o engajamento.",
+        example: 'Ex.: "Crie uma mensagem motivacional curta para começar bem a semana."',
+        priority: "low",
         icon: MessageCircle,
-        action: 'Envie uma mensagem motivacional para todos os alunos',
-        color: 'bg-green-100 text-green-700 border-green-200'
+        action: "Envie uma mensagem motivacional para todos os alunos",
+        accent: "bg-gradient-to-br from-[hsl(var(--success))] to-emerald-600",
+        border: "border-l-[hsl(var(--success))]",
       });
     }
 
-    // Sugestão de criação de mensagem pré-definida se não houver muitas ações
     if (suggestions.length < 2) {
       suggestions.push({
-        id: 'predefined',
-        title: 'Criar Mensagem Pré-definida',
-        description: 'Crie templates de mensagens para facilitar o envio futuro.',
-        priority: 'low',
+        id: "predefined",
+        title: "Criar Mensagem Pré-definida",
+        description: "Crie templates para acelerar envios futuros.",
+        example: 'Ex.: "Crie um template de boas-vindas para novos alunos."',
+        priority: "low",
         icon: MessageCircle,
-        action: 'Crie uma nova mensagem pré-definida',
-        color: 'bg-gray-100 text-gray-700 border-gray-200'
+        action: "Crie uma nova mensagem pré-definida de boas-vindas",
+        accent: "bg-gradient-to-br from-slate-500 to-slate-700",
+        border: "border-l-slate-500",
       });
     }
 
-    return suggestions.slice(0, 3); // Mostrar no máximo 3 sugestões
+    return suggestions.slice(0, 3);
   };
 
   const suggestions = generateSuggestions();
+  const isLoading = statsLoading || actionsLoading;
 
-  if (statsLoading || actionsLoading) {
+  if (isLoading) {
     return (
-      <Card>
+      <Card className="border-primary/10 shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -98,9 +128,9 @@ export function AISuggestions() {
         <CardContent>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              <div key={i} className="animate-pulse p-4 rounded-lg bg-muted/40">
+                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                <div className="h-3 bg-muted rounded w-1/2" />
               </div>
             ))}
           </div>
@@ -110,72 +140,85 @@ export function AISuggestions() {
   }
 
   const handleSuggestionClick = (action: string) => {
-    // Redirecionar para a página do assistente IA com a ação pré-preenchida
-    const chatInput = document.querySelector('input[placeholder*="Digite sua pergunta"]') as HTMLInputElement;
-    if (chatInput) {
-      chatInput.value = action;
-      chatInput.focus();
-    }
-    
-    // Se não estiver na página do assistente, redirecionar
-    if (window.location.pathname !== '/assistente-ia') {
-      window.location.href = '/assistente-ia';
-      // Armazenar a ação no localStorage para usar depois
-      localStorage.setItem('aiSuggestionAction', action);
-    }
+    localStorage.setItem("aiSuggestionAction", action);
+    navigate("/assistente-ia");
+  };
+
+  const priorityBadge = (priority: Priority) => {
+    const map = {
+      high: {
+        label: "Urgente",
+        className:
+          "bg-destructive/10 text-destructive border-destructive/30 animate-pulse-glow-destructive",
+      },
+      medium: {
+        label: "Médio",
+        className: "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30",
+      },
+      low: {
+        label: "Sugerido",
+        className: "bg-muted text-muted-foreground border-border",
+      },
+    };
+    const cfg = map[priority];
+    return (
+      <Badge variant="outline" className={`text-[10px] font-semibold ${cfg.className}`}>
+        {priority === "high" && <AlertCircle className="h-3 w-3 mr-1" />}
+        {cfg.label}
+      </Badge>
+    );
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          Sugestões da IA
-        </CardTitle>
-        <CardDescription>
-          Ações recomendadas baseadas nos seus dados
-        </CardDescription>
+    <Card className="overflow-hidden border-primary/10 shadow-card">
+      <CardHeader className="bg-gradient-to-r from-primary/5 via-purple-500/5 to-transparent">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white shadow-primary">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div>
+            <CardTitle className="text-lg">Sugestões da IA</CardTitle>
+            <CardDescription>Ações inteligentes baseadas nos seus dados de hoje</CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="pt-6 space-y-3">
         {suggestions.length === 0 ? (
-          <div className="text-center py-4">
-            <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <div className="text-center py-8">
+            <Sparkles className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
               Tudo em dia! Não há sugestões específicas no momento.
             </p>
           </div>
         ) : (
           suggestions.map((suggestion) => (
-            <div key={suggestion.id} className={`p-3 rounded-lg border ${suggestion.color}`}>
+            <div
+              key={suggestion.id}
+              className={`group p-4 rounded-lg border border-border bg-card border-l-4 ${suggestion.border} hover:shadow-elegant transition-all duration-300`}
+            >
               <div className="flex items-start gap-3">
-                <div className="mt-0.5">
+                <div
+                  className={`p-2.5 rounded-lg shadow-md shrink-0 text-white ${suggestion.accent}`}
+                >
                   <suggestion.icon className="h-4 w-4" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-sm">{suggestion.title}</h4>
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${
-                        suggestion.priority === 'high' ? 'bg-red-100 text-red-700' :
-                        suggestion.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {suggestion.priority === 'high' ? 'Urgente' : 
-                       suggestion.priority === 'medium' ? 'Médio' : 'Baixo'}
-                    </Badge>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <h4 className="font-semibold text-sm text-foreground">{suggestion.title}</h4>
+                    {priorityBadge(suggestion.priority)}
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {suggestion.description}
+                  <p className="text-xs text-muted-foreground">{suggestion.description}</p>
+                  <p className="text-[11px] italic text-muted-foreground/80 bg-muted/40 px-2 py-1.5 rounded-md border border-border/50">
+                    {suggestion.example}
                   </p>
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="text-xs h-7"
                     onClick={() => handleSuggestionClick(suggestion.action)}
+                    className="w-full sm:w-auto gap-1.5 bg-gradient-to-r from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5 transition-all"
                   >
+                    <Bot className="h-3.5 w-3.5" />
                     Usar Assistente IA
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </Button>
                 </div>
               </div>
