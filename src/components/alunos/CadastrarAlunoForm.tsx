@@ -386,6 +386,72 @@ export function CadastrarAlunoForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Importar do WhatsApp */}
+          <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Smartphone className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Importar do WhatsApp</p>
+                <p className="text-xs text-muted-foreground">Selecione um contato e pré-preencha o formulário</p>
+              </div>
+            </div>
+            <Dialog open={contactsOpen} onOpenChange={handleOpenContacts}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm">
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  Importar
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Contatos do WhatsApp</DialogTitle>
+                </DialogHeader>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou telefone..."
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-1 mt-2">
+                  {contactsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : contacts.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-8">
+                      Nenhum contato carregado. Verifique se o WhatsApp está conectado.
+                    </p>
+                  ) : (
+                    contacts
+                      .filter(c =>
+                        !contactSearch ||
+                        c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+                        c.phone.includes(contactSearch)
+                      )
+                      .slice(0, 200)
+                      .map(c => (
+                        <button
+                          key={c.jid}
+                          type="button"
+                          onClick={() => handlePickContact(c)}
+                          className="w-full text-left p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+                        >
+                          <p className="font-medium text-sm">{c.name || "(sem nome)"}</p>
+                          <p className="text-xs text-muted-foreground">{c.phone}</p>
+                        </button>
+                      ))
+                  )}
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={loadWhatsAppContacts} disabled={contactsLoading}>
+                  Recarregar contatos
+                </Button>
+              </DialogContent>
+            </Dialog>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Nome */}
             <div className="space-y-2">
