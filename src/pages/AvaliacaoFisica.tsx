@@ -112,6 +112,18 @@ export default function AvaliacaoFisica() {
 
   const handleSave = async () => {
     if (!editing) return;
+
+    if (scheduleNext) {
+      if (!nextEvalDate) {
+        toast({ title: "Defina a data da próxima avaliação", variant: "destructive" });
+        return;
+      }
+      if (new Date(`${nextEvalDate}T09:00:00`) <= new Date()) {
+        toast({ title: "Data inválida", description: "A próxima avaliação deve ser futura.", variant: "destructive" });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -125,12 +137,28 @@ export default function AvaliacaoFisica() {
 
       if (error) throw error;
 
+      if (scheduleNext && nextEvalDate) {
+        const scheduledFor = new Date(`${nextEvalDate}T09:00:00`);
+        const content = followUpType === "reminder"
+          ? `Olá ${editing.name}! 📋 Lembrete: sua avaliação física está marcada para hoje. Vamos lá! 💪`
+          : `Olá ${editing.name}! 📈 Como foi sua avaliação física? Vamos acompanhar sua evolução juntos! 💪`;
+
+        const { error: schedError } = await supabase.from("scheduled_messages").insert([{
+          student_id: editing.id,
+          content,
+          scheduled_for: scheduledFor.toISOString(),
+          message_type: followUpType === "reminder" ? "evaluation_reminder" : "evaluation_followup",
+          status: "pending",
+        }]);
+        if (schedError) throw schedError;
+      }
+
       queryClient.invalidateQueries({ queryKey: ["students-evaluation"] });
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
 
       toast({
-        title: "Avaliação atualizada",
+        title: scheduleNext ? "Avaliação agendada" : "Avaliação atualizada",
         description: `Dados de ${editing.name} salvos com sucesso.`,
       });
       setEditing(null);
