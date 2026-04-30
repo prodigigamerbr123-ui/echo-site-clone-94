@@ -5,10 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, Activity, CalendarPlus } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -23,11 +21,6 @@ export function CadastrarAlunoForm() {
     telefone: "",
     dataNascimento: "",
   });
-
-  // Avaliação física
-  const [scheduleEval, setScheduleEval] = useState(false);
-  const [nextEvalDate, setNextEvalDate] = useState("");
-  const [followUpType, setFollowUpType] = useState<"reminder" | "followup">("reminder");
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -58,16 +51,6 @@ export function CadastrarAlunoForm() {
     if (!formData.dataNascimento) {
       toast({ title: "Data de nascimento obrigatória", description: "Informe a data de nascimento.", variant: "destructive" });
       return false;
-    }
-    if (scheduleEval) {
-      if (!nextEvalDate) {
-        toast({ title: "Data da avaliação obrigatória", description: "Defina a data da próxima avaliação.", variant: "destructive" });
-        return false;
-      }
-      if (new Date(nextEvalDate) <= new Date(new Date().toDateString())) {
-        toast({ title: "Data inválida", description: "A próxima avaliação deve ser futura.", variant: "destructive" });
-        return false;
-      }
     }
     return true;
   };
