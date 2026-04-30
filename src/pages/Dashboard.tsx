@@ -1,6 +1,7 @@
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { WhatsAppStatus } from "@/components/dashboard/WhatsAppStatus";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { AISuggestions } from "@/components/dashboard/AISuggestions";
 
 export default function Dashboard() {
   return (
@@ -8,6 +9,8 @@ export default function Dashboard() {
       <QuickActions />
 
       <StatsOverview />
+
+      <AISuggestions />
 
       <div className="max-w-xl">
         <WhatsAppStatus />
