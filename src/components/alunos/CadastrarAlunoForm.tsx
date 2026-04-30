@@ -74,38 +74,12 @@ export function CadastrarAlunoForm() {
 
       if (error) throw error;
 
-      // Agendar avaliação física como mensagem programada
-      if (scheduleEval && nextEvalDate && data) {
-        const scheduledFor = new Date(`${nextEvalDate}T09:00:00`);
-        const content = followUpType === "reminder"
-          ? `Olá ${data.name}! 📋 Lembrete: sua avaliação física está marcada para hoje. Vamos lá! 💪`
-          : `Olá ${data.name}! 📈 Como foi sua avaliação física? Vamos acompanhar sua evolução juntos! 💪`;
-
-        const { error: schedError } = await supabase.from('scheduled_messages').insert([{
-          student_id: data.id,
-          content,
-          scheduled_for: scheduledFor.toISOString(),
-          message_type: followUpType === "reminder" ? "evaluation_reminder" : "evaluation_followup",
-          status: "pending",
-        }]);
-        if (schedError) {
-          toast({
-            title: "Aluno cadastrado, mas houve um problema ao agendar avaliação",
-            description: schedError.message,
-            variant: "destructive",
-          });
-        }
-      }
-
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['students-evaluation'] });
 
       setSuccessData({ name: data.name });
       setFormData({ nome: "", telefone: "", dataNascimento: "" });
-      setScheduleEval(false);
-      setNextEvalDate("");
-      setFollowUpType("reminder");
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar aluno",
