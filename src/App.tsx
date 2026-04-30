@@ -7,8 +7,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
+import WhatsApp from "./pages/WhatsApp";
 import Alunos from "./pages/Alunos";
 import EnviarMensagem from "./pages/EnviarMensagem";
+import AgendarMensagem from "./pages/AgendarMensagem";
 import MensagensAgendadas from "./pages/MensagensAgendadas";
 import MensagensPredefinidas from "./pages/MensagensPredefinidas";
 import MensagensEnviadas from "./pages/MensagensEnviadas";
@@ -30,9 +32,19 @@ const App = () => (
                 <Dashboard />
               </AppLayout>
             } />
+            <Route path="/whatsapp" element={
+              <AppLayout>
+                <WhatsApp />
+              </AppLayout>
+            } />
             <Route path="/alunos" element={
               <AppLayout>
                 <Alunos />
+              </AppLayout>
+            } />
+            <Route path="/agendar-mensagem" element={
+              <AppLayout>
+                <AgendarMensagem />
               </AppLayout>
             } />
             <Route path="/enviar-mensagem" element={
