@@ -8,28 +8,28 @@ export function StatsOverview() {
   const statsData = [
     {
       title: "Mensagens Para Enviar Hoje",
-      value: isLoading ? "..." : stats?.messagesToSendToday.toString() || "0",
+      value: isLoading ? "..." : (stats?.messagesToSendToday ?? 0).toString(),
       icon: MessageCircle,
       description: "Mensagens agendadas para hoje",
       color: "bg-green-500"
     },
     {
       title: "Mensagens Enviadas Hoje",
-      value: isLoading ? "..." : stats?.messagesSentToday.toString() || "0",
+      value: isLoading ? "..." : (stats?.messagesSentToday ?? 0).toString(),
       icon: CheckCircle2,
       description: "Já enviadas no dia",
       color: "bg-emerald-500"
     },
     {
       title: "Mensagens Agendadas",
-      value: isLoading ? "..." : stats?.scheduledMessages.toString() || "0",
+      value: isLoading ? "..." : (stats?.scheduledMessages ?? 0).toString(),
       icon: Clock,
       description: "Próximas 24 horas",
       color: "bg-orange-500"
     },
     {
       title: "Aniversariantes Hoje",
-      value: isLoading ? "..." : stats?.birthdaysToday.toString() || "0",
+      value: isLoading ? "..." : (stats?.birthdaysToday ?? 0).toString(),
       icon: Calendar,
       description: "Fazem aniversário hoje",
       color: "bg-purple-500"
