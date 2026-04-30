@@ -49,14 +49,37 @@ serve(async (req: Request) => {
     let qrcode: string | null = null;
     let pairingCode: string | null = null;
 
+    // List instances to verify our instance exists
+    const listResp = await fetch(`${baseUrl}/instance/fetchInstances`, { headers });
+    const listText = await listResp.text();
+    console.log(`[fetchInstances] status=${listResp.status} body=${listText.slice(0, 800)}`);
+
     // If not connected (or explicitly requested), fetch QR code
     if (state !== 'open' || action === 'connect') {
-      const connResp = await fetch(
-        `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`,
-        { headers }
-      );
-      const connData = await connResp.json().catch(() => ({}));
-      qrcode = connData?.base64 || connData?.qrcode?.base64 || connData?.qrcode || null;
+      const connUrl = `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`;
+
+      // Try GET first
+      let connResp = await fetch(connUrl, { method: 'GET', headers });
+      let connText = await connResp.text();
+      console.log(`[connect GET] status=${connResp.status} body=${connText.slice(0, 500)}`);
+
+      let connData: any = {};
+      try { connData = JSON.parse(connText); } catch (_) {}
+
+      // If empty response, try POST
+      if (!connData?.base64 && !connData?.qrcode && !connData?.code && !connData?.pairingCode) {
+        connResp = await fetch(connUrl, { method: 'POST', headers, body: JSON.stringify({}) });
+        connText = await connResp.text();
+        console.log(`[connect POST] status=${connResp.status} body=${connText.slice(0, 500)}`);
+        try { connData = JSON.parse(connText); } catch (_) {}
+      }
+
+      qrcode =
+        connData?.base64 ||
+        connData?.qrcode?.base64 ||
+        connData?.qrcode ||
+        connData?.qr ||
+        null;
       pairingCode = connData?.pairingCode || connData?.code || null;
     }
 
