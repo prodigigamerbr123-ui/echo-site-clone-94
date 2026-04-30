@@ -4,7 +4,6 @@ import { StudentsSummary } from "@/components/dashboard/StudentsSummary";
 import { SystemStatus } from "@/components/dashboard/SystemStatus";
 import { WelcomeSection } from "@/components/dashboard/WelcomeSection";
 import { AISuggestions } from "@/components/dashboard/AISuggestions";
-import { WhatsAppStatus } from "@/components/dashboard/WhatsAppStatus";
 
 export default function Dashboard() {
   return (
@@ -21,7 +20,6 @@ export default function Dashboard() {
           <StudentsSummary />
         </div>
         <div className="space-y-6">
-          <WhatsAppStatus />
           <AISuggestions />
           <SystemStatus />
         </div>

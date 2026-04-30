@@ -7,6 +7,8 @@ import {
   Send,
   BarChart3,
   Bot,
+  MessageCircle,
+  CalendarClock,
 } from "lucide-react";
 
 import {
@@ -21,9 +23,11 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
+  { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle },
   { title: "Dashboard", url: "/", icon: BarChart3 },
   { title: "Alunos", url: "/alunos", icon: Users },
-  { title: "Agendar Mensagem", url: "/mensagens-agendadas", icon: Clock },
+  { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: Clock },
+  { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
   { title: "Enviar Mensagem", url: "/enviar-mensagem", icon: Send },
   { title: "Mensagens Pré-definidas", url: "/mensagens-predefinidas", icon: MessageSquare },
   { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
