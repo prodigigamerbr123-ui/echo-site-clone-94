@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Send, Users, MessageSquare, Calendar } from "lucide-react";
+import { Search, Send, Users, MessageSquare } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,22 +13,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
 interface PredefinedMessage { id: string; title: string; content: string; }
-interface ScheduledMessage {
-  id: string;
-  content: string;
-  scheduled_for: string;
-  message_type: string;
-  status: string;
-  student_id: string;
-  students: { name: string; phone: string; };
-}
 
 export default function EnviarMensagem() {
   const [students, setStudents] = useState<Student[]>([]);
   const [predefinedMessages, setPredefinedMessages] = useState<PredefinedMessage[]>([]);
-  const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [selectedScheduledMessages, setSelectedScheduledMessages] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState("");
   const [selectedPredefined, setSelectedPredefined] = useState("");
@@ -37,7 +27,7 @@ export default function EnviarMensagem() {
 
   useEffect(() => {
     (async () => {
-      await Promise.all([fetchStudents(), fetchPredefinedMessages(), fetchTodayScheduledMessages()]);
+      await Promise.all([fetchStudents(), fetchPredefinedMessages()]);
       setLoading(false);
     })();
   }, []);
@@ -49,19 +39,6 @@ export default function EnviarMensagem() {
   const fetchPredefinedMessages = async () => {
     const { data } = await supabase.from('predefined_messages').select('*').order('title');
     setPredefinedMessages(data || []);
-  };
-  const fetchTodayScheduledMessages = async () => {
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    const { data } = await supabase
-      .from('scheduled_messages')
-      .select(`*, students (name, phone)`)
-      .eq('status', 'pending')
-      .gte('scheduled_for', start.toISOString())
-      .lt('scheduled_for', end.toISOString())
-      .order('scheduled_for');
-    setScheduledMessages(data || []);
   };
 
   const filteredStudents = students.filter(s =>
@@ -78,62 +55,7 @@ export default function EnviarMensagem() {
     const m = predefinedMessages.find(x => x.id === id);
     if (m) { setMessage(m.content); setSelectedPredefined(id); }
   };
-  const handleScheduledToggle = (id: string) => {
-    setSelectedScheduledMessages(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-  const handleSelectAllScheduled = () => {
-    setSelectedScheduledMessages(
-      selectedScheduledMessages.length === scheduledMessages.length ? [] : scheduledMessages.map(m => m.id)
-    );
-  };
 
-  // Envia agendadas selecionadas via Evolution (uma por uma para reaproveitar o conteúdo individual)
-  const handleSendScheduledMessages = async () => {
-    if (selectedScheduledMessages.length === 0) {
-      toast({ title: "Atenção", description: "Selecione pelo menos uma mensagem.", variant: "destructive" });
-      return;
-    }
-    setSending(true);
-    try {
-      const selected = scheduledMessages.filter(m => selectedScheduledMessages.includes(m.id));
-      let sent = 0, failed = 0;
-
-      for (const msg of selected) {
-        const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-          body: {
-            students: [{ id: msg.student_id, name: msg.students.name, phone: msg.students.phone }],
-            message: msg.content,
-          },
-        });
-        if (error || !data?.success) {
-          failed++;
-          continue;
-        }
-        const ok = data.summary?.sent > 0;
-        if (ok) {
-          sent++;
-          await supabase
-            .from('scheduled_messages')
-            .update({ status: 'sent', sent_at: new Date().toISOString() })
-            .eq('id', msg.id);
-        } else {
-          failed++;
-        }
-      }
-
-      toast({
-        title: sent > 0 ? "Mensagens enviadas!" : "Falha ao enviar",
-        description: `${sent} enviada(s)${failed > 0 ? `, ${failed} falhou` : ''}.`,
-        variant: failed > 0 && sent === 0 ? "destructive" : "default",
-      });
-      setSelectedScheduledMessages([]);
-      fetchTodayScheduledMessages();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
-    } finally {
-      setSending(false);
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!message.trim()) {
@@ -182,63 +104,15 @@ export default function EnviarMensagem() {
           <Send className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Enviar Mensagem</h1>
-          <p className="text-muted-foreground">Envie via WhatsApp diretamente pela Evolution API</p>
+          <h1 className="text-2xl font-bold">Envio Manual</h1>
+          <p className="text-muted-foreground">Envio manual via WhatsApp pela Evolution API</p>
+        </div>
+        <div className="ml-auto">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/mensagens-agendadas">Ver Mensagens Agendadas</Link>
+          </Button>
         </div>
       </div>
-
-      {/* Seção: Mensagens do Dia */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Mensagens Agendadas para Hoje ({scheduledMessages.length})
-          </CardTitle>
-          {scheduledMessages.length > 0 && (
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={handleSelectAllScheduled} className="shrink-0">
-                {selectedScheduledMessages.length === scheduledMessages.length ? "Desmarcar Todas" : "Selecionar Todas"}
-              </Button>
-              <Button
-                onClick={handleSendScheduledMessages}
-                disabled={sending || selectedScheduledMessages.length === 0}
-              >
-                {sending ? "Enviando..." : (
-                  <><Send className="h-4 w-4 mr-2" />Enviar Selecionadas ({selectedScheduledMessages.length})</>
-                )}
-              </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-          {scheduledMessages.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhuma mensagem agendada para hoje.</p>
-          ) : (
-            scheduledMessages.map(m => (
-              <div
-                key={m.id}
-                className={`flex items-start space-x-3 p-4 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer ${
-                  selectedScheduledMessages.includes(m.id) ? 'bg-accent/50 border-primary/50' : 'border-border'
-                }`}
-                onClick={() => handleScheduledToggle(m.id)}
-              >
-                <Checkbox checked={selectedScheduledMessages.includes(m.id)} className="mt-1 pointer-events-none" />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{m.students.name}</p>
-                    <Badge variant="outline" className="text-xs">{m.message_type.replace(/_/g, ' ')}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{m.students.phone}</p>
-                  <div className="p-2 bg-accent/30 rounded text-sm">{m.content}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Agendada para: {new Date(m.scheduled_for).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
 
       <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
         <p className="text-sm">

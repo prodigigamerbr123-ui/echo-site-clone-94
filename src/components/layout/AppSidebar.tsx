@@ -42,7 +42,7 @@ const menuGroups = [
   {
     label: "Mensagens",
     items: [
-      { title: "Enviar Mensagem", url: "/enviar-mensagem", icon: Send },
+      { title: "Envio Manual", url: "/enviar-mensagem", icon: Send },
       { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: Clock },
       { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
       { title: "Mensagens Enviadas", url: "/mensagens-enviadas", icon: Mail },
