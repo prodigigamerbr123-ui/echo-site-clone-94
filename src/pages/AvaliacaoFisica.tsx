@@ -55,6 +55,9 @@ export default function AvaliacaoFisica() {
   const [formDate, setFormDate] = useState<string>("");
   const [formStatus, setFormStatus] = useState<boolean>(false);
   const [formNotes, setFormNotes] = useState<string>("");
+  const [scheduleNext, setScheduleNext] = useState(false);
+  const [nextEvalDate, setNextEvalDate] = useState("");
+  const [followUpType, setFollowUpType] = useState<"reminder" | "followup">("reminder");
   const [saving, setSaving] = useState(false);
 
   const { data: students, isLoading } = useQuery({
@@ -92,17 +95,35 @@ export default function AvaliacaoFisica() {
     setFormDate(s.last_evaluation_date ?? "");
     setFormStatus(s.had_evaluation);
     setFormNotes(s.evaluation_notes ?? "");
+    setScheduleNext(false);
+    setNextEvalDate("");
+    setFollowUpType("reminder");
   };
 
   const openSchedule = (s: Student) => {
     setEditing(s);
-    setFormDate(new Date().toISOString().split("T")[0]);
-    setFormStatus(false);
+    setFormDate(s.last_evaluation_date ?? "");
+    setFormStatus(s.had_evaluation);
     setFormNotes(s.evaluation_notes ?? "");
+    setScheduleNext(true);
+    setNextEvalDate("");
+    setFollowUpType("reminder");
   };
 
   const handleSave = async () => {
     if (!editing) return;
+
+    if (scheduleNext) {
+      if (!nextEvalDate) {
+        toast({ title: "Defina a data da próxima avaliação", variant: "destructive" });
+        return;
+      }
+      if (new Date(`${nextEvalDate}T09:00:00`) <= new Date()) {
+        toast({ title: "Data inválida", description: "A próxima avaliação deve ser futura.", variant: "destructive" });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -116,12 +137,28 @@ export default function AvaliacaoFisica() {
 
       if (error) throw error;
 
+      if (scheduleNext && nextEvalDate) {
+        const scheduledFor = new Date(`${nextEvalDate}T09:00:00`);
+        const content = followUpType === "reminder"
+          ? `Olá ${editing.name}! 📋 Lembrete: sua avaliação física está marcada para hoje. Vamos lá! 💪`
+          : `Olá ${editing.name}! 📈 Como foi sua avaliação física? Vamos acompanhar sua evolução juntos! 💪`;
+
+        const { error: schedError } = await supabase.from("scheduled_messages").insert([{
+          student_id: editing.id,
+          content,
+          scheduled_for: scheduledFor.toISOString(),
+          message_type: followUpType === "reminder" ? "evaluation_reminder" : "evaluation_followup",
+          status: "pending",
+        }]);
+        if (schedError) throw schedError;
+      }
+
       queryClient.invalidateQueries({ queryKey: ["students-evaluation"] });
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
 
       toast({
-        title: "Avaliação atualizada",
+        title: scheduleNext ? "Avaliação agendada" : "Avaliação atualizada",
         description: `Dados de ${editing.name} salvos com sucesso.`,
       });
       setEditing(null);
@@ -280,17 +317,18 @@ export default function AvaliacaoFisica() {
                           {s.evaluation_notes || "—"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-2 flex-wrap">
                             <Button variant="outline" size="sm" onClick={() => openEdit(s)}>
                               <Edit className="h-3 w-3 mr-1" />
                               Editar
                             </Button>
+                            <Button variant="secondary" size="sm" onClick={() => openSchedule(s)}>
+                              <CalendarPlus className="h-3 w-3 mr-1" />
+                              Agendar
+                            </Button>
                             {!s.had_evaluation && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleSendReminder(s)}
-                              >
-                                <CalendarPlus className="h-3 w-3 mr-1" />
+                              <Button size="sm" onClick={() => handleSendReminder(s)}>
+                                <Phone className="h-3 w-3 mr-1" />
                                 Lembrete
                               </Button>
                             )}
@@ -310,17 +348,22 @@ export default function AvaliacaoFisica() {
         </CardContent>
       </Card>
 
-      {/* Dialog de edição */}
+      {/* Dialog de edição / agendamento */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Avaliação Física — {editing?.name}</DialogTitle>
+            <DialogTitle>
+              {scheduleNext ? "Agendar Avaliação" : "Avaliação Física"} — {editing?.name}
+            </DialogTitle>
             <DialogDescription>
-              Atualize os dados da avaliação física do aluno.
+              {scheduleNext
+                ? "Defina a data da próxima avaliação e o tipo de acompanhamento."
+                : "Atualize os dados da avaliação física do aluno."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* Última avaliação */}
             <div className="space-y-2">
               <Label htmlFor="eval-date">Data da última avaliação</Label>
               <Input
@@ -348,8 +391,44 @@ export default function AvaliacaoFisica() {
                 placeholder="Ex: Precisa de acompanhamento muscular..."
                 value={formNotes}
                 onChange={(e) => setFormNotes(e.target.value)}
-                rows={4}
+                rows={3}
               />
+            </div>
+
+            {/* Agendar próxima avaliação */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarPlus className="h-4 w-4 text-primary" />
+                  <Label>Agendar próxima avaliação</Label>
+                </div>
+                <Switch checked={scheduleNext} onCheckedChange={setScheduleNext} />
+              </div>
+
+              {scheduleNext && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="next-eval" className="text-xs">Data <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="next-eval"
+                      type="date"
+                      value={nextEvalDate}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => setNextEvalDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tipo de acompanhamento</Label>
+                    <Select value={followUpType} onValueChange={(v: "reminder" | "followup") => setFollowUpType(v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="reminder">Lembrete de avaliação</SelectItem>
+                        <SelectItem value="followup">Mensagem de acompanhamento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -358,7 +437,7 @@ export default function AvaliacaoFisica() {
               Cancelar
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Salvando..." : "Salvar"}
+              {saving ? "Salvando..." : scheduleNext ? "Agendar" : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>

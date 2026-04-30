@@ -5,10 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, Activity, CalendarPlus } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -23,11 +21,6 @@ export function CadastrarAlunoForm() {
     telefone: "",
     dataNascimento: "",
   });
-
-  // Avaliação física
-  const [scheduleEval, setScheduleEval] = useState(false);
-  const [nextEvalDate, setNextEvalDate] = useState("");
-  const [followUpType, setFollowUpType] = useState<"reminder" | "followup">("reminder");
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -59,16 +52,6 @@ export function CadastrarAlunoForm() {
       toast({ title: "Data de nascimento obrigatória", description: "Informe a data de nascimento.", variant: "destructive" });
       return false;
     }
-    if (scheduleEval) {
-      if (!nextEvalDate) {
-        toast({ title: "Data da avaliação obrigatória", description: "Defina a data da próxima avaliação.", variant: "destructive" });
-        return false;
-      }
-      if (new Date(nextEvalDate) <= new Date(new Date().toDateString())) {
-        toast({ title: "Data inválida", description: "A próxima avaliação deve ser futura.", variant: "destructive" });
-        return false;
-      }
-    }
     return true;
   };
 
@@ -91,38 +74,12 @@ export function CadastrarAlunoForm() {
 
       if (error) throw error;
 
-      // Agendar avaliação física como mensagem programada
-      if (scheduleEval && nextEvalDate && data) {
-        const scheduledFor = new Date(`${nextEvalDate}T09:00:00`);
-        const content = followUpType === "reminder"
-          ? `Olá ${data.name}! 📋 Lembrete: sua avaliação física está marcada para hoje. Vamos lá! 💪`
-          : `Olá ${data.name}! 📈 Como foi sua avaliação física? Vamos acompanhar sua evolução juntos! 💪`;
-
-        const { error: schedError } = await supabase.from('scheduled_messages').insert([{
-          student_id: data.id,
-          content,
-          scheduled_for: scheduledFor.toISOString(),
-          message_type: followUpType === "reminder" ? "evaluation_reminder" : "evaluation_followup",
-          status: "pending",
-        }]);
-        if (schedError) {
-          toast({
-            title: "Aluno cadastrado, mas houve um problema ao agendar avaliação",
-            description: schedError.message,
-            variant: "destructive",
-          });
-        }
-      }
-
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['students-evaluation'] });
 
       setSuccessData({ name: data.name });
       setFormData({ nome: "", telefone: "", dataNascimento: "" });
-      setScheduleEval(false);
-      setNextEvalDate("");
-      setFollowUpType("reminder");
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar aluno",
@@ -226,66 +183,6 @@ export function CadastrarAlunoForm() {
               <p className="text-xs text-muted-foreground">Usada para mensagens de aniversário</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Avaliação Física — agendar próxima avaliação */}
-      <Card className="w-full shadow-card border-l-4 border-l-primary/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Avaliação Física
-          </CardTitle>
-          <CardDescription>
-            Agende a primeira avaliação física do aluno (opcional)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
-            <div className="flex items-center gap-3">
-              <CalendarPlus className="h-5 w-5 text-primary" />
-              <div>
-                <Label className="cursor-pointer">Agendar avaliação física</Label>
-                <p className="text-xs text-muted-foreground">
-                  Cria automaticamente uma mensagem programada para o aluno
-                </p>
-              </div>
-            </div>
-            <Switch checked={scheduleEval} onCheckedChange={setScheduleEval} />
-          </div>
-
-          {scheduleEval && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="space-y-2">
-                <Label htmlFor="next-eval">Data da próxima avaliação <span className="text-destructive">*</span></Label>
-                <Input
-                  id="next-eval"
-                  type="date"
-                  value={nextEvalDate}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setNextEvalDate(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de acompanhamento</Label>
-                <Select value={followUpType} onValueChange={(v: "reminder" | "followup") => setFollowUpType(v)}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="reminder">Lembrete de avaliação</SelectItem>
-                    <SelectItem value="followup">Mensagem de acompanhamento</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {followUpType === "reminder"
-                    ? "Lembrete enviado no dia da avaliação"
-                    : "Mensagem de acompanhamento após a avaliação"}
-                </p>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
