@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, Cake, CheckSquare, Square } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -24,13 +23,15 @@ interface Student {
   created_at: string;
 }
 
+const ACTIVE_DAYS = 30;
+
 export function ListaAlunos() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
   const { data: students, isLoading } = useQuery({
     queryKey: ['students'],
@@ -39,106 +40,79 @@ export function ListaAlunos() {
         .from('students')
         .select('*')
         .order('created_at', { ascending: false });
-
       if (error) throw error;
       return data as Student[];
     }
   });
 
-  const filteredStudents = students?.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.phone.includes(searchTerm);
-    
-    const matchesFilter = filterType === "all" ||
-                         (filterType === "with-evaluation" && student.had_evaluation) ||
-                         (filterType === "without-evaluation" && !student.had_evaluation) ||
-                         (filterType === "with-birthday" && student.birth_date) ||
-                         (filterType === "without-birthday" && !student.birth_date);
-
-    return matchesSearch && matchesFilter;
+  // Mensagens recentes para determinar atividade e pendências
+  const { data: recentMessages = [] } = useQuery({
+    queryKey: ['recent-messages-status'],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - ACTIVE_DAYS);
+      const { data } = await supabase
+        .from('messages')
+        .select('student_id, sent_at')
+        .gte('sent_at', since.toISOString());
+      return data || [];
+    }
   });
 
+  const { data: pendingScheduled = [] } = useQuery({
+    queryKey: ['pending-scheduled-by-student'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('scheduled_messages')
+        .select('student_id')
+        .eq('status', 'pending');
+      return data || [];
+    }
+  });
+
+  const activeStudentIds = new Set(recentMessages.map((m: any) => m.student_id));
+  const pendingByStudent = pendingScheduled.reduce((acc: Record<string, number>, m: any) => {
+    acc[m.student_id] = (acc[m.student_id] || 0) + 1;
+    return acc;
+  }, {});
+
+  const isActive = (s: Student) => {
+    if (activeStudentIds.has(s.id)) return true;
+    // Recém cadastrado nos últimos 30 dias = ativo
+    const created = new Date(s.created_at);
+    const diff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+    return diff <= ACTIVE_DAYS;
+  };
+
+  const filteredStudents = (students || [])
+    .filter(s => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch = !term ||
+        s.name.toLowerCase().includes(term) ||
+        s.phone.includes(searchTerm);
+      const active = isActive(s);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && active) ||
+        (statusFilter === "inactive" && !active);
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
   const handleDeleteStudent = async (studentId: string, studentName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o aluno ${studentName}? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
-
+    if (!confirm(`Tem certeza que deseja excluir o aluno ${studentName}? Esta ação não pode ser desfeita.`)) return;
     try {
-      const { error } = await supabase
-        .from('students')
-        .delete()
-        .eq('id', studentId);
-
+      const { error } = await supabase.from('students').delete().eq('id', studentId);
       if (error) throw error;
-
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-
-      toast({
-        title: "Aluno excluído",
-        description: `${studentName} foi removido do sistema.`,
-      });
+      toast({ title: "Aluno excluído", description: `${studentName} foi removido do sistema.` });
     } catch (error: any) {
-      console.error('Error deleting student:', error);
-      toast({
-        title: "Erro ao excluir aluno",
-        description: error.message || "Tente novamente em alguns instantes.",
-        variant: "destructive"
-      });
+      toast({ title: "Erro ao excluir aluno", description: error.message, variant: "destructive" });
     }
-  };
-
-  const handleDeleteSelected = async () => {
-    if (selectedStudents.length === 0) return;
-
-    const studentsToDelete = filteredStudents?.filter(s => selectedStudents.includes(s.id)) || [];
-    const studentNames = studentsToDelete.map(s => s.name).join(', ');
-
-    if (!confirm(`Tem certeza que deseja excluir ${selectedStudents.length} aluno(s)? (${studentNames})\n\nEsta ação não pode ser desfeita.`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('students')
-        .delete()
-        .in('id', selectedStudents);
-
-      if (error) throw error;
-
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      
-      setSelectedStudents([]);
-
-      toast({
-        title: "Alunos excluídos",
-        description: `${selectedStudents.length} aluno(s) foram removidos do sistema.`,
-      });
-    } catch (error: any) {
-      console.error('Error deleting students:', error);
-      toast({
-        title: "Erro ao excluir alunos",
-        description: error.message || "Tente novamente em alguns instantes.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleSelectAll = () => {
-    if (selectedStudents.length === filteredStudents?.length) {
-      setSelectedStudents([]);
-    } else {
-      setSelectedStudents(filteredStudents?.map(s => s.id) || []);
-    }
-  };
-
-  const handleSelectStudent = (studentId: string) => {
-    setSelectedStudents(prev => 
-      prev.includes(studentId) 
-        ? prev.filter(id => id !== studentId)
-        : [...prev, studentId]
-    );
   };
 
   if (isLoading) {
@@ -153,202 +127,164 @@ export function ListaAlunos() {
     );
   }
 
+  const total = students?.length || 0;
+  const activeCount = (students || []).filter(isActive).length;
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-primary" />
-            Lista de Alunos
-          </CardTitle>
-          <CardDescription>
-            Gerencie todos os alunos cadastrados na academia
-          </CardDescription>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Lista de Alunos
+              </CardTitle>
+              <CardDescription>
+                Gerencie todos os alunos cadastrados na academia
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="secondary" className="gap-1">
+                <Users className="h-3 w-3" /> {total} total
+              </Badge>
+              <Badge className="gap-1 bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
+                {activeCount} ativos
+              </Badge>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Filtros */}
-          <div className="flex gap-4 flex-col sm:flex-row">
+          <div className="flex gap-3 flex-col sm:flex-row">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Pesquisar por nome ou telefone..."
+                placeholder="Buscar por nome ou telefone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full sm:w-[200px]">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filtrar por..." />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os alunos</SelectItem>
-                <SelectItem value="with-evaluation">Com avaliação</SelectItem>
-                <SelectItem value="without-evaluation">Sem avaliação</SelectItem>
-                <SelectItem value="with-birthday">Com aniversário</SelectItem>
-                <SelectItem value="without-birthday">Sem aniversário</SelectItem>
+                <SelectItem value="all">Todos os status</SelectItem>
+                <SelectItem value="active">Ativos</SelectItem>
+                <SelectItem value="inactive">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v: "recent" | "name") => setSortBy(v)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Mais recentes</SelectItem>
+                <SelectItem value="name">Nome (A-Z)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Resultados e Ações em Massa */}
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              {filteredStudents?.length || 0} aluno(s) encontrado(s)
-              {selectedStudents.length > 0 && (
-                <span className="ml-2 text-primary">
-                  ({selectedStudents.length} selecionado(s))
-                </span>
-              )}
-            </div>
-            
-            {filteredStudents && filteredStudents.length > 0 && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAll}
-                  className="text-xs"
-                >
-                  {selectedStudents.length === filteredStudents.length ? (
-                    <>
-                      <CheckSquare className="h-3 w-3 mr-1" />
-                      Desmarcar Todos
-                    </>
-                  ) : (
-                    <>
-                      <Square className="h-3 w-3 mr-1" />
-                      Selecionar Todos
-                    </>
-                  )}
-                </Button>
-                
-                {selectedStudents.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleDeleteSelected}
-                    className="text-xs"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Excluir Selecionados ({selectedStudents.length})
-                  </Button>
-                )}
-              </div>
-            )}
+          <div className="text-sm text-muted-foreground">
+            {filteredStudents.length} aluno(s) encontrado(s)
           </div>
 
           {/* Tabela */}
-          {filteredStudents && filteredStudents.length > 0 ? (
-            <div className="border rounded-lg">
+          {filteredStudents.length > 0 ? (
+            <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectedStudents.length === filteredStudents?.length && filteredStudents.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border border-input"
-                      />
-                    </TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Aniversário</TableHead>
-                    <TableHead>Avaliação</TableHead>
-                    <TableHead>Última Avaliação</TableHead>
+                    <TableHead>WhatsApp</TableHead>
                     <TableHead>Cadastrado em</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStudents.map((student) => (
-                    <TableRow key={student.id} className={selectedStudents.includes(student.id) ? "bg-muted/50" : ""}>
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={selectedStudents.includes(student.id)}
-                          onChange={() => handleSelectStudent(student.id)}
-                          className="rounded border border-input"
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{student.name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          {student.phone}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {student.birth_date ? (
+                  {filteredStudents.map((student) => {
+                    const active = isActive(student);
+                    const pendingCount = pendingByStudent[student.id] || 0;
+                    return (
+                      <TableRow key={student.id}>
+                        <TableCell>
                           <div className="flex items-center gap-2">
-                            <Cake className="h-4 w-4 text-muted-foreground" />
-                            {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                            <span className="font-medium">{student.name}</span>
+                            {pendingCount > 0 && (
+                              <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-600">
+                                <Bell className="h-3 w-3" />
+                                {pendingCount}
+                              </Badge>
+                            )}
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={student.had_evaluation ? "default" : "secondary"}>
-                          {student.had_evaluation ? "Sim" : "Não"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {student.last_evaluation_date ? (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {format(new Date(student.last_evaluation_date), "dd/MM/yyyy", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            {student.phone}
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingStudent(student)}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Editar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteStudent(student.id, student.name)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Excluir
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {active ? (
+                            <Badge className="bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
+                              <span className="h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5" />
+                              Ativo
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-muted-foreground">
+                              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground mr-1.5" />
+                              Inativo
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditingStudent(student)}
+                              title="Editar aluno"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteStudent(student.id, student.name)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Excluir aluno"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchTerm || filterType !== "all" 
+            <div className="text-center py-12 text-muted-foreground">
+              {searchTerm || statusFilter !== "all"
                 ? "Nenhum aluno encontrado com os filtros aplicados."
-                : "Nenhum aluno cadastrado ainda."
-              }
+                : "Nenhum aluno cadastrado ainda."}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Dialog de Edição */}
       {editingStudent && (
         <EditarAlunoDialog
           student={editingStudent}
