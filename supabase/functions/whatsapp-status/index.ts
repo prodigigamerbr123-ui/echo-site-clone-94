@@ -51,13 +51,37 @@ serve(async (req: Request) => {
 
     // If not connected (or explicitly requested), fetch QR code
     if (state !== 'open' || action === 'connect') {
-      const connResp = await fetch(
-        `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`,
-        { headers }
-      );
-      const connData = await connResp.json().catch(() => ({}));
-      qrcode = connData?.base64 || connData?.qrcode?.base64 || connData?.qrcode || null;
+      const connUrl = `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`;
+      const connResp = await fetch(connUrl, { headers });
+      const connText = await connResp.text();
+      console.log(`[connect] status=${connResp.status} body=${connText.slice(0, 500)}`);
+
+      let connData: any = {};
+      try { connData = JSON.parse(connText); } catch (_) {}
+
+      // Evolution v1/v2 return slightly different shapes:
+      // v2: { pairingCode, code, base64, count }
+      // v1: { qrcode: { base64, code } } or { base64 }
+      qrcode =
+        connData?.base64 ||
+        connData?.qrcode?.base64 ||
+        connData?.qrcode ||
+        connData?.qr ||
+        null;
       pairingCode = connData?.pairingCode || connData?.code || null;
+
+      if (!qrcode && !connResp.ok) {
+        return new Response(
+          JSON.stringify({
+            state,
+            qrcode: null,
+            pairingCode: null,
+            instance: EVOLUTION_INSTANCE_NAME,
+            error: `Evolution /connect HTTP ${connResp.status}: ${connText.slice(0, 300)}`,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     return new Response(
