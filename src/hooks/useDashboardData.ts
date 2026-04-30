@@ -35,6 +35,13 @@ export const useDashboardStats = () => {
         .gte('scheduled_for', now.toISOString())
         .lte('scheduled_for', tomorrow.toISOString());
 
+      // Get messages sent today
+      const { count: messagesSentToday } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .gte('sent_at', todayStart.toISOString())
+        .lte('sent_at', todayEnd.toISOString());
+
       // Get students with birthdays today - fix the date format comparison
       const todayMonth = format(now, 'MM');
       const todayDay = format(now, 'dd');
@@ -64,6 +71,7 @@ export const useDashboardStats = () => {
         totalStudents: totalStudents || 0,
         messagesToSendToday: messagesToSendToday || 0,
         scheduledMessages: scheduledMessages || 0,
+        messagesSentToday: messagesSentToday || 0,
         birthdaysToday,
       };
     },
