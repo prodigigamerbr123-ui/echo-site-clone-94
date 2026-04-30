@@ -325,15 +325,48 @@ serve(async (req) => {
       const data = await resp.json();
       const choice = data.choices?.[0];
       const msg = choice?.message;
+      const finishReason = choice?.finish_reason;
+
       if (!msg) {
-        return new Response(JSON.stringify({ error: "Resposta vazia do modelo" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        console.error("Resposta sem message. finish_reason:", finishReason, "raw:", JSON.stringify(data).slice(0, 800));
+        return new Response(JSON.stringify({
+          message: "Recebi sua solicitação, mas o modelo não retornou uma resposta. Tente reformular a pergunta de forma mais específica.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       messages.push(msg);
 
       const toolCalls = msg.tool_calls;
+      const hasContent = typeof msg.content === "string" && msg.content.trim().length > 0;
+
+      // Se não há tool_calls e nem conteúdo, modelo "travou" — pedimos síntese final sem tools
+      if ((!toolCalls || toolCalls.length === 0) && !hasContent) {
+        console.warn("Modelo retornou message vazio. finish_reason:", finishReason, "— tentando síntese final sem tools.");
+        const finalResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              ...messages,
+              { role: "user", content: "Com base nas informações que você já obteve das ferramentas acima, escreva uma resposta clara e completa em português para o usuário. Não chame mais ferramentas." },
+            ],
+          }),
+        });
+        if (finalResp.ok) {
+          const finalData = await finalResp.json();
+          const finalMsg = finalData.choices?.[0]?.message?.content;
+          if (finalMsg) {
+            return new Response(JSON.stringify({ message: finalMsg }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
+        return new Response(JSON.stringify({
+          message: "Consultei os dados, mas não consegui gerar uma resposta final. Pode reformular a pergunta?",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       if (!toolCalls || toolCalls.length === 0) {
-        return new Response(JSON.stringify({ message: msg.content || "" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ message: msg.content }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Executa todas as tools chamadas e adiciona resultados
