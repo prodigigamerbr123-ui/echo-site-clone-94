@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageCircle, Calendar, Clock } from "lucide-react";
+import { MessageCircle, Calendar, Clock, CheckCircle2 } from "lucide-react";
 import { useDashboardStats } from "@/hooks/useDashboardData";
 
 export function StatsOverview() {
@@ -12,6 +12,13 @@ export function StatsOverview() {
       icon: MessageCircle,
       description: "Mensagens agendadas para hoje",
       color: "bg-green-500"
+    },
+    {
+      title: "Mensagens Enviadas Hoje",
+      value: isLoading ? "..." : stats?.messagesSentToday.toString() || "0",
+      icon: CheckCircle2,
+      description: "Já enviadas no dia",
+      color: "bg-emerald-500"
     },
     {
       title: "Mensagens Agendadas",
@@ -30,7 +37,7 @@ export function StatsOverview() {
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {statsData.map((stat) => (
         <Card key={stat.title}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
