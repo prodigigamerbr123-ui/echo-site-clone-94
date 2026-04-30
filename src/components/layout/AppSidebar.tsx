@@ -29,6 +29,7 @@ const menuItems = [
   { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: Clock },
   { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
   { title: "Enviar Mensagem", url: "/enviar-mensagem", icon: Send },
+  { title: "Mensagens Enviadas", url: "/mensagens-enviadas", icon: MessageCircle },
   { title: "Mensagens Pré-definidas", url: "/mensagens-predefinidas", icon: MessageSquare },
   { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
 ];
