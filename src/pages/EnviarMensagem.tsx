@@ -55,62 +55,7 @@ export default function EnviarMensagem() {
     const m = predefinedMessages.find(x => x.id === id);
     if (m) { setMessage(m.content); setSelectedPredefined(id); }
   };
-  const handleScheduledToggle = (id: string) => {
-    setSelectedScheduledMessages(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-  const handleSelectAllScheduled = () => {
-    setSelectedScheduledMessages(
-      selectedScheduledMessages.length === scheduledMessages.length ? [] : scheduledMessages.map(m => m.id)
-    );
-  };
 
-  // Envia agendadas selecionadas via Evolution (uma por uma para reaproveitar o conteúdo individual)
-  const handleSendScheduledMessages = async () => {
-    if (selectedScheduledMessages.length === 0) {
-      toast({ title: "Atenção", description: "Selecione pelo menos uma mensagem.", variant: "destructive" });
-      return;
-    }
-    setSending(true);
-    try {
-      const selected = scheduledMessages.filter(m => selectedScheduledMessages.includes(m.id));
-      let sent = 0, failed = 0;
-
-      for (const msg of selected) {
-        const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-          body: {
-            students: [{ id: msg.student_id, name: msg.students.name, phone: msg.students.phone }],
-            message: msg.content,
-          },
-        });
-        if (error || !data?.success) {
-          failed++;
-          continue;
-        }
-        const ok = data.summary?.sent > 0;
-        if (ok) {
-          sent++;
-          await supabase
-            .from('scheduled_messages')
-            .update({ status: 'sent', sent_at: new Date().toISOString() })
-            .eq('id', msg.id);
-        } else {
-          failed++;
-        }
-      }
-
-      toast({
-        title: sent > 0 ? "Mensagens enviadas!" : "Falha ao enviar",
-        description: `${sent} enviada(s)${failed > 0 ? `, ${failed} falhou` : ''}.`,
-        variant: failed > 0 && sent === 0 ? "destructive" : "default",
-      });
-      setSelectedScheduledMessages([]);
-      fetchTodayScheduledMessages();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
-    } finally {
-      setSending(false);
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!message.trim()) {
@@ -159,63 +104,15 @@ export default function EnviarMensagem() {
           <Send className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Enviar Mensagem</h1>
-          <p className="text-muted-foreground">Envie via WhatsApp diretamente pela Evolution API</p>
+          <h1 className="text-2xl font-bold">Envio Manual</h1>
+          <p className="text-muted-foreground">Envio manual via WhatsApp pela Evolution API</p>
+        </div>
+        <div className="ml-auto">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/mensagens-agendadas">Ver Mensagens Agendadas</Link>
+          </Button>
         </div>
       </div>
-
-      {/* Seção: Mensagens do Dia */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Mensagens Agendadas para Hoje ({scheduledMessages.length})
-          </CardTitle>
-          {scheduledMessages.length > 0 && (
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={handleSelectAllScheduled} className="shrink-0">
-                {selectedScheduledMessages.length === scheduledMessages.length ? "Desmarcar Todas" : "Selecionar Todas"}
-              </Button>
-              <Button
-                onClick={handleSendScheduledMessages}
-                disabled={sending || selectedScheduledMessages.length === 0}
-              >
-                {sending ? "Enviando..." : (
-                  <><Send className="h-4 w-4 mr-2" />Enviar Selecionadas ({selectedScheduledMessages.length})</>
-                )}
-              </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-          {scheduledMessages.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhuma mensagem agendada para hoje.</p>
-          ) : (
-            scheduledMessages.map(m => (
-              <div
-                key={m.id}
-                className={`flex items-start space-x-3 p-4 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer ${
-                  selectedScheduledMessages.includes(m.id) ? 'bg-accent/50 border-primary/50' : 'border-border'
-                }`}
-                onClick={() => handleScheduledToggle(m.id)}
-              >
-                <Checkbox checked={selectedScheduledMessages.includes(m.id)} className="mt-1 pointer-events-none" />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{m.students.name}</p>
-                    <Badge variant="outline" className="text-xs">{m.message_type.replace(/_/g, ' ')}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{m.students.phone}</p>
-                  <div className="p-2 bg-accent/30 rounded text-sm">{m.content}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Agendada para: {new Date(m.scheduled_for).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
 
       <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
         <p className="text-sm">
