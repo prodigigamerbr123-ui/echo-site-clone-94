@@ -49,19 +49,31 @@ serve(async (req: Request) => {
     let qrcode: string | null = null;
     let pairingCode: string | null = null;
 
+    // List instances to verify our instance exists
+    const listResp = await fetch(`${baseUrl}/instance/fetchInstances`, { headers });
+    const listText = await listResp.text();
+    console.log(`[fetchInstances] status=${listResp.status} body=${listText.slice(0, 800)}`);
+
     // If not connected (or explicitly requested), fetch QR code
     if (state !== 'open' || action === 'connect') {
       const connUrl = `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`;
-      const connResp = await fetch(connUrl, { headers });
-      const connText = await connResp.text();
-      console.log(`[connect] status=${connResp.status} body=${connText.slice(0, 500)}`);
+
+      // Try GET first
+      let connResp = await fetch(connUrl, { method: 'GET', headers });
+      let connText = await connResp.text();
+      console.log(`[connect GET] status=${connResp.status} body=${connText.slice(0, 500)}`);
 
       let connData: any = {};
       try { connData = JSON.parse(connText); } catch (_) {}
 
-      // Evolution v1/v2 return slightly different shapes:
-      // v2: { pairingCode, code, base64, count }
-      // v1: { qrcode: { base64, code } } or { base64 }
+      // If empty response, try POST
+      if (!connData?.base64 && !connData?.qrcode && !connData?.code && !connData?.pairingCode) {
+        connResp = await fetch(connUrl, { method: 'POST', headers, body: JSON.stringify({}) });
+        connText = await connResp.text();
+        console.log(`[connect POST] status=${connResp.status} body=${connText.slice(0, 500)}`);
+        try { connData = JSON.parse(connText); } catch (_) {}
+      }
+
       qrcode =
         connData?.base64 ||
         connData?.qrcode?.base64 ||
@@ -69,19 +81,6 @@ serve(async (req: Request) => {
         connData?.qr ||
         null;
       pairingCode = connData?.pairingCode || connData?.code || null;
-
-      if (!qrcode && !connResp.ok) {
-        return new Response(
-          JSON.stringify({
-            state,
-            qrcode: null,
-            pairingCode: null,
-            instance: EVOLUTION_INSTANCE_NAME,
-            error: `Evolution /connect HTTP ${connResp.status}: ${connText.slice(0, 300)}`,
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
     }
 
     return new Response(
