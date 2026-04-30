@@ -79,6 +79,39 @@ export function CadastrarAlunoForm() {
     handleInputChange('telefone', formatted);
   };
 
+  const loadWhatsAppContacts = async () => {
+    setContactsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-contacts');
+      if (error) throw error;
+      setContacts(data?.contacts || []);
+      if (!data?.contacts?.length) {
+        toast({ title: "Nenhum contato encontrado", description: "Verifique se o WhatsApp está conectado." });
+      }
+    } catch (e: any) {
+      toast({ title: "Erro ao buscar contatos", description: e.message, variant: "destructive" });
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
+  const handleOpenContacts = (open: boolean) => {
+    setContactsOpen(open);
+    if (open && contacts.length === 0) loadWhatsAppContacts();
+  };
+
+  const handlePickContact = (c: WhatsAppContact) => {
+    let phone = c.phone;
+    if (phone.startsWith('55') && phone.length > 11) phone = phone.slice(2);
+    setFormData(prev => ({
+      ...prev,
+      nome: c.name || prev.nome,
+      telefone: formatPhone(phone),
+    }));
+    setContactsOpen(false);
+    toast({ title: "Contato importado", description: `${c.name || phone} preenchido no formulário.` });
+  };
+
   const updateMessageConfig = (field: string, value: any) => {
     setMessageConfig(prev => ({ ...prev, [field]: value }));
   };
