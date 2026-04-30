@@ -25,7 +25,7 @@ serve(async (req: Request) => {
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
     const headers = { 'apikey': EVOLUTION_API_KEY, 'Content-Type': 'application/json' };
 
-    // Try the chat/findContacts endpoint (Evolution v2)
+    // Try POST first
     let resp = await fetch(
       `${baseUrl}/chat/findContacts/${EVOLUTION_INSTANCE_NAME}`,
       { method: 'POST', headers, body: JSON.stringify({ where: {} }) }
@@ -35,8 +35,7 @@ serve(async (req: Request) => {
     let data: any = null;
     try { data = JSON.parse(text); } catch {}
 
-    // Fallback: GET
-    if (!Array.isArray(data)) {
+    if (!Array.isArray(data) && !data?.contacts && !data?.data) {
       resp = await fetch(`${baseUrl}/chat/findContacts/${EVOLUTION_INSTANCE_NAME}`, { headers });
       text = await resp.text();
       console.log(`[findContacts GET] status=${resp.status} bodyLen=${text.length}`);
@@ -44,19 +43,37 @@ serve(async (req: Request) => {
     }
 
     const arr = Array.isArray(data) ? data : (data?.contacts || data?.data || []);
+    console.log(`[contacts] raw count=${arr.length}, sample=${JSON.stringify(arr[0] || {}).slice(0, 200)}`);
 
     const contacts = arr
       .map((c: any) => {
-        const jid = c.id || c.remoteJid || c.jid || '';
-        const phone = jid.split('@')[0]?.replace(/\D/g, '') || '';
-        const name = c.pushName || c.name || c.notify || c.verifiedName || '';
-        return { jid, phone, name };
+        // Evolution may return number under different fields
+        const rawJid = c.id || c.remoteJid || c.jid || c.owner || '';
+        const rawNumber = c.number || c.phoneNumber || rawJid.split('@')[0] || '';
+        const phone = String(rawNumber).replace(/\D/g, '');
+        const name = c.pushName || c.name || c.notify || c.verifiedName || c.profileName || '';
+        return { jid: rawJid, phone, name };
       })
-      .filter((c: any) => c.phone && !c.jid.includes('@g.us')) // exclude groups
+      .filter((c: any) => {
+        if (!c.phone) return false;
+        // Exclude groups, broadcast, status, newsletter
+        if (c.jid && (
+          c.jid.includes('@g.us') ||
+          c.jid.includes('@broadcast') ||
+          c.jid.includes('status@') ||
+          c.jid.includes('@newsletter') ||
+          c.jid.includes('@lid')
+        )) return false;
+        // Must be a real phone number (8-15 digits)
+        if (c.phone.length < 8 || c.phone.length > 15) return false;
+        return true;
+      })
       .filter((c: any, idx: number, self: any[]) =>
         idx === self.findIndex(x => x.phone === c.phone)
       )
       .sort((a: any, b: any) => (a.name || a.phone).localeCompare(b.name || b.phone));
+
+    console.log(`[contacts] filtered count=${contacts.length}`);
 
     return new Response(
       JSON.stringify({ contacts, total: contacts.length }),
