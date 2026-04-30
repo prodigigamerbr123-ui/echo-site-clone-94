@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Send, Users, MessageSquare, Calendar } from "lucide-react";
+import { Search, Send, Users, MessageSquare } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,22 +13,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
 interface PredefinedMessage { id: string; title: string; content: string; }
-interface ScheduledMessage {
-  id: string;
-  content: string;
-  scheduled_for: string;
-  message_type: string;
-  status: string;
-  student_id: string;
-  students: { name: string; phone: string; };
-}
 
 export default function EnviarMensagem() {
   const [students, setStudents] = useState<Student[]>([]);
   const [predefinedMessages, setPredefinedMessages] = useState<PredefinedMessage[]>([]);
-  const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [selectedScheduledMessages, setSelectedScheduledMessages] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState("");
   const [selectedPredefined, setSelectedPredefined] = useState("");
@@ -37,7 +27,7 @@ export default function EnviarMensagem() {
 
   useEffect(() => {
     (async () => {
-      await Promise.all([fetchStudents(), fetchPredefinedMessages(), fetchTodayScheduledMessages()]);
+      await Promise.all([fetchStudents(), fetchPredefinedMessages()]);
       setLoading(false);
     })();
   }, []);
@@ -49,19 +39,6 @@ export default function EnviarMensagem() {
   const fetchPredefinedMessages = async () => {
     const { data } = await supabase.from('predefined_messages').select('*').order('title');
     setPredefinedMessages(data || []);
-  };
-  const fetchTodayScheduledMessages = async () => {
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    const { data } = await supabase
-      .from('scheduled_messages')
-      .select(`*, students (name, phone)`)
-      .eq('status', 'pending')
-      .gte('scheduled_for', start.toISOString())
-      .lt('scheduled_for', end.toISOString())
-      .order('scheduled_for');
-    setScheduledMessages(data || []);
   };
 
   const filteredStudents = students.filter(s =>
