@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-  { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle },
   { title: "Dashboard", url: "/", icon: BarChart3 },
   { title: "Alunos", url: "/alunos", icon: Users },
   { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: Clock },

@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
-import WhatsApp from "./pages/WhatsApp";
 import Alunos from "./pages/Alunos";
 import EnviarMensagem from "./pages/EnviarMensagem";
 import AgendarMensagem from "./pages/AgendarMensagem";
@@ -30,11 +29,6 @@ const App = () => (
             <Route path="/" element={
               <AppLayout>
                 <Dashboard />
-              </AppLayout>
-            } />
-            <Route path="/whatsapp" element={
-              <AppLayout>
-                <WhatsApp />
               </AppLayout>
             } />
             <Route path="/alunos" element={

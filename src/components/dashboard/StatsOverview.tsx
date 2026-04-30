@@ -1,19 +1,11 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MessageCircle, Calendar, Clock } from "lucide-react";
-import { useDashboardStats, useTodayActions } from "@/hooks/useDashboardData";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageCircle, Calendar, Clock } from "lucide-react";
+import { useDashboardStats } from "@/hooks/useDashboardData";
 
 export function StatsOverview() {
   const { data: stats, isLoading } = useDashboardStats();
-  const { data: todayActions = [], isLoading: actionsLoading } = useTodayActions();
 
   const statsData = [
-    {
-      title: "Total de Alunos",
-      value: isLoading ? "..." : stats?.totalStudents.toString() || "0",
-      icon: Users,
-      description: "Alunos cadastrados no sistema",
-      color: "bg-blue-500"
-    },
     {
       title: "Mensagens Para Enviar Hoje",
       value: isLoading ? "..." : stats?.messagesToSendToday.toString() || "0",
@@ -38,22 +30,18 @@ export function StatsOverview() {
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {statsData.map((stat) => (
         <Card key={stat.title}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {stat.title}
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
             <div className={`p-2 rounded-lg ${stat.color}`}>
               <stat.icon className="h-4 w-4 text-white" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stat.value}</div>
-            <p className="text-xs text-muted-foreground">
-              {stat.description}
-            </p>
+            <p className="text-xs text-muted-foreground">{stat.description}</p>
           </CardContent>
         </Card>
       ))}
