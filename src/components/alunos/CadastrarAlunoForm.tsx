@@ -21,6 +21,10 @@ export function CadastrarAlunoForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [contacts, setContacts] = useState<WhatsAppContact[]>([]);
+  const [contactSearch, setContactSearch] = useState("");
   const [formData, setFormData] = useState({
     nome: "",
     telefone: "",
