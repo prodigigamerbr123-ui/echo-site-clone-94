@@ -18,6 +18,7 @@ import AssistenteIA from "./pages/AssistenteIA";
 import AvaliacaoFisica from "./pages/AvaliacaoFisica";
 import AgendarAvaliacao from "./pages/AgendarAvaliacao";
 import WhatsApp from "./pages/WhatsApp";
+import Automacoes from "./pages/Automacoes";
 import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
@@ -95,6 +96,11 @@ const App = () => (
             <Route path="/agendar-avaliacao" element={
               <AppLayout>
                 <AgendarAvaliacao />
+              </AppLayout>
+            } />
+            <Route path="/automacoes" element={
+              <AppLayout>
+                <Automacoes />
               </AppLayout>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
