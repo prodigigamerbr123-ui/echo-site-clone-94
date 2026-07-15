@@ -168,7 +168,7 @@ export default function MensagensAgendadas() {
             <div className="text-center py-12">
               <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">Nenhuma mensagem agendada.</p>
-              <Button onClick={() => setSheetOpen(true)} variant="outline"><Plus className="h-4 w-4 mr-2" />Agendar primeira</Button>
+              
             </div>
           ) : (
             <MessagesList
@@ -187,18 +187,6 @@ export default function MensagensAgendadas() {
         </CardContent>
       </Card>
 
-      {/* Sheet Nova Mensagem Agendada */}
-      <Sheet open={sheetOpen} onOpenChange={(o) => o ? setSheetOpen(true) : closeSheet()}>
-        <SheetContent className="overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>Nova mensagem agendada</SheetTitle>
-            <SheetDescription>Rápido (presets) ou personalizado com recorrência.</SheetDescription>
-          </SheetHeader>
-          <div className="mt-6">
-            <AgendarMensagemForm onSaved={() => { closeSheet(); fetchAll(); }} />
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {/* Edit */}
       <Dialog open={!!editingMessage} onOpenChange={(o) => !o && setEditingMessage(null)}>
