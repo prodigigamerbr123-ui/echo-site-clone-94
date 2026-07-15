@@ -69,18 +69,32 @@ export function AgendarMensagemForm({ onSaved }: Props) {
       if (mode === "quick") {
         const [h, m] = quickTime.split(":").map(Number);
         const now = new Date();
-        const opts: [boolean, number, string][] = [
-          [quick.days7, 7, "7_day_followup"],
-          [quick.days21, 21, "21_day_followup"],
-          [quick.days45, 45, "45_day_followup"],
-        ];
-        for (const [on, d, type] of opts) {
-          if (!on) continue;
-          const dt = new Date(now.getTime() + d * 86400000);
+        const makeDate = (daysFromNow: number) => {
+          const dt = new Date(now.getTime() + daysFromNow * 86400000);
           dt.setHours(h, m, 0, 0);
-          rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: type, status: "pending" });
+          return dt;
+        };
+
+        if (quickWhen === "today") {
+          const dt = makeDate(0);
+          if (dt <= now) throw new Error("Horário de hoje já passou");
+          rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: "manual", status: "pending" });
         }
-        if (!rows.length) throw new Error("Selecione pelo menos um preset");
+
+        if (quickWhen === "later" || quickRepeat) {
+          const opts: [boolean, number, string][] = [
+            [quick.days7, 7, "7_day_followup"],
+            [quick.days21, 21, "21_day_followup"],
+            [quick.days45, 45, "45_day_followup"],
+          ];
+          for (const [on, d, type] of opts) {
+            if (!on) continue;
+            const dt = makeDate(d);
+            rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: type, status: "pending" });
+          }
+        }
+
+        if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
       } else {
         if (!date || !time) throw new Error("Preencha data e horário");
         const base = new Date(`${date}T${time}`);
