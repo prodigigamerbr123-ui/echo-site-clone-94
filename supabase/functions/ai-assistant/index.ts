@@ -455,6 +455,15 @@ serve(async (req) => {
     const confirmedAction = body.confirmedAction as { tool: string; args: any } | undefined;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Contexto temporal atual (timezone de Brasília) — injetado a cada request
+    const tz = "America/Sao_Paulo";
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: tz, weekday: "long", year: "numeric", month: "long", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+    const dateContext = `DATA/HORA ATUAL: ${fmt.format(now)} (${tz}). ISO: ${now.toISOString()}. Use SEMPRE esta referência para interpretar "hoje", "amanhã", "esta semana", etc.`;
+
     // Se veio uma ação já confirmada, executa direto e retorna mensagem sintetizada.
     if (confirmedAction && WRITE_TOOLS.has(confirmedAction.tool)) {
       let result: any;
@@ -472,7 +481,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
             ...clientMessages,
             { role: "assistant", content: `Ação "${confirmedAction.tool}" executada com resultado: ${JSON.stringify(result).slice(0, 800)}` },
             { role: "user", content: "Escreva UMA resposta curta em português confirmando ao usuário o que foi feito (ou o erro/bloqueio, se houver). Não chame ferramentas." },
@@ -488,7 +497,7 @@ serve(async (req) => {
     }
 
     const messages: any[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
       ...clientMessages,
     ];
 
