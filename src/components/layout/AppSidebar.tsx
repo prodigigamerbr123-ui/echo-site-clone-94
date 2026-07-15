@@ -30,6 +30,7 @@ const menuGroups = [
   {
     label: "Principal",
     items: [
+      { title: "Conexão WhatsApp", url: "/whatsapp", icon: MessageCircle },
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
       { title: "Alunos", url: "/alunos", icon: Users },
       { title: "Cadastrar Aluno", url: "/cadastrar-aluno", icon: UserPlus },
@@ -49,7 +50,6 @@ const menuGroups = [
       { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
       { title: "Mensagens Enviadas", url: "/mensagens-enviadas", icon: Mail },
       { title: "Pré-definidas", url: "/mensagens-predefinidas", icon: FileText },
-      { title: "Conexão WhatsApp", url: "/whatsapp", icon: MessageCircle, showStatus: true },
     ],
   },
   {
@@ -57,6 +57,7 @@ const menuGroups = [
     items: [{ title: "Assistente IA", url: "/assistente-ia", icon: Bot }],
   },
 ];
+
 
 export function AppSidebar() {
   const location = useLocation();
