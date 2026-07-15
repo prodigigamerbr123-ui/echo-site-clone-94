@@ -128,5 +128,9 @@ export const AUTO_EVAL_MESSAGE_TYPES = [
   "evaluation_reminder_day",
   "evaluation_followup",
   "evaluation_reschedule",
+  "evaluation_reminder",
+  "birthday",
+  "welcome",
+  "reengagement",
 ] as const;
 

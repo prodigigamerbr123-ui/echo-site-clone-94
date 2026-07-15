@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Phone, Calendar, Activity, CalendarPlus, Send, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
 
 interface Student {
   id: string; name: string; phone: string;
@@ -70,6 +71,10 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
     const newStatus = student.status === "active" ? "inactive" : "active";
     const { error } = await supabase.from("students").update({ status: newStatus }).eq("id", student.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    // Ficou inativo agora? Agenda reengajamento (se automação ligada)
+    if (student.status === "active" && newStatus === "inactive") {
+      await scheduleReengagementIfEnabled(student.id, student.name);
+    }
     toast({ title: `Aluno marcado como ${newStatus === "active" ? "ativo" : "inativo"}` });
     qc.invalidateQueries({ queryKey: ["students"] });
     onOpenChange(false);
