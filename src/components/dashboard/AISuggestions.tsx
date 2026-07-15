@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +11,14 @@ import {
   AlertCircle,
   ArrowRight,
   Bot,
+  RefreshCw,
+  Dumbbell,
+  Heart,
+  ClipboardList,
 } from "lucide-react";
 import { useTodayActions, useDashboardStats } from "@/hooks/useDashboardData";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Priority = "high" | "medium" | "low";
 
