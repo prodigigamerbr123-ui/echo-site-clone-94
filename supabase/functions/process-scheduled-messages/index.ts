@@ -77,20 +77,16 @@ serve(async (req: Request) => {
       const msg = claimed[i] as any;
       const student = studentsById.get(msg.student_id);
 
-      // Aluno inativo/removido: falha silenciosa e nunca reenviar
-      if (!student || student.status !== "active") {
+      // Só falha se o aluno não existe mais no sistema
+      if (!student) {
         await supabase
           .from("scheduled_messages")
-          .update({
-            status: "failed",
-            failure_reason: !student
-              ? "Aluno não encontrado"
-              : `Aluno com status "${student.status}"`,
-          })
+          .update({ status: "failed", failure_reason: "Aluno não encontrado" })
           .eq("id", msg.id);
         failed++;
         continue;
       }
+
 
       const phoneCheck = formatPhone(student.phone);
       if (!phoneCheck.ok) {
