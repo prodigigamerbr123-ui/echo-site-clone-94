@@ -181,7 +181,10 @@ serve(async (req: Request) => {
       birthdays: birthdayInserts.length,
       reminders: reminderInserts.length,
       candidatesConsidered: reminderCandidates.length,
-      dailyLimit: DAILY_LIMIT,
+      dailyLimit,
+      daysOverdue,
+      inviteEnabled,
+      birthdayEnabled,
       activeStudents: activeStudents.length,
       ranAt: new Date().toISOString(),
     };
