@@ -404,7 +404,13 @@ export default function AgendarAvaliacao() {
   };
 
   const handleNoShow = async (ev: Evaluation) => {
-    if (!window.confirm(`Marcar ${ev.students?.name ?? ""} como faltou?`)) return;
+    const ok = await askConfirm({
+      title: `Marcar${ev.students?.name ? " " + ev.students.name : ""} como faltou?`,
+      description: "Uma mensagem de remarcação será agendada automaticamente para amanhã.",
+      confirmLabel: "Registrar falta",
+      destructive: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await deletePendingEvalMessages(ev.id);
