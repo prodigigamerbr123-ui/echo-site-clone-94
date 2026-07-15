@@ -121,18 +121,19 @@ export function AgendarMensagemForm({ onSaved }: Props) {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-            <Command shouldFilter={false}>
-              <CommandInput placeholder="Buscar..." onValueChange={() => {}} />
+            <Command>
+              <CommandInput placeholder="Buscar por nome ou telefone..." />
               <CommandList>
                 <CommandEmpty>Nenhum aluno</CommandEmpty>
                 <CommandGroup>
                   {students.map(s => (
-                    <CommandItem key={s.id} onSelect={() => { setStudentId(s.id); setStudentOpen(false); }}>
+                    <CommandItem key={s.id} value={`${s.name} ${s.phone}`} onSelect={() => { setStudentId(s.id); setStudentOpen(false); }}>
                       {s.name} — {s.phone}
                     </CommandItem>
                   ))}
                 </CommandGroup>
               </CommandList>
+
             </Command>
           </PopoverContent>
         </Popover>
