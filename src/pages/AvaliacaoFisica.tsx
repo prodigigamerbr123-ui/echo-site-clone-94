@@ -63,12 +63,22 @@ export default function AvaliacaoFisica() {
   const { data: students, isLoading } = useQuery({
     queryKey: ["students-evaluation"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .order("last_evaluation_date", { ascending: true, nullsFirst: true });
-      if (error) throw error;
-      return data as Student[];
+      const pageSize = 1000;
+      let all: Student[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("students")
+          .select("*")
+          .order("last_evaluation_date", { ascending: true, nullsFirst: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all = all.concat(data as Student[]);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
     },
   });
 
