@@ -11,6 +11,7 @@ import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard,
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPhoneBR } from "@/lib/phone";
+import { scheduleWelcomeIfEnabled } from "@/lib/welcomeReengagement";
 
 export const PLAN_OPTIONS = [
   "Mensal",
@@ -89,6 +90,9 @@ export function CadastrarAlunoForm() {
         .single();
 
       if (error) throw error;
+
+      // Boas-vindas (só se `welcome_message` estiver ligada)
+      await scheduleWelcomeIfEnabled(data.id, data.name);
 
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
