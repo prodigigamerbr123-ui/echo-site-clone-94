@@ -213,8 +213,8 @@ export function AIChat({ isExpanded, conversationId, onConversationCreated, onCo
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <ScrollArea ref={scrollAreaRef} className="flex-1 p-3">
+    <div className="flex flex-col h-full min-h-0">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-3">
         <div className="space-y-4">
           {loadingHistory && (
             <div className="flex items-center justify-center py-4">
