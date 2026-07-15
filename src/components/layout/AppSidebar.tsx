@@ -63,20 +63,6 @@ export function AppSidebar() {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 
-  const { data: wa } = useQuery({
-    queryKey: ["whatsapp-sidebar-status"],
-    queryFn: async () => {
-      try {
-        const { data } = await supabase.functions.invoke("whatsapp-status");
-        return data as { connected?: boolean };
-      } catch {
-        return { connected: false };
-      }
-    },
-    refetchInterval: 120000,
-    staleTime: 60000,
-  });
-
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarContent>
@@ -99,15 +85,8 @@ export function AppSidebar() {
                       >
                         <item.icon className="h-4 w-4" />
                         <span className="flex-1">{item.title}</span>
-                        {item.showStatus && (
-                          <span
-                            className={`h-2 w-2 rounded-full ${
-                              wa?.connected ? "bg-green-500" : "bg-destructive"
-                            }`}
-                            title={wa?.connected ? "Conectado" : "Desconectado"}
-                          />
-                        )}
                       </NavLink>
+
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
