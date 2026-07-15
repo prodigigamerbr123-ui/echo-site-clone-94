@@ -242,7 +242,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading}
+              disabled={isLoading || !phoneCheck.ok || !formData.nome.trim()}
               className="flex-1"
             >
               {isLoading ? (
