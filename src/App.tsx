@@ -10,13 +10,14 @@ import Dashboard from "./pages/Dashboard";
 import Alunos from "./pages/Alunos";
 import CadastrarAluno from "./pages/CadastrarAluno";
 import EnviarMensagem from "./pages/EnviarMensagem";
-import AgendarMensagem from "./pages/AgendarMensagem";
 import MensagensAgendadas from "./pages/MensagensAgendadas";
 import MensagensPredefinidas from "./pages/MensagensPredefinidas";
 import MensagensEnviadas from "./pages/MensagensEnviadas";
 import AssistenteIA from "./pages/AssistenteIA";
 import AvaliacaoFisica from "./pages/AvaliacaoFisica";
 import AgendarAvaliacao from "./pages/AgendarAvaliacao";
+import WhatsApp from "./pages/WhatsApp";
+import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
