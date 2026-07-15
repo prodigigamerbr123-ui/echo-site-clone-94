@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatPhoneBR } from "@/lib/phone";
 
 export const PLAN_OPTIONS = [
   "Mensal",
