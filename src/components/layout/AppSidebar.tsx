@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+
 import {
   Users,
   UserPlus,
