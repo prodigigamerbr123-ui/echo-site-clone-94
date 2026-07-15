@@ -49,7 +49,9 @@ export const useDashboardStats = () => {
       const { data: birthdayStudents } = await supabase
         .from('students')
         .select('*')
-        .not('birth_date', 'is', null);
+        .not('birth_date', 'is', null)
+        .limit(5000);
+
 
       // Filter birthdays on the client side since Supabase has issues with date comparisons
       const birthdaysToday = birthdayStudents?.filter(student => {
