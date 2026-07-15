@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Cake, CreditCard, Activity, Check, X } from "lucide-react";
+import { Phone, Cake, CreditCard, Activity, Check, X, MapPin } from "lucide-react";
 import { formatPhoneBR } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,7 @@ interface Student {
   created_at: string;
   plan?: string | null;
   status?: string;
+  city?: string | null;
 }
 
 interface EditarAlunoDialogProps {
@@ -40,6 +41,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     dataNascimento: "",
     plano: "Mensal",
     status: "active",
+    cidade: "",
   });
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         dataNascimento: student.birth_date || "",
         plano: student.plan || "Mensal",
         status: student.status || "active",
+        cidade: student.city || "",
       });
     }
   }, [student]);
@@ -102,6 +105,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         birth_date: formData.dataNascimento || null,
         plan: formData.plano,
         status: formData.status,
+        city: formData.cidade.trim() || null,
       };
 
       const { error } = await supabase
@@ -192,6 +196,22 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
               type="date"
               value={formData.dataNascimento}
               onChange={(e) => handleInputChange('dataNascimento', e.target.value)}
+            />
+          </div>
+
+          {/* Cidade */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-cidade" className="text-sm font-medium flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Cidade
+            </Label>
+            <Input
+              id="edit-cidade"
+              type="text"
+              placeholder="Ex: São Paulo"
+              value={formData.cidade}
+              onChange={(e) => handleInputChange('cidade', e.target.value)}
+              maxLength={100}
             />
           </div>
 

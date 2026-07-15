@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Check, X } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Check, X, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPhoneBR } from "@/lib/phone";
@@ -37,6 +37,7 @@ export function CadastrarAlunoForm() {
     telefone: "",
     dataNascimento: "",
     plano: "Mensal",
+    cidade: "",
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -81,6 +82,7 @@ export function CadastrarAlunoForm() {
           phone: formData.telefone,
           birth_date: formData.dataNascimento || null,
           plan: formData.plano,
+          city: formData.cidade.trim() || null,
           had_evaluation: false,
         }])
         .select()
@@ -93,7 +95,7 @@ export function CadastrarAlunoForm() {
       queryClient.invalidateQueries({ queryKey: ['students-evaluation'] });
 
       setSuccessData({ name: data.name });
-      setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal" });
+      setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal", cidade: "" });
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar aluno",
@@ -202,6 +204,22 @@ export function CadastrarAlunoForm() {
                 className="h-11"
               />
               <p className="text-xs text-muted-foreground">Opcional — usada para aniversário</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cidade" className="text-sm font-medium flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Cidade
+              </Label>
+              <Input
+                id="cidade"
+                type="text"
+                placeholder="Ex: São Paulo"
+                value={formData.cidade}
+                onChange={(e) => handleInputChange('cidade', e.target.value)}
+                className="h-11"
+                maxLength={100}
+              />
             </div>
           </div>
         </CardContent>
