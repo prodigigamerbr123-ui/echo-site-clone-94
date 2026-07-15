@@ -82,6 +82,46 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
       },
     ],
   },
+  {
+    title: "Avaliação Física",
+    description: "Agendar e revisar avaliações",
+    actions: [
+      {
+        to: "/agendar-avaliacao",
+        icon: CalendarPlus,
+        label: "Agendar",
+        className:
+          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-2px_hsl(250_70%_50%/0.25)] hover:shadow-elegant hover:-translate-y-0.5",
+      },
+      {
+        to: "/avaliacao-fisica",
+        icon: ClipboardList,
+        label: "Histórico",
+        className:
+          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+      },
+    ],
+  },
+  {
+    title: "Ferramentas",
+    description: "IA e conexão do WhatsApp",
+    actions: [
+      {
+        to: "/assistente-ia",
+        icon: Bot,
+        label: "Assistente IA",
+        className:
+          "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5",
+      },
+      {
+        to: "/whatsapp",
+        icon: MessageCircle,
+        label: "WhatsApp",
+        className:
+          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+      },
+    ],
+  },
 ];
 
 export function QuickActions() {
