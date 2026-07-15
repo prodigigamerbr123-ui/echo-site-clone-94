@@ -383,15 +383,29 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
       if (isNaN(base.getTime())) return { success: false, error: "scheduled_for inválido" };
       const spread = ids.length > 20;
       const spanMs = spread ? 60 * 60 * 1000 : 0;
+
+      // Buscar nomes para substituir {nome} — mesmo comportamento de replaceNameVar
+      // em src/pages/EnviarMensagem.tsx
+      const { data: studentsForNames } = await supabase
+        .from("students")
+        .select("id, name")
+        .in("id", ids);
+      const nameById = new Map<string, string>(
+        (studentsForNames || []).map((s: any) => [s.id, s.name || "aluno"]),
+      );
+
+      const rawContent: string = args.content || "";
       const rows = ids.map((sid, i) => {
         const offset = spread
           ? Math.floor((spanMs / (ids.length - 1)) * i) + Math.floor(Math.random() * 30000)
           : ids.length > 1
-            ? Math.floor(Math.random() * (i + 1) * 60 * 1000) // pequeno jitter para múltiplos
+            ? Math.floor(Math.random() * (i + 1) * 60 * 1000)
             : 0;
+        const nome = nameById.get(sid) || "aluno";
+        const content = rawContent.replace(/\{nome\}/gi, nome);
         return {
           student_id: sid,
-          content: args.content,
+          content,
           scheduled_for: new Date(base.getTime() + offset).toISOString(),
           message_type: args.message_type || "manual",
           status: "pending",
@@ -401,6 +415,7 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
       if (error) throw error;
       return { success: true, enqueued: rows.length, spread_over_minutes: spread ? 60 : 0 };
     }
+
     case "delete_scheduled_message": {
       const { error } = await supabase.from("scheduled_messages").delete().eq("id", args.id);
       if (error) throw error;
