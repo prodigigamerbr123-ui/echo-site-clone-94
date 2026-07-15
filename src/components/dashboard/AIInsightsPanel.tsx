@@ -78,7 +78,7 @@ export function AIInsightsPanel() {
                 <CardTitle className="text-xl flex items-center gap-2">
                   Sugestões da IA
                   <Badge variant="outline" className="border-primary/40 text-primary text-[10px] gap-1">
-                    <Zap className="h-3 w-3" /> IA
+                    <Zap className="h-3 w-3" /> JARVIS
                   </Badge>
                 </CardTitle>
                 <CardDescription>
