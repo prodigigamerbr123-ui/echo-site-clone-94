@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Alunos from "./pages/Alunos";
+import CadastrarAluno from "./pages/CadastrarAluno";
 import EnviarMensagem from "./pages/EnviarMensagem";
 import AgendarMensagem from "./pages/AgendarMensagem";
 import MensagensAgendadas from "./pages/MensagensAgendadas";
@@ -35,6 +36,11 @@ const App = () => (
             <Route path="/alunos" element={
               <AppLayout>
                 <Alunos />
+              </AppLayout>
+            } />
+            <Route path="/cadastrar-aluno" element={
+              <AppLayout>
+                <CadastrarAluno />
               </AppLayout>
             } />
             <Route path="/agendar-mensagem" element={

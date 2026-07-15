@@ -30,7 +30,8 @@ const menuGroups = [
     label: "Principal",
     items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "Cadastrar / Ver Alunos", url: "/alunos", icon: UserPlus },
+      { title: "Cadastrar Aluno", url: "/cadastrar-aluno", icon: UserPlus },
+      { title: "Ver Alunos", url: "/alunos", icon: Users },
     ],
   },
   {
