@@ -178,7 +178,15 @@ export function CadastrarAlunoForm() {
                 className="h-11"
                 maxLength={15}
               />
-              <p className="text-xs text-muted-foreground">Formato: (11) 99999-9999</p>
+              {formData.telefone.trim() ? (
+                phoneCheck.ok ? (
+                  <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
+                ) : (
+                  <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> {phoneCheck.reason}</p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">Formato: (11) 99999-9999</p>
+              )}
             </div>
 
             <div className="space-y-2">
