@@ -10,8 +10,8 @@ import {
   Bot,
   Mail,
   CalendarClock,
-  HeartPulse,
   Activity,
+  CalendarPlus,
 } from "lucide-react";
 
 import {
