@@ -25,6 +25,9 @@ import {
   buildReschedule,
   AUTO_EVAL_MESSAGE_TYPES,
 } from "@/lib/evaluationMessages";
+import {
+  fetchAutomationSettings,
+} from "@/lib/automationSettings";
 
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -246,19 +249,22 @@ export default function AgendarAvaliacao() {
       .single();
     if (error) throw error;
 
-    // 3 mensagens automáticas
-    const auto = buildEvaluationMessages(student.name, new Date(whenIso));
-    if (auto.length > 0) {
-      await supabase.from("scheduled_messages").insert(
-        auto.map((m) => ({
-          student_id: student.id,
-          content: m.content,
-          scheduled_for: m.scheduled_for,
-          message_type: m.message_type,
-          status: "pending",
-          evaluation_id: created!.id,
-        })),
-      );
+    // 3 mensagens automáticas — só se `evaluation_reminders` estiver ligada
+    const settings = await fetchAutomationSettings();
+    if (settings.evaluation_reminders?.enabled) {
+      const auto = buildEvaluationMessages(student.name, new Date(whenIso));
+      if (auto.length > 0) {
+        await supabase.from("scheduled_messages").insert(
+          auto.map((m) => ({
+            student_id: student.id,
+            content: m.content,
+            scheduled_for: m.scheduled_for,
+            message_type: m.message_type,
+            status: "pending",
+            evaluation_id: created!.id,
+          })),
+        );
+      }
     }
   }
 
