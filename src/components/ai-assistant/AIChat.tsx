@@ -8,10 +8,13 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { AIActionConfirmation, type PendingAction } from './AIActionConfirmation';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  pendingAction?: PendingAction;
+  actionState?: 'confirmed' | 'rejected';
 }
 
 interface AIChatProps {
@@ -23,11 +26,12 @@ export function AIChat({ isExpanded }: AIChatProps) {
     {
       role: 'assistant',
       content:
-        'Olá! 👋 Sou o assistente do **Academia Workout**. Posso consultar dados reais do sistema (alunos, mensagens, status do WhatsApp), explicar como usar cada aba e até executar ações por você. O que você precisa?',
+        'Olá! 👋 Sou o assistente do **Academia Workout**. Posso consultar dados reais, agendar avaliações, enfileirar mensagens e explicar o sistema. Antes de qualquer ação que altere dados, vou te pedir confirmação. O que você precisa?',
     },
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [runningActionIdx, setRunningActionIdx] = useState<number | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -46,6 +50,9 @@ export function AIChat({ isExpanded }: AIChatProps) {
     }
   }, [messages, isLoading]);
 
+  const historyForApi = (msgs: ChatMessage[]) =>
+    msgs.map(m => ({ role: m.role, content: m.content }));
+
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -57,30 +64,62 @@ export function AIChat({ isExpanded }: AIChatProps) {
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: { messages: newHistory },
+        body: { messages: historyForApi(newHistory) },
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: data.message || '...' },
+        {
+          role: 'assistant',
+          content: data.message || '...',
+          pendingAction: data.pendingAction,
+        },
       ]);
     } catch (e: any) {
       console.error('chat error:', e);
-      toast({
-        title: 'Erro',
-        description: e?.message || 'Não foi possível processar sua mensagem.',
-        variant: 'destructive',
-      });
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: 'Desculpe, ocorreu um erro. Tente novamente.' },
-      ]);
+      toast({ title: 'Erro', description: e?.message || 'Falha ao processar.', variant: 'destructive' });
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Desculpe, ocorreu um erro. Tente novamente.' }]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const confirmAction = async (idx: number) => {
+    const msg = messages[idx];
+    if (!msg?.pendingAction) return;
+    setRunningActionIdx(idx);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        body: {
+          messages: historyForApi(messages.slice(0, idx + 1)),
+          confirmedAction: { tool: msg.pendingAction.tool, args: msg.pendingAction.args },
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setMessages(prev => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], actionState: 'confirmed' };
+        next.push({ role: 'assistant', content: data.message || '✅ Feito.' });
+        return next;
+      });
+    } catch (e: any) {
+      toast({ title: 'Erro ao executar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setRunningActionIdx(null);
+    }
+  };
+
+  const rejectAction = (idx: number) => {
+    setMessages(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], actionState: 'rejected' };
+      next.push({ role: 'assistant', content: 'Sem problemas, ação cancelada. Me diga se quer ajustar algo.' });
+      return next;
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -92,7 +131,7 @@ export function AIChat({ isExpanded }: AIChatProps) {
 
   const quickActions = [
     'Quantos alunos eu tenho cadastrados?',
-    'Quais mensagens estão agendadas para hoje?',
+    'Quais avaliações eu tenho amanhã?',
     'O WhatsApp está conectado?',
     'Quem faz aniversário hoje?',
   ];
@@ -137,19 +176,28 @@ export function AIChat({ isExpanded }: AIChatProps) {
                   <Bot className="h-3 w-3 text-primary" />
                 </div>
               )}
-              <Card
-                className={`max-w-[80%] p-3 ${
-                  m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                }`}
-              >
-                {m.role === 'assistant' ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                    <ReactMarkdown>{m.content}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+              <div className={`max-w-[85%] space-y-2 ${m.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                {m.content && (
+                  <Card className={`p-3 ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    {m.role === 'assistant' ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+                    )}
+                  </Card>
                 )}
-              </Card>
+                {m.pendingAction && (
+                  <AIActionConfirmation
+                    action={m.pendingAction}
+                    onConfirm={() => confirmAction(idx)}
+                    onReject={() => rejectAction(idx)}
+                    isRunning={runningActionIdx === idx}
+                    done={m.actionState}
+                  />
+                )}
+              </div>
               {m.role === 'user' && (
                 <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                   <User className="h-3 w-3 text-primary-foreground" />

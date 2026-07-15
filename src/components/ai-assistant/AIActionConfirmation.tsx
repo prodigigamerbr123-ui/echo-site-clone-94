@@ -1,60 +1,58 @@
-
-import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
 
-interface AIActionConfirmationProps {
-  action: {
-    type: string;
-    description: string;
-    params: any;
-  };
-  onConfirm: () => void;
-  onReject: () => void;
+export interface PendingAction {
+  id: string;
+  tool: string;
+  args: any;
+  description: string;
 }
 
-export function AIActionConfirmation({ action, onConfirm, onReject }: AIActionConfirmationProps) {
+interface Props {
+  action: PendingAction;
+  onConfirm: () => void;
+  onReject: () => void;
+  isRunning?: boolean;
+  done?: 'confirmed' | 'rejected';
+}
+
+export function AIActionConfirmation({ action, onConfirm, onReject, isRunning, done }: Props) {
   return (
-    <Card className="border-orange-200 bg-orange-50">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-orange-800">
-          <AlertTriangle className="h-5 w-5" />
-          Autorização Necessária
-        </CardTitle>
-        <CardDescription className="text-orange-700">
-          A IA quer executar uma ação que requer sua aprovação:
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="p-3 bg-white rounded-lg border">
-          <p className="font-medium text-gray-900">{action.description}</p>
-          {action.params && (
-            <pre className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-              {JSON.stringify(action.params, null, 2)}
-            </pre>
-          )}
+    <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+              Confirmação necessária
+            </p>
+            <p className="text-sm mt-1 text-foreground whitespace-pre-wrap">
+              {action.description}
+            </p>
+          </div>
         </div>
-        
-        <div className="flex gap-2">
-          <Button 
-            onClick={onConfirm}
-            className="flex items-center gap-2"
-            size="sm"
-          >
-            <CheckCircle className="h-4 w-4" />
-            Autorizar
-          </Button>
-          <Button 
-            onClick={onReject}
-            variant="outline"
-            className="flex items-center gap-2"
-            size="sm"
-          >
-            <X className="h-4 w-4" />
-            Cancelar
-          </Button>
-        </div>
+        {done === 'confirmed' && (
+          <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" /> Executado.
+          </p>
+        )}
+        {done === 'rejected' && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <X className="h-3 w-3" /> Cancelado.
+          </p>
+        )}
+        {!done && (
+          <div className="flex gap-2">
+            <Button size="sm" onClick={onConfirm} disabled={isRunning}>
+              {isRunning ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+              Confirmar
+            </Button>
+            <Button size="sm" variant="outline" onClick={onReject} disabled={isRunning}>
+              <X className="h-3 w-3 mr-1" /> Cancelar
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
