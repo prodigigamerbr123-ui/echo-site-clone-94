@@ -179,6 +179,17 @@ export function AISuggestions() {
       });
     }
 
+    // Rotaciona sugestões extras a cada refresh
+    while (suggestions.length < 3) {
+      const idx = (seed + suggestions.length) % extraPool.length;
+      const pick = extraPool[idx];
+      if (!suggestions.find((s) => s.id === pick.id)) {
+        suggestions.push(pick);
+      } else {
+        break;
+      }
+    }
+
     return suggestions.slice(0, 3);
   };
 
