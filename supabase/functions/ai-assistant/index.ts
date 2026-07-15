@@ -481,7 +481,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
             ...clientMessages,
             { role: "assistant", content: `Ação "${confirmedAction.tool}" executada com resultado: ${JSON.stringify(result).slice(0, 800)}` },
             { role: "user", content: "Escreva UMA resposta curta em português confirmando ao usuário o que foi feito (ou o erro/bloqueio, se houver). Não chame ferramentas." },
