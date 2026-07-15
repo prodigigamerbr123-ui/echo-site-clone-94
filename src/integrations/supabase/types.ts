@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      evaluations: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          scheduled_at: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_at: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_at?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -71,6 +112,7 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          evaluation_id: string | null
           failure_reason: string | null
           id: string
           message_type: string
@@ -87,6 +129,7 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          evaluation_id?: string | null
           failure_reason?: string | null
           id?: string
           message_type?: string
@@ -103,6 +146,7 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          evaluation_id?: string | null
           failure_reason?: string | null
           id?: string
           message_type?: string
@@ -117,6 +161,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "scheduled_messages_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scheduled_messages_student_id_fkey"
             columns: ["student_id"]
@@ -178,6 +229,7 @@ export type Database = {
         Returns: {
           content: string
           created_at: string
+          evaluation_id: string | null
           failure_reason: string | null
           id: string
           message_type: string
