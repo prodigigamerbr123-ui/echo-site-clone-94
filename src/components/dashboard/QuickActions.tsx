@@ -76,13 +76,6 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
 export function QuickActions() {
   return (
     <Card className="overflow-hidden border-primary/10 shadow-card">
-      <CardHeader className="bg-gradient-to-r from-accent/50 to-transparent">
-        <div>
-          <CardTitle className="text-lg">Acesso Rápido</CardTitle>
-          <CardDescription>Ações mais usadas no dia a dia</CardDescription>
-        </div>
-
-      </CardHeader>
       <CardContent className="pt-6">
         <div className="grid gap-6 md:grid-cols-3">
           {groups.map((group) => (
