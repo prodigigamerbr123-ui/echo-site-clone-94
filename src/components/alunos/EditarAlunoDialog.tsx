@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Calendar, Cake } from "lucide-react";
+import { Phone, Calendar, Cake, CreditCard, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
 
 interface Student {
   id: string;
@@ -18,6 +20,8 @@ interface Student {
   last_evaluation_date: string | null;
   had_evaluation: boolean;
   created_at: string;
+  plan?: string | null;
+  status?: string;
 }
 
 interface EditarAlunoDialogProps {
@@ -35,7 +39,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     telefone: "",
     dataNascimento: "",
     dataUltimaAvaliacao: "",
-    fezAvaliacaoFisica: false
+    fezAvaliacaoFisica: false,
+    plano: "Mensal",
+    status: "active",
   });
 
   useEffect(() => {
@@ -45,7 +51,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         telefone: student.phone,
         dataNascimento: student.birth_date || "",
         dataUltimaAvaliacao: student.last_evaluation_date || "",
-        fezAvaliacaoFisica: student.had_evaluation
+        fezAvaliacaoFisica: student.had_evaluation,
+        plano: student.plan || "Mensal",
+        status: student.status || "active",
       });
     }
   }, [student]);
@@ -115,7 +123,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         phone: formData.telefone,
         birth_date: formData.dataNascimento || null,
         last_evaluation_date: formData.dataUltimaAvaliacao || null,
-        had_evaluation: formData.fezAvaliacaoFisica
+        had_evaluation: formData.fezAvaliacaoFisica,
+        plan: formData.plano,
+        status: formData.status,
       };
 
       const { error } = await supabase
