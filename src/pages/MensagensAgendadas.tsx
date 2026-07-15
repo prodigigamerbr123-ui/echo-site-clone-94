@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import MessageFilters from "@/components/agendarmensagem/MessageFilters";
 import MessagesList, { getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
-import { AgendarMensagemForm } from "@/components/mensagens/AgendarMensagemForm";
+
 
 interface ScheduledMessage {
   id: string;
