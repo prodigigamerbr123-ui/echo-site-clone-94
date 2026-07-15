@@ -249,6 +249,7 @@ export function ListaAlunos() {
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
+                        </TableCell>
                         <TableCell>
                           {student.plan ? (
                             <Badge variant="outline" className="text-xs">{student.plan}</Badge>
