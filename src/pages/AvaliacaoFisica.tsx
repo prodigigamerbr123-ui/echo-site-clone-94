@@ -147,6 +147,25 @@ export default function AvaliacaoFisica() {
 
       if (error) throw error;
 
+      // Auto-agendamento de followup: marcou como realizada agora
+      const justMarkedDone = formStatus && !editing.had_evaluation;
+      let autoFollowupScheduled = false;
+      if (justMarkedDone) {
+        const base = formDate ? new Date(`${formDate}T09:00:00`) : new Date();
+        const followupDate = new Date(base.getTime() + 7 * 86400000);
+        // Horário aleatório entre 09:00 e 12:00
+        followupDate.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+        const content = `Olá ${editing.name}! 📈 Como foi sua avaliação física? Vamos acompanhar sua evolução juntos! 💪`;
+        const { error: autoErr } = await supabase.from("scheduled_messages").insert([{
+          student_id: editing.id,
+          content,
+          scheduled_for: followupDate.toISOString(),
+          message_type: "evaluation_followup",
+          status: "pending",
+        }]);
+        if (!autoErr) autoFollowupScheduled = true;
+      }
+
       if (scheduleNext && nextEvalDate) {
         const scheduledFor = new Date(`${nextEvalDate}T09:00:00`);
         const content = followUpType === "reminder"
@@ -166,10 +185,13 @@ export default function AvaliacaoFisica() {
       queryClient.invalidateQueries({ queryKey: ["students-evaluation"] });
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduled-evaluations"] });
 
       toast({
         title: scheduleNext ? "Avaliação agendada" : "Avaliação atualizada",
-        description: `Dados de ${editing.name} salvos com sucesso.`,
+        description: autoFollowupScheduled
+          ? `Dados de ${editing.name} salvos. Follow-up automático agendado para daqui a 7 dias.`
+          : `Dados de ${editing.name} salvos com sucesso.`,
       });
       setEditing(null);
     } catch (e: any) {
