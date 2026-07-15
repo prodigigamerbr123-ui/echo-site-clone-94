@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Activity } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -36,7 +36,6 @@ export function CadastrarAlunoForm() {
     telefone: "",
     dataNascimento: "",
     plano: "Mensal",
-    status: "active",
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -81,7 +80,6 @@ export function CadastrarAlunoForm() {
           phone: formData.telefone,
           birth_date: formData.dataNascimento || null,
           plan: formData.plano,
-          status: formData.status,
           had_evaluation: false,
         }])
         .select()
@@ -94,7 +92,7 @@ export function CadastrarAlunoForm() {
       queryClient.invalidateQueries({ queryKey: ['students-evaluation'] });
 
       setSuccessData({ name: data.name });
-      setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal", status: "active" });
+      setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal" });
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar aluno",
