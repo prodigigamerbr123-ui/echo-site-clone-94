@@ -5,10 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+
+export const PLAN_OPTIONS = [
+  "Mensal",
+  "Trimestral",
+  "Quadrimestral",
+  "Semestral",
+  "Octomestral",
+  "Anual",
+  "12 meses",
+  "Desconto especial",
+  "Desconto especial Taekwondo",
+  "Desconto Funcionários AME",
+  "Convênio Talento confecções",
+];
 
 export function CadastrarAlunoForm() {
   const { toast } = useToast();
@@ -20,6 +35,8 @@ export function CadastrarAlunoForm() {
     nome: "",
     telefone: "",
     dataNascimento: "",
+    plano: "Mensal",
+    status: "active",
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -48,10 +65,6 @@ export function CadastrarAlunoForm() {
       toast({ title: "Telefone inválido", description: "Use o formato (11) 99999-9999.", variant: "destructive" });
       return false;
     }
-    if (!formData.dataNascimento) {
-      toast({ title: "Data de nascimento obrigatória", description: "Informe a data de nascimento.", variant: "destructive" });
-      return false;
-    }
     return true;
   };
 
@@ -66,7 +79,9 @@ export function CadastrarAlunoForm() {
         .insert([{
           name: formData.nome.trim(),
           phone: formData.telefone,
-          birth_date: formData.dataNascimento,
+          birth_date: formData.dataNascimento || null,
+          plan: formData.plano,
+          status: formData.status,
           had_evaluation: false,
         }])
         .select()
@@ -79,7 +94,7 @@ export function CadastrarAlunoForm() {
       queryClient.invalidateQueries({ queryKey: ['students-evaluation'] });
 
       setSuccessData({ name: data.name });
-      setFormData({ nome: "", telefone: "", dataNascimento: "" });
+      setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal", status: "active" });
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar aluno",
@@ -110,7 +125,7 @@ export function CadastrarAlunoForm() {
               <UserPlus className="h-4 w-4" />
               Cadastrar Outro Aluno
             </Button>
-            <Button onClick={() => navigate('/alunos?tab=lista')} className="gap-2">
+            <Button onClick={() => navigate('/alunos')} className="gap-2">
               <List className="h-4 w-4" />
               Ver Lista de Alunos
               <ArrowRight className="h-4 w-4" />
@@ -123,7 +138,6 @@ export function CadastrarAlunoForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 w-full">
-      {/* Dados Pessoais — caixa retangular (largura total, layout horizontal em grid) */}
       <Card className="w-full shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -171,7 +185,7 @@ export function CadastrarAlunoForm() {
             <div className="space-y-2">
               <Label htmlFor="dataNascimento" className="text-sm font-medium flex items-center gap-2">
                 <Cake className="h-4 w-4" />
-                Data de nascimento <span className="text-destructive">*</span>
+                Data de nascimento
               </Label>
               <Input
                 id="dataNascimento"
@@ -180,7 +194,56 @@ export function CadastrarAlunoForm() {
                 onChange={(e) => handleInputChange('dataNascimento', e.target.value)}
                 className="h-11"
               />
-              <p className="text-xs text-muted-foreground">Usada para mensagens de aniversário</p>
+              <p className="text-xs text-muted-foreground">Opcional — usada para aniversário</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="w-full shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            Plano e Situação
+          </CardTitle>
+          <CardDescription>
+            Defina o plano contratado e o status do aluno
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="plano" className="text-sm font-medium flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Plano <span className="text-destructive">*</span>
+              </Label>
+              <Select value={formData.plano} onValueChange={(v) => handleInputChange('plano', v)}>
+                <SelectTrigger id="plano" className="h-11">
+                  <SelectValue placeholder="Selecione o plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLAN_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status" className="text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Status <span className="text-destructive">*</span>
+              </Label>
+              <Select value={formData.status} onValueChange={(v) => handleInputChange('status', v)}>
+                <SelectTrigger id="status" className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="inactive">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Novos alunos normalmente entram como Ativo</p>
             </div>
           </div>
         </CardContent>

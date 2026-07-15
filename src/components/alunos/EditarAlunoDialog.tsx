@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Calendar, Cake } from "lucide-react";
+import { Phone, Calendar, Cake, CreditCard, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
 
 interface Student {
   id: string;
@@ -18,6 +20,8 @@ interface Student {
   last_evaluation_date: string | null;
   had_evaluation: boolean;
   created_at: string;
+  plan?: string | null;
+  status?: string;
 }
 
 interface EditarAlunoDialogProps {
@@ -35,7 +39,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     telefone: "",
     dataNascimento: "",
     dataUltimaAvaliacao: "",
-    fezAvaliacaoFisica: false
+    fezAvaliacaoFisica: false,
+    plano: "Mensal",
+    status: "active",
   });
 
   useEffect(() => {
@@ -45,7 +51,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         telefone: student.phone,
         dataNascimento: student.birth_date || "",
         dataUltimaAvaliacao: student.last_evaluation_date || "",
-        fezAvaliacaoFisica: student.had_evaluation
+        fezAvaliacaoFisica: student.had_evaluation,
+        plano: student.plan || "Mensal",
+        status: student.status || "active",
       });
     }
   }, [student]);
@@ -115,7 +123,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         phone: formData.telefone,
         birth_date: formData.dataNascimento || null,
         last_evaluation_date: formData.dataUltimaAvaliacao || null,
-        had_evaluation: formData.fezAvaliacaoFisica
+        had_evaluation: formData.fezAvaliacaoFisica,
+        plan: formData.plano,
+        status: formData.status,
       };
 
       const { error } = await supabase
@@ -214,6 +224,41 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
               value={formData.dataUltimaAvaliacao}
               onChange={(e) => handleInputChange('dataUltimaAvaliacao', e.target.value)}
             />
+          </div>
+
+          {/* Plano */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-plano" className="text-sm font-medium flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Plano
+            </Label>
+            <Select value={formData.plano} onValueChange={(v) => handleInputChange('plano', v)}>
+              <SelectTrigger id="edit-plano">
+                <SelectValue placeholder="Selecione o plano" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_OPTIONS.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-status" className="text-sm font-medium flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Status
+            </Label>
+            <Select value={formData.status} onValueChange={(v) => handleInputChange('status', v)}>
+              <SelectTrigger id="edit-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="inactive">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Switch Avaliação Física */}
