@@ -71,11 +71,13 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          failure_reason: string | null
           id: string
           message_type: string
           recurrence_count: number | null
           recurrence_interval_days: number | null
           recurrence_parent_id: string | null
+          retry_count: number
           scheduled_for: string
           sent_at: string | null
           status: string
@@ -85,11 +87,13 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          failure_reason?: string | null
           id?: string
           message_type?: string
           recurrence_count?: number | null
           recurrence_interval_days?: number | null
           recurrence_parent_id?: string | null
+          retry_count?: number
           scheduled_for: string
           sent_at?: string | null
           status?: string
@@ -99,11 +103,13 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          failure_reason?: string | null
           id?: string
           message_type?: string
           recurrence_count?: number | null
           recurrence_interval_days?: number | null
           recurrence_parent_id?: string | null
+          retry_count?: number
           scheduled_for?: string
           sent_at?: string | null
           status?: string
@@ -167,7 +173,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_due_scheduled_messages: {
+        Args: { _limit: number }
+        Returns: {
+          content: string
+          created_at: string
+          failure_reason: string | null
+          id: string
+          message_type: string
+          recurrence_count: number | null
+          recurrence_interval_days: number | null
+          recurrence_parent_id: string | null
+          retry_count: number
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "scheduled_messages"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      reset_stuck_scheduled_messages: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
