@@ -1,5 +1,8 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { Bot } from "lucide-react";
+import { Link } from "react-router-dom";
 import workoutLogo from "@/assets/workout-combined-v2.png.asset.json";
 
 export function AppHeader() {
@@ -15,7 +18,18 @@ export function AppHeader() {
           />
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            aria-label="Abrir Assistente IA"
+            title="Assistente IA"
+          >
+            <Link to="/assistente-ia">
+              <Bot className="h-5 w-5" />
+            </Link>
+          </Button>
           <ThemeToggle />
         </div>
       </div>
