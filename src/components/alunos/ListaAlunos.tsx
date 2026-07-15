@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -24,6 +24,7 @@ interface Student {
   created_at: string;
   plan: string | null;
   status: string;
+  city: string | null;
 }
 
 const ACTIVE_DAYS = 30;
@@ -218,6 +219,7 @@ export function ListaAlunos() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>WhatsApp</TableHead>
+                    <TableHead>Cidade</TableHead>
                     <TableHead>Aniversário</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Cadastrado em</TableHead>
@@ -247,6 +249,16 @@ export function ListaAlunos() {
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             {student.phone}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {student.city ? (
+                            <div className="flex items-center gap-2 text-sm">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              {student.city}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {student.birth_date ? (

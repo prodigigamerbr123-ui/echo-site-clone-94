@@ -180,6 +180,7 @@ export type Database = {
       students: {
         Row: {
           birth_date: string | null
+          city: string | null
           created_at: string
           evaluation_notes: string | null
           had_evaluation: boolean | null
@@ -193,6 +194,7 @@ export type Database = {
         }
         Insert: {
           birth_date?: string | null
+          city?: string | null
           created_at?: string
           evaluation_notes?: string | null
           had_evaluation?: boolean | null
@@ -206,6 +208,7 @@ export type Database = {
         }
         Update: {
           birth_date?: string | null
+          city?: string | null
           created_at?: string
           evaluation_notes?: string | null
           had_evaluation?: boolean | null
