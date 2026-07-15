@@ -109,10 +109,22 @@ serve(async (req: Request) => {
       });
     }
 
+    // Alunos com avaliação futura já marcada (evaluations.status='scheduled')
+    // NÃO devem receber convite de avaliação vencida.
+    const { data: futureEvals } = await supabase
+      .from("evaluations")
+      .select("student_id")
+      .eq("status", "scheduled")
+      .gte("scheduled_at", new Date().toISOString());
+    const studentsWithFutureEval = new Set(
+      (futureEvals || []).map((e: any) => e.student_id),
+    );
+
     // ---- 2) Lembretes de avaliação vencida ----
     const reminderCandidates = activeStudents
       .filter((s) => {
         if (hasPending.has(`${s.id}:evaluation_reminder`)) return false;
+        if (studentsWithFutureEval.has(s.id)) return false;
         if (s.last_evaluation_date) {
           return daysSince(s.last_evaluation_date) > 90;
         }
