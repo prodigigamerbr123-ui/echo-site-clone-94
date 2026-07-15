@@ -33,6 +33,8 @@ const App = () => (
         <Sonner />
         <ConfirmDialogHost />
         <BrowserRouter>
+          <GlobalNotifier />
+
           <Routes>
             <Route path="/" element={
               <AppLayout>
