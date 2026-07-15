@@ -230,7 +230,7 @@ export function ListaAlunos() {
                     const active = isActive(student);
                     const pendingCount = pendingByStudent[student.id] || 0;
                     return (
-                      <TableRow key={student.id}>
+                      <TableRow key={student.id} className="cursor-pointer" onClick={() => setViewingStudent(student)}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{student.name}</span>
