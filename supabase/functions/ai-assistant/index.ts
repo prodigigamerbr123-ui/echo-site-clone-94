@@ -497,7 +497,7 @@ serve(async (req) => {
     }
 
     const messages: any[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
       ...clientMessages,
     ];
 
