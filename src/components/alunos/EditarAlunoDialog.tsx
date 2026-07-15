@@ -4,10 +4,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Calendar, Cake, CreditCard, Activity } from "lucide-react";
+import { Phone, Cake, CreditCard, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
@@ -38,8 +37,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     nome: "",
     telefone: "",
     dataNascimento: "",
-    dataUltimaAvaliacao: "",
-    fezAvaliacaoFisica: false,
     plano: "Mensal",
     status: "active",
   });
@@ -50,8 +47,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         nome: student.name,
         telefone: student.phone,
         dataNascimento: student.birth_date || "",
-        dataUltimaAvaliacao: student.last_evaluation_date || "",
-        fezAvaliacaoFisica: student.had_evaluation,
         plano: student.plan || "Mensal",
         status: student.status || "active",
       });
@@ -122,8 +117,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         name: formData.nome.trim(),
         phone: formData.telefone,
         birth_date: formData.dataNascimento || null,
-        last_evaluation_date: formData.dataUltimaAvaliacao || null,
-        had_evaluation: formData.fezAvaliacaoFisica,
         plan: formData.plano,
         status: formData.status,
       };
@@ -212,20 +205,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             />
           </div>
 
-          {/* Data da última avaliação */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-dataUltimaAvaliacao" className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Data da última avaliação física
-            </Label>
-            <Input
-              id="edit-dataUltimaAvaliacao"
-              type="date"
-              value={formData.dataUltimaAvaliacao}
-              onChange={(e) => handleInputChange('dataUltimaAvaliacao', e.target.value)}
-            />
-          </div>
-
           {/* Plano */}
           <div className="space-y-2">
             <Label htmlFor="edit-plano" className="text-sm font-medium flex items-center gap-2">
@@ -259,20 +238,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
                 <SelectItem value="inactive">Inativo</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Switch Avaliação Física */}
-          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-            <div className="space-y-1">
-              <Label htmlFor="edit-fezAvaliacaoFisica" className="text-sm font-medium">
-                Fez avaliação física?
-              </Label>
-            </div>
-            <Switch
-              id="edit-fezAvaliacaoFisica"
-              checked={formData.fezAvaliacaoFisica}
-              onCheckedChange={(checked) => handleInputChange('fezAvaliacaoFisica', checked)}
-            />
           </div>
 
           {/* Buttons */}
