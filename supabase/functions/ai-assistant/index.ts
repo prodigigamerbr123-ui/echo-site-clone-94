@@ -455,6 +455,15 @@ serve(async (req) => {
     const confirmedAction = body.confirmedAction as { tool: string; args: any } | undefined;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Contexto temporal atual (timezone de Brasília) — injetado a cada request
+    const tz = "America/Sao_Paulo";
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: tz, weekday: "long", year: "numeric", month: "long", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+    const dateContext = `DATA/HORA ATUAL: ${fmt.format(now)} (${tz}). ISO: ${now.toISOString()}. Use SEMPRE esta referência para interpretar "hoje", "amanhã", "esta semana", etc.`;
+
     // Se veio uma ação já confirmada, executa direto e retorna mensagem sintetizada.
     if (confirmedAction && WRITE_TOOLS.has(confirmedAction.tool)) {
       let result: any;
