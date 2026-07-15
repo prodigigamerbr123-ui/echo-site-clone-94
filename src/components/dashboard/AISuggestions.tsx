@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +11,14 @@ import {
   AlertCircle,
   ArrowRight,
   Bot,
+  RefreshCw,
+  Dumbbell,
+  Heart,
+  ClipboardList,
 } from "lucide-react";
 import { useTodayActions, useDashboardStats } from "@/hooks/useDashboardData";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Priority = "high" | "medium" | "low";
 
@@ -30,8 +36,71 @@ interface Suggestion {
 
 export function AISuggestions() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [seed, setSeed] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const { data: todayActions = [], isLoading: actionsLoading } = useTodayActions();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["todayActions"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboardStats"] }),
+      ]);
+      setSeed((s) => s + 1);
+    } finally {
+      setTimeout(() => setRefreshing(false), 400);
+    }
+  };
+
+  const extraPool: Suggestion[] = [
+    {
+      id: "hydration",
+      title: "Lembrete de Hidratação",
+      description: "Envie um lembrete rápido sobre hidratação e recuperação.",
+      example: 'Ex.: "Crie uma mensagem curta lembrando os alunos de se hidratarem hoje."',
+      priority: "low",
+      icon: Heart,
+      action: "Envie uma mensagem de lembrete de hidratação para todos os alunos",
+      accent: "bg-gradient-to-br from-cyan-500 to-blue-600",
+      border: "border-l-cyan-500",
+    },
+    {
+      id: "training-tip",
+      title: "Dica de Treino do Dia",
+      description: "Compartilhe uma dica técnica para engajar os alunos.",
+      example: 'Ex.: "Gere uma dica curta sobre execução de agachamento."',
+      priority: "low",
+      icon: Dumbbell,
+      action: "Crie uma dica de treino do dia para enviar aos alunos",
+      accent: "bg-gradient-to-br from-orange-500 to-red-600",
+      border: "border-l-orange-500",
+    },
+    {
+      id: "feedback",
+      title: "Pedir Feedback dos Alunos",
+      description: "Solicite feedback sobre treinos recentes para ajustar planos.",
+      example: 'Ex.: "Crie uma mensagem pedindo feedback sobre a última semana de treinos."',
+      priority: "low",
+      icon: ClipboardList,
+      action: "Envie uma mensagem pedindo feedback sobre os treinos da semana",
+      accent: "bg-gradient-to-br from-indigo-500 to-purple-600",
+      border: "border-l-indigo-500",
+    },
+    {
+      id: "checkin",
+      title: "Check-in Semanal",
+      description: "Faça um check-in rápido para saber como estão os alunos.",
+      example: 'Ex.: "Crie uma mensagem de check-in perguntando como foi a semana."',
+      priority: "low",
+      icon: MessageCircle,
+      action: "Envie um check-in semanal para todos os alunos ativos",
+      accent: "bg-gradient-to-br from-emerald-500 to-teal-600",
+      border: "border-l-emerald-500",
+    },
+  ];
 
   const generateSuggestions = (): Suggestion[] => {
     const suggestions: Suggestion[] = [];
@@ -110,6 +179,17 @@ export function AISuggestions() {
       });
     }
 
+    // Rotaciona sugestões extras a cada refresh
+    while (suggestions.length < 3) {
+      const idx = (seed + suggestions.length) % extraPool.length;
+      const pick = extraPool[idx];
+      if (!suggestions.find((s) => s.id === pick.id)) {
+        suggestions.push(pick);
+      } else {
+        break;
+      }
+    }
+
     return suggestions.slice(0, 3);
   };
 
@@ -172,14 +252,26 @@ export function AISuggestions() {
   return (
     <Card className="overflow-hidden border-primary/10 shadow-card">
       <CardHeader className="bg-gradient-to-r from-primary/5 via-purple-500/5 to-transparent">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white shadow-primary">
-            <Sparkles className="h-4 w-4" />
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white shadow-primary">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Sugestões da IA</CardTitle>
+              <CardDescription>Ações inteligentes baseadas nos seus dados de hoje</CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-lg">Sugestões da IA</CardTitle>
-            <CardDescription>Ações inteligentes baseadas nos seus dados de hoje</CardDescription>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Atualizando..." : "Atualizar"}
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="pt-6 space-y-3">
