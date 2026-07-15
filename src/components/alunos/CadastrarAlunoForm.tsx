@@ -237,7 +237,7 @@ export function CadastrarAlunoForm() {
         </CardContent>
       </Card>
 
-      <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
+      <Button type="submit" className="w-full h-12 text-base" disabled={isLoading || !phoneCheck.ok || !formData.nome.trim()}>
         {isLoading ? (
           <>
             <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
