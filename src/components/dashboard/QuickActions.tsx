@@ -1,6 +1,17 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, MessageSquare, Clock, Send, History, Zap } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  MessageSquare,
+  Clock,
+  Send,
+  History,
+  CalendarPlus,
+  ClipboardList,
+  Bot,
+  MessageCircle,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 type Action = {
@@ -71,13 +82,53 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
       },
     ],
   },
+  {
+    title: "Avaliação Física",
+    description: "Agendar e revisar avaliações",
+    actions: [
+      {
+        to: "/agendar-avaliacao",
+        icon: CalendarPlus,
+        label: "Agendar",
+        className:
+          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-2px_hsl(250_70%_50%/0.25)] hover:shadow-elegant hover:-translate-y-0.5",
+      },
+      {
+        to: "/avaliacao-fisica",
+        icon: ClipboardList,
+        label: "Histórico",
+        className:
+          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+      },
+    ],
+  },
+  {
+    title: "Ferramentas",
+    description: "IA e conexão do WhatsApp",
+    actions: [
+      {
+        to: "/assistente-ia",
+        icon: Bot,
+        label: "Assistente IA",
+        className:
+          "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5",
+      },
+      {
+        to: "/whatsapp",
+        icon: MessageCircle,
+        label: "WhatsApp",
+        className:
+          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+      },
+    ],
+  },
 ];
 
 export function QuickActions() {
   return (
     <Card className="overflow-hidden border-primary/10 shadow-card">
       <CardContent className="pt-6">
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {groups.map((group) => (
             <div key={group.title} className="space-y-3">
               <div>
