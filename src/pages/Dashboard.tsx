@@ -16,12 +16,8 @@ function SectionDivider({ label }: { label: string }) {
 export default function Dashboard() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Visão geral da Academia Workout</p>
-      </div>
-
       <SectionDivider label="Atalhos Rápidos" />
+
       <QuickActions />
 
       <SectionDivider label="Números" />
