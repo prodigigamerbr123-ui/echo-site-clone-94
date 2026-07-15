@@ -20,6 +20,8 @@ import WhatsApp from "./pages/WhatsApp";
 import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { GlobalNotifier } from "@/components/layout/GlobalNotifier";
+
 
 const queryClient = new QueryClient();
 
