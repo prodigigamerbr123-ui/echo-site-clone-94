@@ -19,20 +19,26 @@ interface ChatMessage {
 
 interface AIChatProps {
   isExpanded: boolean;
+  conversationId?: string | null;
+  onConversationCreated?: (id: string) => void;
+  onConversationChanged?: () => void;
 }
 
-export function AIChat({ isExpanded }: AIChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content:
-        'Olá! 👋 Sou o assistente do **Academia Workout**. Posso consultar dados reais, agendar avaliações, enfileirar mensagens e explicar o sistema. Antes de qualquer ação que altere dados, vou te pedir confirmação. O que você precisa?',
-    },
-  ]);
+const WELCOME: ChatMessage = {
+  role: 'assistant',
+  content:
+    'Olá! 👋 Sou o assistente do **Academia Workout**. Posso consultar dados reais, agendar avaliações, enfileirar mensagens e explicar o sistema. Antes de qualquer ação que altere dados, vou te pedir confirmação. O que você precisa?',
+};
+
+export function AIChat({ isExpanded, conversationId, onConversationCreated, onConversationChanged }: AIChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [runningActionIdx, setRunningActionIdx] = useState<number | null>(null);
+  const convIdRef = useRef<string | null>(conversationId ?? null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,6 +49,33 @@ export function AIChat({ isExpanded }: AIChatProps) {
     }
   }, []);
 
+  // Load history when conversationId changes
+  useEffect(() => {
+    convIdRef.current = conversationId ?? null;
+    if (!conversationId) {
+      setMessages([WELCOME]);
+      return;
+    }
+    setLoadingHistory(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from('ai_messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.error(error);
+        setMessages([WELCOME]);
+      } else if (!data || data.length === 0) {
+        setMessages([WELCOME]);
+      } else {
+        setMessages(data.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+      }
+      setLoadingHistory(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    })();
+  }, [conversationId]);
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       const el = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -51,16 +84,41 @@ export function AIChat({ isExpanded }: AIChatProps) {
   }, [messages, isLoading]);
 
   const historyForApi = (msgs: ChatMessage[]) =>
-    msgs.map(m => ({ role: m.role, content: m.content }));
+    msgs.map((m) => ({ role: m.role, content: m.content }));
+
+  const ensureConversation = async (firstUserText: string): Promise<string | null> => {
+    if (convIdRef.current) return convIdRef.current;
+    const title = firstUserText.slice(0, 60) || 'Nova conversa';
+    const { data, error } = await supabase
+      .from('ai_conversations')
+      .insert({ title })
+      .select('id')
+      .single();
+    if (error || !data) {
+      console.error('create conversation error', error);
+      return null;
+    }
+    convIdRef.current = data.id;
+    onConversationCreated?.(data.id);
+    return data.id;
+  };
+
+  const persistMessage = async (convId: string, role: 'user' | 'assistant', content: string) => {
+    await supabase.from('ai_messages').insert({ conversation_id: convId, role, content });
+    await supabase.from('ai_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
+  };
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
-
-    const userMsg: ChatMessage = { role: 'user', content: inputMessage.trim() };
+    const text = inputMessage.trim();
+    const userMsg: ChatMessage = { role: 'user', content: text };
     const newHistory = [...messages, userMsg];
     setMessages(newHistory);
     setInputMessage('');
     setIsLoading(true);
+
+    const convId = await ensureConversation(text);
+    if (convId) await persistMessage(convId, 'user', text);
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
@@ -69,20 +127,22 @@ export function AIChat({ isExpanded }: AIChatProps) {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setMessages(prev => [
+      const assistantText = data.message || '...';
+      setMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          content: data.message || '...',
-          pendingAction: data.pendingAction,
-        },
+        { role: 'assistant', content: assistantText, pendingAction: data.pendingAction },
       ]);
+      if (convId) await persistMessage(convId, 'assistant', assistantText);
+      onConversationChanged?.();
     } catch (e: any) {
       console.error('chat error:', e);
       toast({ title: 'Erro', description: e?.message || 'Falha ao processar.', variant: 'destructive' });
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Desculpe, ocorreu um erro. Tente novamente.' }]);
+      const err = 'Desculpe, ocorreu um erro. Tente novamente.';
+      setMessages((prev) => [...prev, { role: 'assistant', content: err }]);
+      if (convId) await persistMessage(convId, 'assistant', err);
     } finally {
       setIsLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -100,12 +160,15 @@ export function AIChat({ isExpanded }: AIChatProps) {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setMessages(prev => {
+      const resultText = data.message || '✅ Feito.';
+      setMessages((prev) => {
         const next = [...prev];
         next[idx] = { ...next[idx], actionState: 'confirmed' };
-        next.push({ role: 'assistant', content: data.message || '✅ Feito.' });
+        next.push({ role: 'assistant', content: resultText });
         return next;
       });
+      if (convIdRef.current) await persistMessage(convIdRef.current, 'assistant', resultText);
+      onConversationChanged?.();
     } catch (e: any) {
       toast({ title: 'Erro ao executar', description: e?.message, variant: 'destructive' });
     } finally {
@@ -114,12 +177,14 @@ export function AIChat({ isExpanded }: AIChatProps) {
   };
 
   const rejectAction = (idx: number) => {
-    setMessages(prev => {
+    const msgText = 'Sem problemas, ação cancelada. Me diga se quer ajustar algo.';
+    setMessages((prev) => {
       const next = [...prev];
       next[idx] = { ...next[idx], actionState: 'rejected' };
-      next.push({ role: 'assistant', content: 'Sem problemas, ação cancelada. Me diga se quer ajustar algo.' });
+      next.push({ role: 'assistant', content: msgText });
       return next;
     });
+    if (convIdRef.current) persistMessage(convIdRef.current, 'assistant', msgText);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -151,7 +216,13 @@ export function AIChat({ isExpanded }: AIChatProps) {
     <div className="flex flex-col h-full">
       <ScrollArea ref={scrollAreaRef} className="flex-1 p-3">
         <div className="space-y-4">
-          {messages.length === 1 && (
+          {loadingHistory && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {!loadingHistory && messages.length === 1 && (
             <div className="space-y-2 mb-4">
               <p className="text-sm text-muted-foreground">Perguntas rápidas:</p>
               {quickActions.map((a) => (
@@ -225,12 +296,14 @@ export function AIChat({ isExpanded }: AIChatProps) {
       <div className="p-3 border-t">
         <div className="flex gap-2">
           <Input
+            ref={inputRef}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Pergunte qualquer coisa sobre o sistema..."
             className="text-sm"
             disabled={isLoading}
+            autoFocus
           />
           <Button onClick={sendMessage} disabled={!inputMessage.trim() || isLoading} size="sm">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
