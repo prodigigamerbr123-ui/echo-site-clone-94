@@ -45,9 +45,10 @@ const App = () => (
                 <CadastrarAluno />
               </AppLayout>
             } />
-            <Route path="/agendar-mensagem" element={
+            <Route path="/agendar-mensagem" element={<Navigate to="/mensagens-agendadas?new=1" replace />} />
+            <Route path="/whatsapp" element={
               <AppLayout>
-                <AgendarMensagem />
+                <WhatsApp />
               </AppLayout>
             } />
             <Route path="/enviar-mensagem" element={
