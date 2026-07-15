@@ -153,14 +153,10 @@ export default function EnviarMensagem() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Enviar Mensagem</h1>
-          <p className="text-muted-foreground">Envio via fila protegida — evita banimento do WhatsApp</p>
         </div>
       </div>
 
-      <div className="p-3 bg-primary/5 rounded-lg border border-primary/20 text-sm">
-        <strong>Envio gradual:</strong> as mensagens entram na fila e são enviadas nos próximos minutos, de forma gradual, para proteger o número do WhatsApp da academia.{" "}
-        <Link to="/mensagens-agendadas" className="underline text-primary">Acompanhar em Mensagens Agendadas</Link>
-      </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
