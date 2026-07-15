@@ -109,7 +109,13 @@ export function ListaAlunos() {
     });
 
   const handleDeleteStudent = async (studentId: string, studentName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o aluno ${studentName}? Esta ação não pode ser desfeita.`)) return;
+    const ok = await (await import("@/components/ui/confirm-dialog")).confirm({
+      title: `Excluir ${studentName}?`,
+      description: "Esta ação não pode ser desfeita. Todo o histórico do aluno será perdido.",
+      confirmLabel: "Excluir aluno",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const { error } = await supabase.from('students').delete().eq('id', studentId);
       if (error) throw error;
