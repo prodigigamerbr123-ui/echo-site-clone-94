@@ -209,18 +209,28 @@ export default function AgendarAvaliacao() {
     const alreadyFuture = scheduledFuture.find((e) => e.student_id === student.id);
     if (alreadyFuture) {
       const w = format(new Date(alreadyFuture.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
-      if (!window.confirm(`${student.name} já tem avaliação marcada para ${w}. Criar outra assim mesmo?`)) return;
+      const ok = await confirm({
+        title: `${student.name} já tem avaliação`,
+        description: `Existe agendamento em ${w}. Criar outro para o mesmo aluno?`,
+        confirmLabel: "Criar mesmo assim",
+      });
+      if (!ok) return;
     }
 
     // Trava conflito de horário (30 min)
     const target = new Date(whenIso).getTime();
-    const conflict = scheduledFuture.find((e) => {
+    const conflictEv = scheduledFuture.find((e) => {
       const d = new Date(e.scheduled_at).getTime();
       return Math.abs(d - target) < 30 * 60 * 1000 && e.student_id !== student.id;
     });
-    if (conflict) {
-      const w = format(new Date(conflict.scheduled_at), "HH:mm");
-      if (!window.confirm(`Já existe avaliação de ${conflict.students?.name ?? "outro aluno"} às ${w}. Prosseguir?`)) return;
+    if (conflictEv) {
+      const w = format(new Date(conflictEv.scheduled_at), "HH:mm");
+      const ok = await confirm({
+        title: "Conflito de horário",
+        description: `Já existe avaliação de ${conflictEv.students?.name ?? "outro aluno"} às ${w} (raio de 30 min). Prosseguir?`,
+        confirmLabel: "Agendar mesmo assim",
+      });
+      if (!ok) return;
     }
 
     const { data: created, error } = await supabase
