@@ -54,14 +54,14 @@ export function CadastrarAlunoForm() {
     handleInputChange('telefone', formatPhone(e.target.value));
   };
 
+  const phoneCheck = formatPhoneBR(formData.telefone);
   const validateForm = () => {
     if (!formData.nome.trim()) {
-      toast({ title: "Nome obrigatório", description: "Insira o nome do aluno.", variant: "destructive" });
+      toast({ title: "Nome obrigatório", variant: "destructive" });
       return false;
     }
-    const phoneNumbers = formData.telefone.replace(/\D/g, '');
-    if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
-      toast({ title: "Telefone inválido", description: "Use o formato (11) 99999-9999.", variant: "destructive" });
+    if (!phoneCheck.ok) {
+      toast({ title: "Telefone inválido", description: phoneCheck.reason, variant: "destructive" });
       return false;
     }
     return true;
