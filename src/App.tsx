@@ -19,6 +19,7 @@ import AgendarAvaliacao from "./pages/AgendarAvaliacao";
 import WhatsApp from "./pages/WhatsApp";
 import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <ConfirmDialogHost />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={
