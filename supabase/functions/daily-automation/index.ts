@@ -14,7 +14,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DAILY_LIMIT = 60;
+const DEFAULT_DAILY_LIMIT = 60;
+const DEFAULT_DAYS_OVERDUE = 90;
 
 const REMINDER_TEMPLATES = [
   (name: string) =>
@@ -67,6 +68,20 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Carrega configurações do dono da academia
+    const { data: settingsRows } = await supabase
+      .from("automation_settings")
+      .select("key, enabled, params");
+    const settings: Record<string, { enabled: boolean; params: any }> = {};
+    for (const r of settingsRows || []) {
+      settings[r.key] = { enabled: !!r.enabled, params: r.params || {} };
+    }
+    const inviteEnabled = settings.evaluation_invite?.enabled ?? true;
+    const birthdayEnabled = settings.birthday?.enabled ?? true;
+    const daysOverdue = Number(settings.evaluation_invite?.params?.days_overdue) || DEFAULT_DAYS_OVERDUE;
+    const dailyLimit = Number(settings.evaluation_invite?.params?.daily_limit) || DEFAULT_DAILY_LIMIT;
+
 
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
     const activeStudents: any[] = [];
