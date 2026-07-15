@@ -1,6 +1,17 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, MessageSquare, Clock, Send, History, Zap } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  MessageSquare,
+  Clock,
+  Send,
+  History,
+  CalendarPlus,
+  ClipboardList,
+  Bot,
+  MessageCircle,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 type Action = {
