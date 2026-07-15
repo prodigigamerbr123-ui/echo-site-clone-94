@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarAlunoDialog } from "./EditarAlunoDialog";
+import { StudentSheet } from "./StudentSheet";
 
 interface Student {
   id: string;
