@@ -226,6 +226,41 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             />
           </div>
 
+          {/* Plano */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-plano" className="text-sm font-medium flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Plano
+            </Label>
+            <Select value={formData.plano} onValueChange={(v) => handleInputChange('plano', v)}>
+              <SelectTrigger id="edit-plano">
+                <SelectValue placeholder="Selecione o plano" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_OPTIONS.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-status" className="text-sm font-medium flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Status
+            </Label>
+            <Select value={formData.status} onValueChange={(v) => handleInputChange('status', v)}>
+              <SelectTrigger id="edit-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="inactive">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Switch Avaliação Física */}
           <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
             <div className="space-y-1">
