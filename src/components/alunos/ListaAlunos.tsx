@@ -328,6 +328,12 @@ export function ListaAlunos() {
           onOpenChange={(open) => !open && setEditingStudent(null)}
         />
       )}
+
+      <StudentSheet
+        student={viewingStudent}
+        open={!!viewingStudent}
+        onOpenChange={(o) => !o && setViewingStudent(null)}
+      />
     </div>
   );
 }
