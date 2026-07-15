@@ -153,7 +153,7 @@ export default function EnviarMensagem() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Enviar Mensagem</h1>
-          <p className="text-muted-foreground">Aqui você pode enviar mensagens diretas para alunos</p>
+          <p className="text-muted-foreground">Aqui você pode enviar mensagens diretas para os alunos</p>
         </div>
 
       </div>
