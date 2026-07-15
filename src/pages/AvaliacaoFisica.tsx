@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
-import { History, Search, CheckCircle2, XCircle, CalendarPlus, Ban } from "lucide-react";
+import { History, Search, CheckCircle2, XCircle, CalendarPlus, Ban, CalendarClock } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -110,6 +110,56 @@ export default function AvaliacaoFisica() {
         <Card className="border-l-4 border-l-destructive"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Faltas</p><p className="text-2xl font-bold text-destructive">{stats.noShow}</p></CardContent></Card>
         <Card className="border-l-4 border-l-muted"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Canceladas</p><p className="text-2xl font-bold text-muted-foreground">{stats.cancelled}</p></CardContent></Card>
       </div>
+
+      {(() => {
+        const upcoming = (evaluations || [])
+          .filter(e => e.status === "scheduled")
+          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+        return (
+          <Card className="border-l-4 border-l-primary">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-primary" />
+                Avaliações agendadas ({upcoming.length})
+              </CardTitle>
+              <CardDescription>Compromissos ainda em aberto na Agenda.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {upcoming.length === 0 ? (
+                <p className="text-center py-6 text-muted-foreground text-sm">Nenhuma avaliação agendada.</p>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Aluno</TableHead>
+                        <TableHead>Agendada para</TableHead>
+                        <TableHead className="text-right">Ação</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {upcoming.slice(0, 20).map((ev) => (
+                        <TableRow key={ev.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{ev.students?.name}</p>
+                              <p className="text-xs text-muted-foreground">{ev.students?.phone}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">{format(new Date(ev.scheduled_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="ghost" onClick={() => navigate("/agendar-avaliacao")}>Abrir Agenda</Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <Card>
         <CardHeader>
