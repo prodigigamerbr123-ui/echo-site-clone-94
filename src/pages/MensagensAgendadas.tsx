@@ -1,17 +1,23 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, Plus, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import MessageFilters from "../components/agendarmensagem/MessageFilters";
-import MessagesList, { getFilteredMessagesCount } from "../components/agendarmensagem/MessagesList";
+import MessageFilters from "@/components/agendarmensagem/MessageFilters";
+import MessagesList, { getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
+import { AgendarMensagemForm } from "@/components/mensagens/AgendarMensagemForm";
 
 interface ScheduledMessage {
   id: string;
@@ -21,15 +27,18 @@ interface ScheduledMessage {
   message_type: string;
   created_at: string;
   student_id: string;
+  failure_reason?: string | null;
+  retry_count?: number | null;
+  evaluation_id?: string | null;
   students?: { name: string; phone: string; };
 }
-
 interface Student { id: string; name: string; phone: string; }
 
 export default function MensagensAgendadas() {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>([]);
+  const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
@@ -43,202 +52,172 @@ export default function MensagensAgendadas() {
   const [editContent, setEditContent] = useState("");
   const [editStudent, setEditStudent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(params.get("new") === "1");
 
   useEffect(() => {
-    fetchScheduledMessages();
-    fetchStudents();
+    fetchAll();
   }, []);
 
-  const fetchScheduledMessages = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('scheduled_messages')
-        .select(`*, students (name, phone)`)
-        .neq('status', 'sent')
-        .order('scheduled_for', { ascending: true });
-      if (error) throw error;
-      setScheduledMessages(data || []);
-    } catch (error) {
-      toast({ title: "Erro", description: "Não foi possível carregar as mensagens.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+  const fetchAll = async () => {
+    const [{ data: m }, { data: s }] = await Promise.all([
+      supabase.from("scheduled_messages")
+        .select("*, students(name, phone)")
+        .neq("status", "sent")
+        .order("scheduled_for", { ascending: true }),
+      supabase.from("students").select("id, name, phone").order("name"),
+    ]);
+    setMessages(m || []);
+    setStudents(s || []);
+    setLoading(false);
   };
 
-  const fetchStudents = async () => {
-    const { data } = await supabase.from('students').select('id, name, phone').order('name');
-    setStudents(data || []);
+  const closeSheet = () => {
+    setSheetOpen(false);
+    if (params.get("new")) { params.delete("new"); setParams(params, { replace: true }); }
   };
 
-  const handleEditMessage = (message: ScheduledMessage) => {
-    setEditingMessage(message);
-    setEditStudent(message.student_id);
-    setEditContent(message.content);
-    const d = new Date(message.scheduled_for);
-    setEditDate(d.toISOString().split('T')[0]);
+  const openEdit = (m: ScheduledMessage) => {
+    setEditingMessage(m);
+    setEditStudent(m.student_id);
+    setEditContent(m.content);
+    const d = new Date(m.scheduled_for);
+    setEditDate(d.toISOString().split("T")[0]);
     setEditTime(d.toTimeString().slice(0, 5));
   };
 
-  const handleSaveEdit = async () => {
+  const saveEdit = async () => {
     if (!editingMessage) return;
-    const scheduledFor = new Date(`${editDate}T${editTime}`);
-    if (scheduledFor <= new Date()) {
-      toast({ title: "Atenção", description: "A data deve ser futura.", variant: "destructive" });
+    const dt = new Date(`${editDate}T${editTime}`);
+    if (dt <= new Date()) {
+      toast({ title: "A data deve ser futura", variant: "destructive" });
       return;
     }
     setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('scheduled_messages')
-        .update({
-          student_id: editStudent,
-          content: editContent.trim(),
-          scheduled_for: scheduledFor.toISOString(),
-          status: 'pending',
-        })
-        .eq('id', editingMessage.id);
-      if (error) throw error;
-      toast({ title: "Mensagem atualizada" });
-      setEditingMessage(null);
-      fetchScheduledMessages();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    const { error } = await supabase.from("scheduled_messages").update({
+      student_id: editStudent, content: editContent.trim(),
+      scheduled_for: dt.toISOString(), status: "pending",
+    }).eq("id", editingMessage.id);
+    setSaving(false);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Atualizada" });
+    setEditingMessage(null);
+    fetchAll();
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!confirm('Excluir esta mensagem agendada?')) return;
-    try {
-      const { error } = await supabase.from('scheduled_messages').delete().eq('id', messageId);
-      if (error) throw error;
-      toast({ title: "Excluída" });
-      fetchScheduledMessages();
-      setSelectedMessages(prev => prev.filter(id => id !== messageId));
-    } catch {
-      toast({ title: "Erro ao excluir", variant: "destructive" });
-    }
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("scheduled_messages").delete().in("id", deleteTarget.ids);
+    if (error) return toast({ title: "Erro", variant: "destructive" });
+    toast({ title: `${deleteTarget.ids.length} excluída(s)` });
+    setSelectedMessages(prev => prev.filter(id => !deleteTarget.ids.includes(id)));
+    setDeleteTarget(null);
+    fetchAll();
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedMessages.length === 0) return;
-    if (!confirm(`Excluir ${selectedMessages.length} mensagem(ns)?`)) return;
-    try {
-      const { error } = await supabase.from('scheduled_messages').delete().in('id', selectedMessages);
-      if (error) throw error;
-      toast({ title: `${selectedMessages.length} excluída(s)` });
-      setSelectedMessages([]);
-      fetchScheduledMessages();
-    } catch {
-      toast({ title: "Erro", variant: "destructive" });
-    }
-  };
-
-  const handleMessageSelect = (id: string, sel: boolean) => {
-    setSelectedMessages(prev => sel ? [...prev, id] : prev.filter(x => x !== id));
+  const handleRetry = async (id: string) => {
+    const { error } = await supabase.from("scheduled_messages").update({
+      status: "pending",
+      scheduled_for: new Date(Date.now() + 60 * 1000).toISOString(),
+      retry_count: 0,
+      failure_reason: null,
+    }).eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Reenfileirada — próxima tentativa em 1 min" });
+    fetchAll();
   };
 
   const handleSelectAll = (sel: boolean) => {
     if (sel) {
-      const filtered = scheduledMessages.filter(m => {
-        const matchSearch = m.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const filtered = messages.filter(m => {
+        const s = m.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
           m.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           m.students?.phone.includes(searchTerm);
-        const matchStudent = selectedStudents.length === 0 || selectedStudents.includes(m.student_id);
-        return matchSearch && matchStudent;
+        const u = selectedStudents.length === 0 || selectedStudents.includes(m.student_id);
+        return s && u;
       });
       setSelectedMessages(filtered.map(m => m.id));
-    } else {
-      setSelectedMessages([]);
-    }
+    } else setSelectedMessages([]);
   };
 
-  const filteredCount = getFilteredMessagesCount(scheduledMessages, searchTerm, dateFilter, customDateRange, selectedStudents);
+  const filteredCount = getFilteredMessagesCount(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Clock className="h-6 w-6 text-primary" />
-          </div>
+          <div className="p-2 bg-primary/10 rounded-lg"><Clock className="h-6 w-6 text-primary" /></div>
           <div>
             <h1 className="text-2xl font-bold">Mensagens Agendadas</h1>
-            <p className="text-muted-foreground">Gerencie todas as mensagens programadas</p>
+            <p className="text-muted-foreground">Fila de envio — pendentes e falhas</p>
           </div>
         </div>
-        <Button onClick={() => navigate('/agendar-mensagem')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Mensagem
+        <Button onClick={() => setSheetOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Nova mensagem agendada
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtros
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" />Filtros</CardTitle>
         </CardHeader>
         <CardContent>
           <MessageFilters
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
-            customDateRange={customDateRange}
-            setCustomDateRange={setCustomDateRange}
-            students={students}
-            selectedStudents={selectedStudents}
-            setSelectedStudents={setSelectedStudents}
+            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+            dateFilter={dateFilter} setDateFilter={setDateFilter}
+            customDateRange={customDateRange} setCustomDateRange={setCustomDateRange}
+            students={students} selectedStudents={selectedStudents} setSelectedStudents={setSelectedStudents}
           />
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Mensagens Agendadas ({filteredCount})</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Mensagens ({filteredCount})</CardTitle></CardHeader>
         <CardContent>
-          {scheduledMessages.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="text-center py-12">
               <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-4">Nenhuma mensagem agendada ainda.</p>
-              <Button onClick={() => navigate('/agendar-mensagem')} variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Agendar Primeira Mensagem
-              </Button>
+              <p className="text-muted-foreground mb-4">Nenhuma mensagem agendada.</p>
+              <Button onClick={() => setSheetOpen(true)} variant="outline"><Plus className="h-4 w-4 mr-2" />Agendar primeira</Button>
             </div>
           ) : (
             <MessagesList
-              messages={scheduledMessages}
-              searchTerm={searchTerm}
-              dateFilter={dateFilter}
-              customDateRange={customDateRange}
-              selectedStudents={selectedStudents}
+              messages={messages}
+              searchTerm={searchTerm} dateFilter={dateFilter}
+              customDateRange={customDateRange} selectedStudents={selectedStudents}
               selectedMessages={selectedMessages}
-              onMessageSelect={handleMessageSelect}
+              onMessageSelect={(id, sel) => setSelectedMessages(prev => sel ? [...prev, id] : prev.filter(x => x !== id))}
               onSelectAll={handleSelectAll}
-              onDeleteSelected={handleDeleteSelected}
-              onEdit={handleEditMessage}
-              onDelete={handleDeleteMessage}
+              onDeleteSelected={() => setDeleteTarget({ ids: selectedMessages, label: `${selectedMessages.length} mensagens` })}
+              onEdit={openEdit}
+              onDelete={(id) => setDeleteTarget({ ids: [id], label: "esta mensagem" })}
+              onRetry={handleRetry}
             />
           )}
         </CardContent>
       </Card>
 
+      {/* Sheet Nova Mensagem Agendada */}
+      <Sheet open={sheetOpen} onOpenChange={(o) => o ? setSheetOpen(true) : closeSheet()}>
+        <SheetContent className="overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>Nova mensagem agendada</SheetTitle>
+            <SheetDescription>Rápido (presets) ou personalizado com recorrência.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
+            <AgendarMensagemForm onSaved={() => { closeSheet(); fetchAll(); }} />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit */}
       <Dialog open={!!editingMessage} onOpenChange={(o) => !o && setEditingMessage(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Editar Mensagem</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Editar mensagem</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Aluno</Label>
@@ -256,19 +235,37 @@ export default function MensagensAgendadas() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Data</Label>
-                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
+                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
               </div>
               <div>
-                <Label>Horário</Label>
+                <Label>Hora</Label>
                 <Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} />
               </div>
             </div>
-            <Button onClick={handleSaveEdit} disabled={saving} className="w-full">
-              {saving ? "Salvando..." : "Atualizar"}
+            <Button onClick={saveEdit} disabled={saving} className="w-full">
+              {saving ? "Salvando..." : "Salvar"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {deleteTarget?.label}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. As mensagens serão removidas da fila de envio.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
