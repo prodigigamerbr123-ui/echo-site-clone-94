@@ -37,8 +37,8 @@ const menuGroups = [
   {
     label: "Avaliação Física",
     items: [
-      { title: "Visão Geral", url: "/avaliacao-fisica", icon: Activity },
       { title: "Agendar Avaliação Física", url: "/agendar-avaliacao", icon: CalendarPlus },
+      { title: "Visão Geral", url: "/avaliacao-fisica", icon: Activity },
     ],
   },
   {
