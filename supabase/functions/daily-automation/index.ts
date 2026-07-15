@@ -112,16 +112,18 @@ serve(async (req: Request) => {
 
     // ---- 1) Aniversariantes de hoje ----
     const birthdayInserts: any[] = [];
-    for (const s of activeStudents) {
-      if (!isBirthdayToday(s.birth_date)) continue;
-      if (hasPending.has(`${s.id}:birthday`)) continue;
-      birthdayInserts.push({
-        student_id: s.id,
-        content: pick(BIRTHDAY_TEMPLATES)(s.name),
-        scheduled_for: scatterTimeToday().toISOString(),
-        message_type: "birthday",
-        status: "pending",
-      });
+    if (birthdayEnabled) {
+      for (const s of activeStudents) {
+        if (!isBirthdayToday(s.birth_date)) continue;
+        if (hasPending.has(`${s.id}:birthday`)) continue;
+        birthdayInserts.push({
+          student_id: s.id,
+          content: pick(BIRTHDAY_TEMPLATES)(s.name),
+          scheduled_for: scatterTimeToday().toISOString(),
+          message_type: "birthday",
+          status: "pending",
+        });
+      }
     }
 
     // Alunos com avaliação futura já marcada (evaluations.status='scheduled')
@@ -136,24 +138,25 @@ serve(async (req: Request) => {
     );
 
     // ---- 2) Lembretes de avaliação vencida ----
-    const reminderCandidates = activeStudents
-      .filter((s) => {
-        if (hasPending.has(`${s.id}:evaluation_reminder`)) return false;
-        if (studentsWithFutureEval.has(s.id)) return false;
-        if (s.last_evaluation_date) {
-          return daysSince(s.last_evaluation_date) > 90;
-        }
-        // Nunca avaliado, cadastrado há >14 dias
-        return !s.had_evaluation && daysSince(s.created_at) > 14;
-      })
-      // Prioriza os mais antigos primeiro
-      .sort((a, b) => {
-        const aRef = a.last_evaluation_date || a.created_at;
-        const bRef = b.last_evaluation_date || b.created_at;
-        return new Date(aRef).getTime() - new Date(bRef).getTime();
-      });
+    const reminderCandidates = inviteEnabled
+      ? activeStudents
+          .filter((s) => {
+            if (hasPending.has(`${s.id}:evaluation_reminder`)) return false;
+            if (studentsWithFutureEval.has(s.id)) return false;
+            if (s.last_evaluation_date) {
+              return daysSince(s.last_evaluation_date) > daysOverdue;
+            }
+            // Nunca avaliado, cadastrado há >14 dias
+            return !s.had_evaluation && daysSince(s.created_at) > 14;
+          })
+          .sort((a, b) => {
+            const aRef = a.last_evaluation_date || a.created_at;
+            const bRef = b.last_evaluation_date || b.created_at;
+            return new Date(aRef).getTime() - new Date(bRef).getTime();
+          })
+      : [];
 
-    const remainingSlots = Math.max(0, DAILY_LIMIT - birthdayInserts.length);
+    const remainingSlots = Math.max(0, dailyLimit - birthdayInserts.length);
     const reminderInserts = reminderCandidates.slice(0, remainingSlots).map((s) => ({
       student_id: s.id,
       content: pick(REMINDER_TEMPLATES)(s.name),
