@@ -139,17 +139,12 @@ export default function MensagensAgendadas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg"><Clock className="h-6 w-6 text-primary" /></div>
-          <div>
-            <h1 className="text-2xl font-bold">Mensagens Agendadas</h1>
-            <p className="text-muted-foreground">Fila de envio — pendentes e falhas</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 rounded-lg"><Clock className="h-6 w-6 text-primary" /></div>
+        <div>
+          <h1 className="text-2xl font-bold">Mensagens Agendadas</h1>
+          <p className="text-muted-foreground">Fila de envio — pendentes e falhas</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Nova mensagem agendada
-        </Button>
       </div>
 
       <Card>
