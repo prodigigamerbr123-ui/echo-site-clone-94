@@ -35,9 +35,10 @@ const menuGroups = [
     ],
   },
   {
-    label: "Saúde",
+    label: "Avaliação Física",
     items: [
-      { title: "Avaliação Física", url: "/avaliacao-fisica", icon: Activity },
+      { title: "Visão Geral", url: "/avaliacao-fisica", icon: Activity },
+      { title: "Agendar Avaliação Física", url: "/agendar-avaliacao", icon: CalendarPlus },
     ],
   },
   {
