@@ -79,6 +79,11 @@ const App = () => (
                 <AvaliacaoFisica />
               </AppLayout>
             } />
+            <Route path="/agendar-avaliacao" element={
+              <AppLayout>
+                <AgendarAvaliacao />
+              </AppLayout>
+            } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
