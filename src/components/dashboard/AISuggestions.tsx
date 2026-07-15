@@ -252,14 +252,26 @@ export function AISuggestions() {
   return (
     <Card className="overflow-hidden border-primary/10 shadow-card">
       <CardHeader className="bg-gradient-to-r from-primary/5 via-purple-500/5 to-transparent">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white shadow-primary">
-            <Sparkles className="h-4 w-4" />
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white shadow-primary">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Sugestões da IA</CardTitle>
+              <CardDescription>Ações inteligentes baseadas nos seus dados de hoje</CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-lg">Sugestões da IA</CardTitle>
-            <CardDescription>Ações inteligentes baseadas nos seus dados de hoje</CardDescription>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Atualizando..." : "Atualizar"}
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="pt-6 space-y-3">
