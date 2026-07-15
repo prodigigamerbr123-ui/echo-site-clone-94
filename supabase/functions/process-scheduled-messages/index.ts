@@ -87,6 +87,22 @@ serve(async (req: Request) => {
         continue;
       }
 
+      // Bloqueia mensagens AUTOMÁTICAS para alunos inativos.
+      // Mensagens manuais (message_type === 'manual') seguem normalmente —
+      // o dono pode querer mandar "sentimos sua falta" pra ex-aluno.
+      if (student.status !== "active" && msg.message_type !== "manual") {
+        await supabase
+          .from("scheduled_messages")
+          .update({
+            status: "failed",
+            failure_reason: "Aluno inativo — mensagem automática bloqueada",
+          })
+          .eq("id", msg.id);
+        failed++;
+        continue;
+      }
+
+
 
       const phoneCheck = formatPhone(student.phone);
       if (!phoneCheck.ok) {
