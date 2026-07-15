@@ -16,8 +16,6 @@ function SectionDivider({ label }: { label: string }) {
 export default function Dashboard() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <SectionDivider label="Atalhos Rápidos" />
-
       <QuickActions />
 
       <SectionDivider label="Números" />
