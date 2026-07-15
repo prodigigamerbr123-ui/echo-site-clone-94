@@ -159,6 +159,19 @@ export default function AgendarAvaliacao() {
       return;
     }
 
+    // Trava anti-duplicidade
+    const targetType = type === "reminder" ? "evaluation_reminder" : "evaluation_followup";
+    const existing = upcoming?.find(
+      (u) => u.student_id === selectedStudent.id && u.message_type === targetType,
+    );
+    if (existing) {
+      const when = format(new Date(existing.scheduled_for), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+      const ok = window.confirm(
+        `Este aluno já tem um ${type === "reminder" ? "lembrete" : "acompanhamento"} agendado para ${when}.\n\nDeseja agendar mais um assim mesmo?`,
+      );
+      if (!ok) return;
+    }
+
     setSaving(true);
     try {
       const content = customMessage.trim() || defaultMessage(selectedStudent.name);
@@ -167,7 +180,7 @@ export default function AgendarAvaliacao() {
           student_id: selectedStudent.id,
           content,
           scheduled_for: scheduledFor.toISOString(),
-          message_type: type === "reminder" ? "evaluation_reminder" : "evaluation_followup",
+          message_type: targetType,
           status: "pending",
         },
       ]);

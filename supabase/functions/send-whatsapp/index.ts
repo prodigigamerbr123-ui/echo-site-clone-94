@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { formatPhone } from "../_shared/phone.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,18 +8,8 @@ const corsHeaders = {
 };
 
 interface SendMessageRequest {
-  students: Array<{
-    id: string;
-    name: string;
-    phone: string;
-  }>;
+  students: Array<{ id: string; name: string; phone: string }>;
   message: string;
-}
-
-function formatPhone(phone: string): string {
-  let p = phone.replace(/\D/g, '');
-  if (!p.startsWith('55')) p = '55' + p;
-  return p;
 }
 
 serve(async (req: Request) => {
@@ -33,10 +24,7 @@ serve(async (req: Request) => {
 
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE_NAME) {
       return new Response(
-        JSON.stringify({
-          error: 'Evolution API não configurada',
-          details: 'Configure EVOLUTION_API_URL, EVOLUTION_API_KEY e EVOLUTION_INSTANCE_NAME',
-        }),
+        JSON.stringify({ error: 'Evolution API não configurada' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -44,84 +32,69 @@ serve(async (req: Request) => {
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
     const { students, message }: SendMessageRequest = await req.json();
 
-    if (!students || !Array.isArray(students) || students.length === 0) {
+    if (!students?.length) {
       return new Response(JSON.stringify({ error: 'No students provided' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (!message || message.trim() === '') {
+    if (!message?.trim()) {
       return new Response(JSON.stringify({ error: 'No message provided' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const results = [];
-    const messagesToSave = [];
+    const results: any[] = [];
+    const messagesToSave: any[] = [];
 
     for (const student of students) {
-      const number = formatPhone(student.phone);
-      try {
-        console.log(`Sending to ${student.name} (${number}) via Evolution`);
+      const phoneCheck = formatPhone(student.phone);
 
-        const resp = await fetch(
-          `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': EVOLUTION_API_KEY,
-            },
-            body: JSON.stringify({
-              number,
-              text: message,
-            }),
-          }
-        );
-
-        const data = await resp.json();
-
-        if (resp.ok) {
-          results.push({
-            studentId: student.id,
-            studentName: student.name,
-            phone: student.phone,
-            status: 'sent',
-            messageId: data?.key?.id ?? null,
-          });
-          messagesToSave.push({
-            student_id: student.id,
-            content: message,
-            status: 'sent',
-          });
-        } else {
-          console.error(`Evolution error for ${student.name}:`, data);
-          results.push({
-            studentId: student.id,
-            studentName: student.name,
-            phone: student.phone,
-            status: 'failed',
-            error: data?.message || data?.error || `HTTP ${resp.status}`,
-          });
-          messagesToSave.push({
-            student_id: student.id,
-            content: message,
-            status: 'failed',
-          });
-        }
-      } catch (err: any) {
-        console.error(`Error sending to ${student.name}:`, err);
+      if (!phoneCheck.ok) {
         results.push({
           studentId: student.id,
           studentName: student.name,
           phone: student.phone,
           status: 'failed',
-          error: err?.message || 'Unknown error',
+          error: phoneCheck.reason,
         });
         messagesToSave.push({
           student_id: student.id,
           content: message,
           status: 'failed',
         });
+        continue;
+      }
+
+      try {
+        const resp = await fetch(
+          `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
+            body: JSON.stringify({ number: phoneCheck.number, text: message }),
+          }
+        );
+        const data = await resp.json();
+
+        if (resp.ok) {
+          results.push({
+            studentId: student.id, studentName: student.name, phone: student.phone,
+            status: 'sent', messageId: data?.key?.id ?? null,
+          });
+          messagesToSave.push({ student_id: student.id, content: message, status: 'sent' });
+        } else {
+          results.push({
+            studentId: student.id, studentName: student.name, phone: student.phone,
+            status: 'failed', error: data?.message || data?.error || `HTTP ${resp.status}`,
+          });
+          messagesToSave.push({ student_id: student.id, content: message, status: 'failed' });
+        }
+      } catch (err: any) {
+        results.push({
+          studentId: student.id, studentName: student.name, phone: student.phone,
+          status: 'failed', error: err?.message || 'Unknown error',
+        });
+        messagesToSave.push({ student_id: student.id, content: message, status: 'failed' });
       }
     }
 
@@ -138,11 +111,7 @@ serve(async (req: Request) => {
     const failed = results.filter(r => r.status === 'failed').length;
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        results,
-        summary: { total: students.length, sent, failed },
-      }),
+      JSON.stringify({ success: true, results, summary: { total: students.length, sent, failed } }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

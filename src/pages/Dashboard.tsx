@@ -2,6 +2,7 @@ import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { WhatsAppStatus } from "@/components/dashboard/WhatsAppStatus";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { AISuggestions } from "@/components/dashboard/AISuggestions";
+import { AutomationStatusCard } from "@/components/dashboard/AutomationStatusCard";
 
 function SectionDivider({ label }: { label: string }) {
   return (
@@ -22,6 +23,9 @@ export default function Dashboard() {
 
       <SectionDivider label="Visão Geral" />
       <StatsOverview />
+
+      <SectionDivider label="Automação" />
+      <AutomationStatusCard />
 
       <SectionDivider label="Inteligência" />
       <div className="grid gap-6 lg:grid-cols-5">
