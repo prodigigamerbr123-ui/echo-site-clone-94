@@ -287,7 +287,13 @@ export default function AgendarAvaliacao() {
   };
 
   const handleCancel = async (ev: Evaluation) => {
-    if (!window.confirm(`Cancelar avaliação de ${ev.students?.name ?? ""}?`)) return;
+    const ok = await askConfirm({
+      title: `Cancelar avaliação${ev.students?.name ? " de " + ev.students.name : ""}?`,
+      description: "As mensagens automáticas ainda pendentes serão apagadas.",
+      confirmLabel: "Cancelar avaliação",
+      destructive: true,
+    });
+    if (!ok) return;
     await deletePendingEvalMessages(ev.id);
     const { error } = await supabase
       .from("evaluations")
