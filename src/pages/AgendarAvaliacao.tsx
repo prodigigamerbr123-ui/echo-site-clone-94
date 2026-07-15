@@ -18,6 +18,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { confirm as askConfirm } from "@/components/ui/confirm-dialog";
 import {
   buildEvaluationMessages,
   buildFollowup,
@@ -209,18 +210,28 @@ export default function AgendarAvaliacao() {
     const alreadyFuture = scheduledFuture.find((e) => e.student_id === student.id);
     if (alreadyFuture) {
       const w = format(new Date(alreadyFuture.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
-      if (!window.confirm(`${student.name} já tem avaliação marcada para ${w}. Criar outra assim mesmo?`)) return;
+      const ok = await askConfirm({
+        title: `${student.name} já tem avaliação`,
+        description: `Existe agendamento em ${w}. Criar outro para o mesmo aluno?`,
+        confirmLabel: "Criar mesmo assim",
+      });
+      if (!ok) return;
     }
 
     // Trava conflito de horário (30 min)
     const target = new Date(whenIso).getTime();
-    const conflict = scheduledFuture.find((e) => {
+    const conflictEv = scheduledFuture.find((e) => {
       const d = new Date(e.scheduled_at).getTime();
       return Math.abs(d - target) < 30 * 60 * 1000 && e.student_id !== student.id;
     });
-    if (conflict) {
-      const w = format(new Date(conflict.scheduled_at), "HH:mm");
-      if (!window.confirm(`Já existe avaliação de ${conflict.students?.name ?? "outro aluno"} às ${w}. Prosseguir?`)) return;
+    if (conflictEv) {
+      const w = format(new Date(conflictEv.scheduled_at), "HH:mm");
+      const ok = await askConfirm({
+        title: "Conflito de horário",
+        description: `Já existe avaliação de ${conflictEv.students?.name ?? "outro aluno"} às ${w} (raio de 30 min). Prosseguir?`,
+        confirmLabel: "Agendar mesmo assim",
+      });
+      if (!ok) return;
     }
 
     const { data: created, error } = await supabase
@@ -276,7 +287,13 @@ export default function AgendarAvaliacao() {
   };
 
   const handleCancel = async (ev: Evaluation) => {
-    if (!window.confirm(`Cancelar avaliação de ${ev.students?.name ?? ""}?`)) return;
+    const ok = await askConfirm({
+      title: `Cancelar avaliação${ev.students?.name ? " de " + ev.students.name : ""}?`,
+      description: "As mensagens automáticas ainda pendentes serão apagadas.",
+      confirmLabel: "Cancelar avaliação",
+      destructive: true,
+    });
+    if (!ok) return;
     await deletePendingEvalMessages(ev.id);
     const { error } = await supabase
       .from("evaluations")
@@ -387,7 +404,13 @@ export default function AgendarAvaliacao() {
   };
 
   const handleNoShow = async (ev: Evaluation) => {
-    if (!window.confirm(`Marcar ${ev.students?.name ?? ""} como faltou?`)) return;
+    const ok = await askConfirm({
+      title: `Marcar${ev.students?.name ? " " + ev.students.name : ""} como faltou?`,
+      description: "Uma mensagem de remarcação será agendada automaticamente para amanhã.",
+      confirmLabel: "Registrar falta",
+      destructive: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await deletePendingEvalMessages(ev.id);

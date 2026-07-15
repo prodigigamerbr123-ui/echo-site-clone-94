@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 
 interface PredefinedMessage {
   id: string;
@@ -254,7 +255,12 @@ export default function MensagensPredefinidas() {
               </div>
               
               <div>
-                <Label htmlFor="content">Conteúdo da Mensagem</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="content">Conteúdo da Mensagem</Label>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setContent(prev => prev + (prev.endsWith(" ") || prev.length === 0 ? "" : " ") + "{nome}")}>
+                    + {"{nome}"}
+                  </Button>
+                </div>
                 <Textarea
                   id="content"
                   placeholder="Digite o conteúdo da mensagem..."
@@ -264,9 +270,11 @@ export default function MensagensPredefinidas() {
                   maxLength={1000}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {content.length}/1000 caracteres
+                  {content.length}/1000 • Use <code>{"{nome}"}</code> para personalizar
                 </p>
               </div>
+
+              <WhatsAppPreview content={content} />
               
               <Button 
                 onClick={handleSaveMessage}

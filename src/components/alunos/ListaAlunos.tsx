@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarAlunoDialog } from "./EditarAlunoDialog";
+import { StudentSheet } from "./StudentSheet";
 
 interface Student {
   id: string;
@@ -34,6 +35,7 @@ export function ListaAlunos() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
 
   const { data: students, isLoading } = useQuery({
     queryKey: ['students'],
@@ -109,7 +111,13 @@ export function ListaAlunos() {
     });
 
   const handleDeleteStudent = async (studentId: string, studentName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o aluno ${studentName}? Esta ação não pode ser desfeita.`)) return;
+    const ok = await (await import("@/components/ui/confirm-dialog")).confirm({
+      title: `Excluir ${studentName}?`,
+      description: "Esta ação não pode ser desfeita. Todo o histórico do aluno será perdido.",
+      confirmLabel: "Excluir aluno",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const { error } = await supabase.from('students').delete().eq('id', studentId);
       if (error) throw error;
@@ -222,7 +230,7 @@ export function ListaAlunos() {
                     const active = isActive(student);
                     const pendingCount = pendingByStudent[student.id] || 0;
                     return (
-                      <TableRow key={student.id}>
+                      <TableRow key={student.id} className="cursor-pointer" onClick={() => setViewingStudent(student)}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{student.name}</span>
@@ -276,7 +284,7 @@ export function ListaAlunos() {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"
@@ -320,6 +328,12 @@ export function ListaAlunos() {
           onOpenChange={(open) => !open && setEditingStudent(null)}
         />
       )}
+
+      <StudentSheet
+        student={viewingStudent}
+        open={!!viewingStudent}
+        onOpenChange={(o) => !o && setViewingStudent(null)}
+      />
     </div>
   );
 }

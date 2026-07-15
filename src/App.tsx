@@ -10,14 +10,16 @@ import Dashboard from "./pages/Dashboard";
 import Alunos from "./pages/Alunos";
 import CadastrarAluno from "./pages/CadastrarAluno";
 import EnviarMensagem from "./pages/EnviarMensagem";
-import AgendarMensagem from "./pages/AgendarMensagem";
 import MensagensAgendadas from "./pages/MensagensAgendadas";
 import MensagensPredefinidas from "./pages/MensagensPredefinidas";
 import MensagensEnviadas from "./pages/MensagensEnviadas";
 import AssistenteIA from "./pages/AssistenteIA";
 import AvaliacaoFisica from "./pages/AvaliacaoFisica";
 import AgendarAvaliacao from "./pages/AgendarAvaliacao";
+import WhatsApp from "./pages/WhatsApp";
+import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +29,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <ConfirmDialogHost />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={
@@ -44,9 +47,10 @@ const App = () => (
                 <CadastrarAluno />
               </AppLayout>
             } />
-            <Route path="/agendar-mensagem" element={
+            <Route path="/agendar-mensagem" element={<Navigate to="/mensagens-agendadas?new=1" replace />} />
+            <Route path="/whatsapp" element={
               <AppLayout>
-                <AgendarMensagem />
+                <WhatsApp />
               </AppLayout>
             } />
             <Route path="/enviar-mensagem" element={

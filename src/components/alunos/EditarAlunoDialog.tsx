@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Cake, CreditCard, Activity } from "lucide-react";
+import { Phone, Cake, CreditCard, Activity, Check, X } from "lucide-react";
+import { formatPhoneBR } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
@@ -73,37 +74,19 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     handleInputChange('telefone', formatted);
   };
 
+  const phoneCheck = formatPhoneBR(formData.telefone);
   const validateForm = () => {
     if (!formData.nome.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, insira o nome do aluno.",
-        variant: "destructive"
-      });
+      toast({ title: "Nome obrigatório", variant: "destructive" });
       return false;
     }
-
-    if (!formData.telefone.trim()) {
-      toast({
-        title: "Telefone obrigatório",
-        description: "Por favor, insira o número do WhatsApp.",
-        variant: "destructive"
-      });
+    if (!phoneCheck.ok) {
+      toast({ title: "Telefone inválido", description: phoneCheck.reason, variant: "destructive" });
       return false;
     }
-
-    const phoneNumbers = formData.telefone.replace(/\D/g, '');
-    if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
-      toast({
-        title: "Telefone inválido",
-        description: "Por favor, insira um número de telefone válido.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
     return true;
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,6 +172,13 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
               onChange={handlePhoneChange}
               maxLength={15}
             />
+            {formData.telefone.trim() && (
+              phoneCheck.ok ? (
+                <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
+              ) : (
+                <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> {phoneCheck.reason}</p>
+              )
+            )}
           </div>
 
           {/* Data de nascimento */}
@@ -252,7 +242,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading}
+              disabled={isLoading || !phoneCheck.ok || !formData.nome.trim()}
               className="flex-1"
             >
               {isLoading ? (

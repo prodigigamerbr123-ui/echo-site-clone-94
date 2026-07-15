@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatPhoneBR } from "@/lib/phone";
 
 export const PLAN_OPTIONS = [
   "Mensal",
@@ -54,14 +55,14 @@ export function CadastrarAlunoForm() {
     handleInputChange('telefone', formatPhone(e.target.value));
   };
 
+  const phoneCheck = formatPhoneBR(formData.telefone);
   const validateForm = () => {
     if (!formData.nome.trim()) {
-      toast({ title: "Nome obrigatório", description: "Insira o nome do aluno.", variant: "destructive" });
+      toast({ title: "Nome obrigatório", variant: "destructive" });
       return false;
     }
-    const phoneNumbers = formData.telefone.replace(/\D/g, '');
-    if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
-      toast({ title: "Telefone inválido", description: "Use o formato (11) 99999-9999.", variant: "destructive" });
+    if (!phoneCheck.ok) {
+      toast({ title: "Telefone inválido", description: phoneCheck.reason, variant: "destructive" });
       return false;
     }
     return true;
@@ -177,7 +178,15 @@ export function CadastrarAlunoForm() {
                 className="h-11"
                 maxLength={15}
               />
-              <p className="text-xs text-muted-foreground">Formato: (11) 99999-9999</p>
+              {formData.telefone.trim() ? (
+                phoneCheck.ok ? (
+                  <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
+                ) : (
+                  <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> {phoneCheck.reason}</p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">Formato: (11) 99999-9999</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -228,7 +237,7 @@ export function CadastrarAlunoForm() {
         </CardContent>
       </Card>
 
-      <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
+      <Button type="submit" className="w-full h-12 text-base" disabled={isLoading || !phoneCheck.ok || !formData.nome.trim()}>
         {isLoading ? (
           <>
             <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />

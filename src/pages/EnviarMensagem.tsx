@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, Send, Users, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
+import { hasNameVar, replaceNameVar } from "@/lib/phone";
 
 interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
 interface PredefinedMessage { id: string; title: string; content: string; }
@@ -23,6 +29,7 @@ export default function EnviarMensagem() {
   const [selectedPredefined, setSelectedPredefined] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,29 +62,46 @@ export default function EnviarMensagem() {
     const m = predefinedMessages.find(x => x.id === id);
     if (m) { setMessage(m.content); setSelectedPredefined(id); }
   };
+  const insertNameVar = () => {
+    setMessage((prev) => prev + (prev.endsWith(" ") || prev.length === 0 ? "" : " ") + "{nome}");
+  };
 
+  const spreadInfo = useMemo(() => {
+    const n = selectedStudents.length;
+    if (n <= 5) return { spread: false, minutes: 0 };
+    if (n <= 20) return { spread: true, minutes: Math.min(30, n * 2) };
+    if (n <= 100) return { spread: true, minutes: 60 };
+    return { spread: true, minutes: Math.ceil(n * 0.6) }; // ~36 msgs/min
+  }, [selectedStudents.length]);
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) {
-      toast({ title: "Atenção", description: "Digite uma mensagem.", variant: "destructive" });
-      return;
-    }
-    if (selectedStudents.length === 0) {
-      toast({ title: "Atenção", description: "Selecione pelo menos um aluno.", variant: "destructive" });
-      return;
-    }
+  const enqueue = async () => {
     setSending(true);
     try {
       const selected = students.filter(s => selectedStudents.includes(s.id));
-      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-        body: { students: selected, message },
+      const now = Date.now();
+      const spanMs = spreadInfo.spread ? spreadInfo.minutes * 60 * 1000 : 0;
+      const rows = selected.map((s, i) => {
+        // baseline: 1-3 min de "arranque" e depois espalhamento
+        const startOffset = 60 * 1000 + Math.floor(Math.random() * 2 * 60 * 1000);
+        const spreadOffset = selected.length > 1 && spanMs > 0
+          ? Math.floor((spanMs / (selected.length - 1)) * i) + Math.floor(Math.random() * 20000)
+          : 0;
+        return {
+          student_id: s.id,
+          content: replaceNameVar(message.trim(), s.name),
+          scheduled_for: new Date(now + startOffset + spreadOffset).toISOString(),
+          message_type: "manual",
+          status: "pending",
+        };
       });
+      const { error } = await supabase.from('scheduled_messages').insert(rows);
       if (error) throw error;
-      const { sent = 0, failed = 0 } = data?.summary || {};
+
       toast({
-        title: sent > 0 ? "Mensagens enviadas!" : "Falha ao enviar",
-        description: `${sent} enviada(s)${failed > 0 ? `, ${failed} falhou` : ''}.`,
-        variant: failed > 0 && sent === 0 ? "destructive" : "default",
+        title: `${rows.length} mensagem(ns) na fila`,
+        description: spreadInfo.spread
+          ? `Serão enviadas de forma gradual ao longo de ~${spreadInfo.minutes} min.`
+          : "Serão enviadas nos próximos minutos.",
       });
       setMessage("");
       setSelectedStudents([]);
@@ -86,8 +110,32 @@ export default function EnviarMensagem() {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
       setSending(false);
+      setConfirmOpen(false);
     }
   };
+
+  const handleSend = () => {
+    if (!message.trim()) {
+      toast({ title: "Digite uma mensagem", variant: "destructive" });
+      return;
+    }
+    if (selectedStudents.length === 0) {
+      toast({ title: "Selecione pelo menos um aluno", variant: "destructive" });
+      return;
+    }
+    if (selectedStudents.length > 100) {
+      setConfirmOpen(true);
+      return;
+    }
+    enqueue();
+  };
+
+  const previewName = useMemo(() => {
+    if (selectedStudents.length === 1) {
+      return students.find(s => s.id === selectedStudents[0])?.name;
+    }
+    return undefined;
+  }, [selectedStudents, students]);
 
   if (loading) {
     return (
@@ -104,23 +152,16 @@ export default function EnviarMensagem() {
           <Send className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Envio Manual</h1>
-          <p className="text-muted-foreground">Envio manual via WhatsApp pela Evolution API</p>
-        </div>
-        <div className="ml-auto">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/mensagens-agendadas">Ver Mensagens Agendadas</Link>
-          </Button>
+          <h1 className="text-2xl font-bold">Enviar Mensagem</h1>
+          <p className="text-muted-foreground">Envio via fila protegida — evita banimento do WhatsApp</p>
         </div>
       </div>
 
-      <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-        <p className="text-sm">
-          <strong>Envio direto:</strong> As mensagens são enviadas pela Evolution API conectada ao WhatsApp da academia. Mensagens agendadas também são enviadas automaticamente no horário programado.
-        </p>
+      <div className="p-3 bg-primary/5 rounded-lg border border-primary/20 text-sm">
+        <strong>Envio gradual:</strong> as mensagens entram na fila e são enviadas nos próximos minutos, de forma gradual, para proteger o número do WhatsApp da academia.{" "}
+        <Link to="/mensagens-agendadas" className="underline text-primary">Acompanhar em Mensagens Agendadas</Link>
       </div>
 
-      {/* Seção: Nova Mensagem */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -140,7 +181,7 @@ export default function EnviarMensagem() {
           </CardHeader>
           <CardContent className="space-y-2 max-h-96 overflow-y-auto">
             {filteredStudents.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum aluno encontrado." : "Nenhum aluno cadastrado."}</p>
+              <p className="text-center text-muted-foreground py-8">Nenhum aluno.</p>
             ) : (
               filteredStudents.map(s => (
                 <div
@@ -180,7 +221,12 @@ export default function EnviarMensagem() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Conteúdo</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Conteúdo</label>
+                <Button type="button" variant="ghost" size="sm" onClick={insertNameVar}>
+                  + Inserir {"{nome}"}
+                </Button>
+              </div>
               <Textarea
                 placeholder="Digite a mensagem..."
                 value={message}
@@ -188,20 +234,49 @@ export default function EnviarMensagem() {
                 className="min-h-32"
                 maxLength={1000}
               />
-              <p className="text-xs text-muted-foreground mt-1">{message.length}/1000</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {message.length}/1000 • Use <code>{"{nome}"}</code> para personalizar automaticamente
+              </p>
             </div>
+
+            <WhatsAppPreview content={message} studentName={previewName} />
+
+            {spreadInfo.spread && (
+              <p className="text-xs text-muted-foreground">
+                ⏱ {selectedStudents.length} alunos → distribuído ao longo de ~{spreadInfo.minutes} minutos
+                {hasNameVar(message) && " • {nome} substituído por aluno"}
+              </p>
+            )}
+
             <Button
-              onClick={handleSendMessage}
+              onClick={handleSend}
               disabled={sending || !message.trim() || selectedStudents.length === 0}
               className="w-full"
             >
-              {sending ? "Enviando..." : (
-                <><Send className="h-4 w-4 mr-2" />Enviar via WhatsApp ({selectedStudents.length})</>
-              )}
+              <Send className="h-4 w-4 mr-2" />
+              {sending ? "Enfileirando..." : `Enfileirar envio (${selectedStudents.length})`}
             </Button>
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar envio em massa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a enviar para <strong>{selectedStudents.length} alunos</strong>.
+              As mensagens serão distribuídas ao longo de <strong>~{spreadInfo.minutes} minutos</strong>{" "}
+              (~{Math.ceil(spreadInfo.minutes / 60)}h) para não ser bloqueado pelo WhatsApp.
+              Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={enqueue}>Enviar para {selectedStudents.length}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

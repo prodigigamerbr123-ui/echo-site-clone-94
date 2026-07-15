@@ -1,11 +1,11 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, Calendar, Clock, User, MessageSquare } from "lucide-react";
+import { Edit2, Trash2, Calendar, Clock, User, MessageSquare, Bot, Hand, RotateCcw, AlertCircle } from "lucide-react";
+import { AUTO_EVAL_MESSAGE_TYPES } from "@/lib/evaluationMessages";
 
 interface ScheduledMessage {
   id: string;
@@ -15,310 +15,206 @@ interface ScheduledMessage {
   message_type: string;
   created_at: string;
   student_id: string;
-  students?: {
-    name: string;
-    phone: string;
-  };
+  failure_reason?: string | null;
+  retry_count?: number | null;
+  evaluation_id?: string | null;
+  students?: { name: string; phone: string; };
 }
 
-interface MessagesListProps {
+interface Props {
   messages: ScheduledMessage[];
   searchTerm: string;
   dateFilter: string;
   customDateRange: { from?: Date; to?: Date };
   selectedStudents: string[];
   selectedMessages: string[];
-  onMessageSelect: (messageId: string, isSelected: boolean) => void;
-  onSelectAll: (isSelected: boolean) => void;
+  onMessageSelect: (id: string, isSel: boolean) => void;
+  onSelectAll: (sel: boolean) => void;
   onDeleteSelected: () => void;
-  onEdit: (message: ScheduledMessage) => void;
-  onDelete: (messageId: string) => void;
+  onEdit: (m: ScheduledMessage) => void;
+  onDelete: (id: string) => void;
+  onRetry?: (id: string) => void;
 }
 
+const AUTO_TYPES = new Set<string>([
+  ...AUTO_EVAL_MESSAGE_TYPES,
+  "evaluation_reminder",
+  "birthday",
+  "evaluation_followup",
+  "evaluation_reschedule",
+]);
+
+const isAutoType = (t: string) => AUTO_TYPES.has(t);
+
 const getMessageTypeLabel = (type: string) => {
-  switch (type) {
-    case '7_day_followup':
-      return 'Followup 7 dias';
-    case '21_day_followup':
-      return 'Followup 21 dias';
-    case '45_day_followup':
-      return 'Followup 45 dias';
-    case 'manual':
-      return 'Manual';
-    default:
-      return type;
-  }
+  const labels: Record<string, string> = {
+    "7_day_followup": "Followup 7d",
+    "21_day_followup": "Followup 21d",
+    "45_day_followup": "Followup 45d",
+    "manual": "Manual",
+    "recurring": "Recorrente",
+    "evaluation_confirmation": "Confirmação avaliação",
+    "evaluation_reminder_1d": "Lembrete véspera",
+    "evaluation_reminder_day": "Lembrete no dia",
+    "evaluation_followup": "Follow-up avaliação",
+    "evaluation_reschedule": "Remarcar avaliação",
+    "evaluation_reminder": "Avaliação vencida",
+    "birthday": "Aniversário",
+  };
+  return labels[type] || type;
 };
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case 'pending':
-      return <Badge variant="secondary">Pendente</Badge>;
-    case 'sent':
-      return <Badge variant="default">Enviada</Badge>;
-    case 'failed':
-      return <Badge variant="destructive">Falhou</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
+    case "pending": return <Badge variant="secondary">Pendente</Badge>;
+    case "sent": return <Badge>Enviada</Badge>;
+    case "failed": return <Badge variant="destructive">Falhou</Badge>;
+    case "processing": return <Badge variant="outline">Enviando...</Badge>;
+    default: return <Badge variant="outline">{status}</Badge>;
   }
 };
 
-export const getFilteredMessagesCount = (
+function applyFilters(
   messages: ScheduledMessage[],
   searchTerm: string,
   dateFilter: string,
   customDateRange: { from?: Date; to?: Date },
-  selectedStudents: string[]
-) => {
-  return messages.filter((message) => {
-    const matchesSearch = 
-      message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.phone.includes(searchTerm);
-    
-    const messageDate = new Date(message.scheduled_for);
+  selectedStudents: string[],
+) {
+  return messages.filter((m) => {
+    const matchS = m.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.students?.phone.includes(searchTerm);
+    const md = new Date(m.scheduled_for);
     const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    let matchesDate = true;
-    switch (dateFilter) {
-      case 'today':
-        const endOfToday = new Date(startOfToday);
-        endOfToday.setDate(endOfToday.getDate() + 1);
-        matchesDate = messageDate >= startOfToday && messageDate < endOfToday;
-        break;
-      case 'this-month':
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-        matchesDate = messageDate >= startOfMonth && messageDate < endOfMonth;
-        break;
-      case 'custom':
-        if (customDateRange.from && customDateRange.to) {
-          const fromDate = new Date(customDateRange.from);
-          const toDate = new Date(customDateRange.to);
-          toDate.setHours(23, 59, 59, 999);
-          matchesDate = messageDate >= fromDate && messageDate <= toDate;
-        } else if (customDateRange.from) {
-          matchesDate = messageDate >= new Date(customDateRange.from);
-        }
-        break;
+    const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    let matchD = true;
+    if (dateFilter === "today") {
+      const end = new Date(startToday); end.setDate(end.getDate() + 1);
+      matchD = md >= startToday && md < end;
+    } else if (dateFilter === "this-month") {
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      matchD = md >= startMonth && md < end;
+    } else if (dateFilter === "custom") {
+      if (customDateRange.from && customDateRange.to) {
+        const to = new Date(customDateRange.to); to.setHours(23, 59, 59, 999);
+        matchD = md >= new Date(customDateRange.from) && md <= to;
+      } else if (customDateRange.from) {
+        matchD = md >= new Date(customDateRange.from);
+      }
     }
-    
-    const matchesStudents = selectedStudents.length === 0 || selectedStudents.includes(message.student_id);
-    
-    return matchesSearch && matchesDate && matchesStudents;
-  }).length;
-};
+    const matchU = selectedStudents.length === 0 || selectedStudents.includes(m.student_id);
+    return matchS && matchD && matchU;
+  });
+}
+
+export const getFilteredMessagesCount = (
+  messages: ScheduledMessage[], searchTerm: string, dateFilter: string,
+  customDateRange: { from?: Date; to?: Date }, selectedStudents: string[],
+) => applyFilters(messages, searchTerm, dateFilter, customDateRange, selectedStudents).length;
 
 export default function MessagesList({
-  messages,
-  searchTerm,
-  dateFilter,
-  customDateRange,
-  selectedStudents,
-  selectedMessages,
-  onMessageSelect,
-  onSelectAll,
-  onDeleteSelected,
-  onEdit,
-  onDelete
-}: MessagesListProps) {
-  const [showAllMessages, setShowAllMessages] = useState(false);
+  messages, searchTerm, dateFilter, customDateRange, selectedStudents,
+  selectedMessages, onMessageSelect, onSelectAll, onDeleteSelected, onEdit, onDelete, onRetry,
+}: Props) {
+  const [showAll, setShowAll] = useState(false);
+  const filtered = applyFilters(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
+  const display = showAll ? filtered : filtered.slice(0, 10);
+  const allSel = filtered.length > 0 && filtered.every(m => selectedMessages.includes(m.id));
 
-  const filteredMessages = messages.filter((message) => {
-    const matchesSearch = 
-      message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.phone.includes(searchTerm);
-    
-    const messageDate = new Date(message.scheduled_for);
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    let matchesDate = true;
-    switch (dateFilter) {
-      case 'today':
-        const endOfToday = new Date(startOfToday);
-        endOfToday.setDate(endOfToday.getDate() + 1);
-        matchesDate = messageDate >= startOfToday && messageDate < endOfToday;
-        break;
-      case 'this-month':
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-        matchesDate = messageDate >= startOfMonth && messageDate < endOfMonth;
-        break;
-      case 'custom':
-        if (customDateRange.from && customDateRange.to) {
-          const fromDate = new Date(customDateRange.from);
-          const toDate = new Date(customDateRange.to);
-          toDate.setHours(23, 59, 59, 999);
-          matchesDate = messageDate >= fromDate && messageDate <= toDate;
-        } else if (customDateRange.from) {
-          matchesDate = messageDate >= new Date(customDateRange.from);
-        }
-        break;
-    }
-    
-    const matchesStudents = selectedStudents.length === 0 || selectedStudents.includes(message.student_id);
-    
-    return matchesSearch && matchesDate && matchesStudents;
-  });
-
-  const displayMessages = showAllMessages ? filteredMessages : filteredMessages.slice(0, 5);
-  const allSelected = filteredMessages.length > 0 && filteredMessages.every(msg => selectedMessages.includes(msg.id));
-  const someSelected = filteredMessages.some(msg => selectedMessages.includes(msg.id));
-
-  const handleRowClick = (messageId: string, event: React.MouseEvent) => {
-    // Don't trigger row selection if clicking on action buttons
-    if ((event.target as HTMLElement).closest('.action-buttons')) {
-      return;
-    }
-    
-    const isSelected = selectedMessages.includes(messageId);
-    onMessageSelect(messageId, !isSelected);
-  };
-
-  if (filteredMessages.length === 0) {
+  if (filtered.length === 0) {
     return (
       <div className="text-center py-8">
         <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <p className="text-muted-foreground">
-          Nenhuma mensagem encontrada com os filtros aplicados.
-        </p>
+        <p className="text-muted-foreground">Nenhuma mensagem com os filtros aplicados.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Header with bulk actions */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={allSelected}
-              onCheckedChange={(checked) => onSelectAll(checked as boolean)}
-              className={someSelected && !allSelected ? "data-[state=checked]:bg-primary/50" : ""}
-            />
-            <span className="text-sm text-muted-foreground">
-              {selectedMessages.length > 0 ? `${selectedMessages.length} selecionada(s)` : "Selecionar todas"}
-            </span>
-          </div>
-          
+        <div className="flex items-center gap-3">
+          <Checkbox checked={allSel} onCheckedChange={(c) => onSelectAll(!!c)} />
+          <span className="text-sm text-muted-foreground">
+            {selectedMessages.length > 0 ? `${selectedMessages.length} selecionada(s)` : "Selecionar todas"}
+          </span>
           {selectedMessages.length > 0 && (
-            <Button
-              onClick={onDeleteSelected}
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Excluir Selecionadas
+            <Button onClick={onDeleteSelected} variant="destructive" size="sm">
+              <Trash2 className="h-3 w-3 mr-1" /> Excluir selecionadas
             </Button>
           )}
         </div>
       </div>
 
-      {/* Messages list */}
-      <div className="space-y-3">
-        {displayMessages.map((message) => (
-          <div
-            key={message.id}
-            className={`p-4 border rounded-lg transition-colors cursor-pointer hover:bg-muted/50 ${
-              selectedMessages.includes(message.id) ? 'bg-muted/30 border-primary/50' : 'hover:border-muted-foreground/20'
-            }`}
-            onClick={(e) => handleRowClick(message.id, e)}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
+      <div className="space-y-2">
+        {display.map((m) => {
+          const auto = isAutoType(m.message_type);
+          return (
+            <div
+              key={m.id}
+              className={`p-3 border rounded-lg hover:bg-muted/40 transition-colors ${
+                selectedMessages.includes(m.id) ? "bg-muted/30 border-primary/50" : ""
+              }`}
+            >
+              <div className="flex items-start gap-3">
                 <Checkbox
-                  checked={selectedMessages.includes(message.id)}
-                  onChange={() => {}} // Controlled by row click
-                  className="mt-1 pointer-events-none"
+                  checked={selectedMessages.includes(m.id)}
+                  onCheckedChange={(c) => onMessageSelect(m.id, !!c)}
+                  className="mt-1"
                 />
-                
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      <span className="font-medium">{message.students?.name}</span>
-                      <span>({message.students?.phone})</span>
-                    </div>
-                    {getStatusBadge(message.status)}
-                    <Badge variant="outline" className="text-xs">
-                      {getMessageTypeLabel(message.message_type)}
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <User className="h-3 w-3 text-muted-foreground" />
+                    <span className="font-medium text-sm">{m.students?.name}</span>
+                    <span className="text-xs text-muted-foreground">{m.students?.phone}</span>
+                    {getStatusBadge(m.status)}
+                    <Badge variant="outline" className="text-xs gap-1">
+                      {auto ? <Bot className="h-3 w-3" /> : <Hand className="h-3 w-3" />}
+                      {auto ? "Automática" : "Manual"}
                     </Badge>
+                    <Badge variant="outline" className="text-xs">{getMessageTypeLabel(m.message_type)}</Badge>
                   </div>
-                  
-                  <p className="text-sm mb-3 break-words">{message.content}</p>
-                  
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>
-                        {format(new Date(message.scheduled_for), "dd/MM/yyyy", { locale: ptBR })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>
-                        {format(new Date(message.scheduled_for), "HH:mm", { locale: ptBR })}
-                      </span>
-                    </div>
+                  <p className="text-sm mb-2 break-words">{m.content}</p>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(m.scheduled_for), "dd/MM/yyyy", { locale: ptBR })}</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(m.scheduled_for), "HH:mm")}</span>
                   </div>
+                  {m.status === "failed" && (
+                    <div className="mt-2 flex items-start gap-2 text-xs bg-destructive/10 border border-destructive/30 rounded p-2">
+                      <AlertCircle className="h-3 w-3 text-destructive mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-destructive font-medium">
+                          Falhou{m.retry_count ? ` ${m.retry_count}x` : ""}{m.failure_reason ? `: ${m.failure_reason}` : ""}
+                        </p>
+                      </div>
+                      {onRetry && (
+                        <Button size="sm" variant="outline" className="h-6" onClick={() => onRetry(m.id)}>
+                          <RotateCcw className="h-3 w-3 mr-1" /> Tentar de novo
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(m)}>
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(m.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              
-              <div className="action-buttons flex items-center gap-2 shrink-0">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(message);
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(message.id);
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Show more button */}
-      {!showAllMessages && filteredMessages.length > 5 && (
+      {filtered.length > 10 && (
         <div className="text-center">
-          <Button
-            onClick={() => setShowAllMessages(true)}
-            variant="outline"
-            className="gap-2"
-          >
-            Ver todas ({filteredMessages.length - 5} restantes)
-          </Button>
-        </div>
-      )}
-      
-      {showAllMessages && filteredMessages.length > 5 && (
-        <div className="text-center">
-          <Button
-            onClick={() => setShowAllMessages(false)}
-            variant="outline"
-            className="gap-2"
-          >
-            Ver menos
+          <Button variant="outline" onClick={() => setShowAll(!showAll)}>
+            {showAll ? "Ver menos" : `Ver todas (${filtered.length - 10} restantes)`}
           </Button>
         </div>
       )}
