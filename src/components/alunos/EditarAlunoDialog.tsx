@@ -172,6 +172,13 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
               onChange={handlePhoneChange}
               maxLength={15}
             />
+            {formData.telefone.trim() && (
+              phoneCheck.ok ? (
+                <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
+              ) : (
+                <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> {phoneCheck.reason}</p>
+              )
+            )}
           </div>
 
           {/* Data de nascimento */}
