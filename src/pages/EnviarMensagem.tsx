@@ -40,7 +40,7 @@ export default function EnviarMensagem() {
   }, []);
 
   const fetchStudents = async () => {
-    const { data } = await supabase.from('students').select('id, name, phone, had_evaluation').order('name');
+    const { data } = await supabase.from('students').select('id, name, phone, had_evaluation').order('name').limit(5000);
     setStudents(data || []);
   };
   const fetchPredefinedMessages = async () => {

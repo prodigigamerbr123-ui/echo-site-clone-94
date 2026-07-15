@@ -44,7 +44,8 @@ export function TodayInbox() {
     queryKey: ["today-birthdays"],
     queryFn: async () => {
       const { data: students } = await supabase.from("students")
-        .select("id, name, birth_date").not("birth_date", "is", null);
+        .select("id, name, birth_date").not("birth_date", "is", null).limit(5000);
+
       const now = new Date();
       const mm = String(now.getMonth() + 1).padStart(2, "0");
       const dd = String(now.getDate()).padStart(2, "0");
@@ -77,7 +78,8 @@ export function TodayInbox() {
           .select("id, content, failure_reason, students(name)")
           .eq("status", "failed").gte("updated_at", dayAgo.toISOString()).limit(5),
         supabase.from("students").select("id, last_evaluation_date, had_evaluation, created_at, status")
-          .eq("status", "active"),
+          .eq("status", "active").limit(5000),
+
       ]);
       const overdueCount = (overdue || []).filter((s: any) => {
         if (s.last_evaluation_date) {

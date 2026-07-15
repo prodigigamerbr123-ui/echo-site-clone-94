@@ -49,7 +49,9 @@ export const useDashboardStats = () => {
       const { data: birthdayStudents } = await supabase
         .from('students')
         .select('*')
-        .not('birth_date', 'is', null);
+        .not('birth_date', 'is', null)
+        .limit(5000);
+
 
       // Filter birthdays on the client side since Supabase has issues with date comparisons
       const birthdaysToday = birthdayStudents?.filter(student => {
@@ -92,7 +94,8 @@ export const useTodayActions = () => {
       const { data: allStudents } = await supabase
         .from('students')
         .select('id, name, phone, birth_date')
-        .not('birth_date', 'is', null);
+        .not('birth_date', 'is', null)
+        .limit(5000);
 
       // Filter birthdays on the client side
       const birthdayStudents = allStudents?.filter(student => {
@@ -107,7 +110,9 @@ export const useTodayActions = () => {
       const { data: studentsNeedingEvaluation } = await supabase
         .from('students')
         .select('id, name, phone, last_evaluation_date, had_evaluation')
-        .or(`last_evaluation_date.lt.${format(sevenDaysAgo, 'yyyy-MM-dd')},and(had_evaluation.eq.false)`);
+        .or(`last_evaluation_date.lt.${format(sevenDaysAgo, 'yyyy-MM-dd')},and(had_evaluation.eq.false)`)
+        .limit(5000);
+
 
       // Get students created 7 days ago for first follow-up
       const { data: studentsNeeding7DayFollowUp } = await supabase

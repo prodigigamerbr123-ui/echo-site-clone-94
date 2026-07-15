@@ -65,7 +65,7 @@ export default function MensagensAgendadas() {
         .select("*, students(name, phone)")
         .neq("status", "sent")
         .order("scheduled_for", { ascending: true }),
-      supabase.from("students").select("id, name, phone").order("name"),
+      supabase.from("students").select("id, name, phone").order("name").limit(5000),
     ]);
     setMessages(m || []);
     setStudents(s || []);

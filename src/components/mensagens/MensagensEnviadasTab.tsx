@@ -73,7 +73,9 @@ export default function MensagensEnviadasTab() {
       const { data, error } = await supabase
         .from('students')
         .select('id, name, phone')
-        .order('name');
+        .order('name')
+        .limit(5000);
+
 
       if (error) throw error;
       setStudents(data || []);

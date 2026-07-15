@@ -44,7 +44,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
 
   useEffect(() => {
     (async () => {
-      const { data: s } = await supabase.from("students").select("id, name, phone").order("name");
+      const { data: s } = await supabase.from("students").select("id, name, phone").order("name").limit(5000);
       setStudents(s || []);
       const { data: p } = await supabase.from("predefined_messages").select("*").order("title");
       setPredefined(p || []);
