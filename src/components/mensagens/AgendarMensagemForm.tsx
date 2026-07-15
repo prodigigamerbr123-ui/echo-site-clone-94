@@ -34,6 +34,8 @@ export function AgendarMensagemForm({ onSaved }: Props) {
   const [studentOpen, setStudentOpen] = useState(false);
   const [content, setContent] = useState("");
   const [mode, setMode] = useState<"quick" | "custom">("quick");
+  const [quickWhen, setQuickWhen] = useState<"today" | "later">("today");
+  const [quickRepeat, setQuickRepeat] = useState(false);
   const [quick, setQuick] = useState({ days7: false, days21: false, days45: false });
   const [quickTime, setQuickTime] = useState("10:00");
   const [date, setDate] = useState("");
@@ -67,18 +69,32 @@ export function AgendarMensagemForm({ onSaved }: Props) {
       if (mode === "quick") {
         const [h, m] = quickTime.split(":").map(Number);
         const now = new Date();
-        const opts: [boolean, number, string][] = [
-          [quick.days7, 7, "7_day_followup"],
-          [quick.days21, 21, "21_day_followup"],
-          [quick.days45, 45, "45_day_followup"],
-        ];
-        for (const [on, d, type] of opts) {
-          if (!on) continue;
-          const dt = new Date(now.getTime() + d * 86400000);
+        const makeDate = (daysFromNow: number) => {
+          const dt = new Date(now.getTime() + daysFromNow * 86400000);
           dt.setHours(h, m, 0, 0);
-          rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: type, status: "pending" });
+          return dt;
+        };
+
+        if (quickWhen === "today") {
+          const dt = makeDate(0);
+          if (dt <= now) throw new Error("Horário de hoje já passou");
+          rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: "manual", status: "pending" });
         }
-        if (!rows.length) throw new Error("Selecione pelo menos um preset");
+
+        if (quickWhen === "later" || quickRepeat) {
+          const opts: [boolean, number, string][] = [
+            [quick.days7, 7, "7_day_followup"],
+            [quick.days21, 21, "21_day_followup"],
+            [quick.days45, 45, "45_day_followup"],
+          ];
+          for (const [on, d, type] of opts) {
+            if (!on) continue;
+            const dt = makeDate(d);
+            rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: type, status: "pending" });
+          }
+        }
+
+        if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
       } else {
         if (!date || !time) throw new Error("Preencha data e horário");
         const base = new Date(`${date}T${time}`);
@@ -169,17 +185,79 @@ export function AgendarMensagemForm({ onSaved }: Props) {
       </div>
 
       {mode === "quick" ? (
-        <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-2">
-            {(["days7", "days21", "days45"] as const).map((k, idx) => (
-              <label key={k} className="flex items-center gap-2 rounded border p-2 cursor-pointer">
-                <Checkbox checked={quick[k]} onCheckedChange={(v) => setQuick(prev => ({ ...prev, [k]: !!v }))} />
-                <span className="text-sm">+{[7, 21, 45][idx]}d</span>
-              </label>
-            ))}
-          </div>
+        <div className="space-y-4">
           <div>
-            <Label>Horário</Label>
+            <Label className="text-sm">Quando enviar?</Label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <Button
+                type="button"
+                variant={quickWhen === "today" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setQuickWhen("today")}
+              >
+                Hoje
+              </Button>
+              <Button
+                type="button"
+                variant={quickWhen === "later" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setQuickWhen("later")}
+              >
+                Daqui alguns dias
+              </Button>
+            </div>
+          </div>
+
+          {quickWhen === "today" && (
+            <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer">
+              <Checkbox
+                checked={quickRepeat}
+                onCheckedChange={(v) => setQuickRepeat(!!v)}
+                className="mt-0.5"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-medium">Quer que a mensagem se repita?</div>
+                <div className="text-xs text-muted-foreground">
+                  Reenvia automaticamente daqui a 7, 21 ou 45 dias
+                </div>
+              </div>
+            </label>
+          )}
+
+          {(quickWhen === "later" || quickRepeat) && (
+            <div>
+              <Label className="text-sm">
+                {quickWhen === "later" ? "Enviar daqui a:" : "Repetir daqui a:"}
+              </Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Selecione um ou mais períodos
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["days7", 7, "7 dias"],
+                  ["days21", 21, "21 dias"],
+                  ["days45", 45, "45 dias"],
+                ] as const).map(([k, d, label]) => (
+                  <label
+                    key={k}
+                    className={`flex flex-col items-center gap-1 rounded-md border p-3 cursor-pointer transition-colors ${
+                      quick[k] ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={quick[k]}
+                      onCheckedChange={(v) => setQuick(prev => ({ ...prev, [k]: !!v }))}
+                    />
+                    <span className="text-sm font-medium">+{d}d</span>
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Label>Horário de envio</Label>
             <Input type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} />
           </div>
         </div>
