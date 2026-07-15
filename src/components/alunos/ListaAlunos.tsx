@@ -197,6 +197,7 @@ export function ListaAlunos() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>WhatsApp</TableHead>
+                    <TableHead>Plano</TableHead>
                     <TableHead>Cadastrado em</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
