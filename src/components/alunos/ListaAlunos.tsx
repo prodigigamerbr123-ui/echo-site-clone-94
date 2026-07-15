@@ -227,6 +227,13 @@ export function ListaAlunos() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          {student.plan ? (
+                            <Badge variant="outline" className="text-xs">{student.plan}</Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="h-4 w-4" />
                             {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
