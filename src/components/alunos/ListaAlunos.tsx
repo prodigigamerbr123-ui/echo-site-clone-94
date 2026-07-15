@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -210,6 +210,7 @@ export function ListaAlunos() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>WhatsApp</TableHead>
+                    <TableHead>Aniversário</TableHead>
                     <TableHead>Plano</TableHead>
                     <TableHead>Cadastrado em</TableHead>
                     <TableHead>Status</TableHead>
@@ -238,6 +239,16 @@ export function ListaAlunos() {
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             {student.phone}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {student.birth_date ? (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Cake className="h-4 w-4 text-muted-foreground" />
+                              {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {student.plan ? (
