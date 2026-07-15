@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, subDays, startOfDay, endOfDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, subDays, startOfDay, endOfDay, endOfWeek, startOfWeek } from "date-fns";
 
 export const useDashboardStats = () => {
   return useQuery({
@@ -12,11 +12,26 @@ export const useDashboardStats = () => {
       const monthEnd = endOfMonth(now);
       const todayStart = startOfDay(now);
       const todayEnd = endOfDay(now);
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
       // Get total students
       const { count: totalStudents } = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true });
+
+      // Active students
+      const { count: activeStudents } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      // New students this month
+      const { count: newStudentsMonth } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', monthStart.toISOString())
+        .lte('created_at', monthEnd.toISOString());
 
       // Get messages to send today from scheduled_messages
       const { count: messagesToSendToday } = await supabase
@@ -42,6 +57,43 @@ export const useDashboardStats = () => {
         .gte('sent_at', todayStart.toISOString())
         .lte('sent_at', todayEnd.toISOString());
 
+      // Evaluations today (scheduled)
+      const { count: evaluationsToday } = await supabase
+        .from('evaluations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', todayStart.toISOString())
+        .lte('scheduled_at', todayEnd.toISOString());
+
+      // Evaluations this week (scheduled)
+      const { count: evaluationsWeek } = await supabase
+        .from('evaluations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', weekStart.toISOString())
+        .lte('scheduled_at', weekEnd.toISOString());
+
+      // Overdue evaluations (scheduled in the past, not completed)
+      const { count: evaluationsOverdue } = await supabase
+        .from('evaluations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'scheduled')
+        .lt('scheduled_at', todayStart.toISOString());
+
+      // Evaluations completed this month
+      const { count: evaluationsCompletedMonth } = await supabase
+        .from('evaluations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .gte('completed_at', monthStart.toISOString())
+        .lte('completed_at', monthEnd.toISOString());
+
+      // Students without any evaluation yet
+      const { count: studentsWithoutEvaluation } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('had_evaluation', false);
+
       // Get students with birthdays today - fix the date format comparison
       const todayMonth = format(now, 'MM');
       const todayDay = format(now, 'dd');
@@ -62,18 +114,18 @@ export const useDashboardStats = () => {
         return birthMonth === todayMonth && birthDay === todayDay;
       }).length || 0;
 
-      console.log('Dashboard Stats:', {
-        totalStudents,
-        messagesToSendToday,
-        scheduledMessages,
-        birthdaysToday
-      });
-
       return {
         totalStudents: totalStudents || 0,
+        activeStudents: activeStudents || 0,
+        newStudentsMonth: newStudentsMonth || 0,
         messagesToSendToday: messagesToSendToday || 0,
         scheduledMessages: scheduledMessages || 0,
         messagesSentToday: messagesSentToday || 0,
+        evaluationsToday: evaluationsToday || 0,
+        evaluationsWeek: evaluationsWeek || 0,
+        evaluationsOverdue: evaluationsOverdue || 0,
+        evaluationsCompletedMonth: evaluationsCompletedMonth || 0,
+        studentsWithoutEvaluation: studentsWithoutEvaluation || 0,
         birthdaysToday,
       };
     },
