@@ -1,6 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import workoutLogo from "@/assets/workout-combined.png.asset.json";
+import workoutLogo from "@/assets/workout-combined-v2.png.asset.json";
 
 export function AppHeader() {
   return (
