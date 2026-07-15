@@ -438,21 +438,31 @@ export default function AgendarAvaliacao() {
         .from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
       if (error) throw error;
 
-      // Remarcar msg amanhã 09-12h
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
-      await supabase.from("scheduled_messages").insert({
-        student_id: ev.student_id,
-        content: buildReschedule(ev.students?.name ?? "aluno"),
-        scheduled_for: tomorrow.toISOString(),
-        message_type: "evaluation_reschedule",
-        status: "pending",
-        evaluation_id: ev.id,
-      });
+      // Mensagem de remarcação só se `no_show_reschedule` estiver ligada
+      const nSettings = await fetchAutomationSettings();
+      let rescheduleScheduled = false;
+      if (nSettings.no_show_reschedule?.enabled) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+        await supabase.from("scheduled_messages").insert({
+          student_id: ev.student_id,
+          content: buildReschedule(ev.students?.name ?? "aluno"),
+          scheduled_for: tomorrow.toISOString(),
+          message_type: "evaluation_reschedule",
+          status: "pending",
+          evaluation_id: ev.id,
+        });
+        rescheduleScheduled = true;
+      }
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
-      toast({ title: "Falta registrada", description: "Mensagem de remarcação enviada para amanhã." });
+      toast({
+        title: "Falta registrada",
+        description: rescheduleScheduled
+          ? "Mensagem de remarcação agendada para amanhã."
+          : "Remarcação automática está desligada.",
+      });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
