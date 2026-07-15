@@ -210,7 +210,7 @@ export default function AgendarAvaliacao() {
     const alreadyFuture = scheduledFuture.find((e) => e.student_id === student.id);
     if (alreadyFuture) {
       const w = format(new Date(alreadyFuture.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
-      const ok = await confirm({
+      const ok = await askConfirm({
         title: `${student.name} já tem avaliação`,
         description: `Existe agendamento em ${w}. Criar outro para o mesmo aluno?`,
         confirmLabel: "Criar mesmo assim",
@@ -226,7 +226,7 @@ export default function AgendarAvaliacao() {
     });
     if (conflictEv) {
       const w = format(new Date(conflictEv.scheduled_at), "HH:mm");
-      const ok = await confirm({
+      const ok = await askConfirm({
         title: "Conflito de horário",
         description: `Já existe avaliação de ${conflictEv.students?.name ?? "outro aluno"} às ${w} (raio de 30 min). Prosseguir?`,
         confirmLabel: "Agendar mesmo assim",
