@@ -74,37 +74,19 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     handleInputChange('telefone', formatted);
   };
 
+  const phoneCheck = formatPhoneBR(formData.telefone);
   const validateForm = () => {
     if (!formData.nome.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, insira o nome do aluno.",
-        variant: "destructive"
-      });
+      toast({ title: "Nome obrigatório", variant: "destructive" });
       return false;
     }
-
-    if (!formData.telefone.trim()) {
-      toast({
-        title: "Telefone obrigatório",
-        description: "Por favor, insira o número do WhatsApp.",
-        variant: "destructive"
-      });
+    if (!phoneCheck.ok) {
+      toast({ title: "Telefone inválido", description: phoneCheck.reason, variant: "destructive" });
       return false;
     }
-
-    const phoneNumbers = formData.telefone.replace(/\D/g, '');
-    if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
-      toast({
-        title: "Telefone inválido",
-        description: "Por favor, insira um número de telefone válido.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
     return true;
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
