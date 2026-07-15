@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -240,6 +240,15 @@ export function ListaAlunos() {
                             {student.phone}
                           </div>
                         </TableCell>
+                        <TableCell>
+                          {student.birth_date ? (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Cake className="h-4 w-4 text-muted-foreground" />
+                              {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         <TableCell>
                           {student.plan ? (
                             <Badge variant="outline" className="text-xs">{student.plan}</Badge>
