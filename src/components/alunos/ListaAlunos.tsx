@@ -21,6 +21,8 @@ interface Student {
   last_evaluation_date: string | null;
   had_evaluation: boolean;
   created_at: string;
+  plan: string | null;
+  status: string;
 }
 
 const ACTIVE_DAYS = 30;
