@@ -254,7 +254,12 @@ export async function createEvaluationWithMessages(
     .single();
   if (error) throw error;
 
-  const auto = buildEvaluationMessages(student.name, scheduledAt);
+  // Só cria as 3 mensagens automáticas se `evaluation_reminders` estiver ligada
+  const settings = await loadAutomationSettings(supabase);
+  const remindersEnabled = settingEnabled(settings, "evaluation_reminders");
+  const auto = remindersEnabled
+    ? buildEvaluationMessages(student.name, scheduledAt)
+    : [];
   if (auto.length > 0) {
     const { error: mErr } = await supabase.from("scheduled_messages").insert(
       auto.map((m) => ({
@@ -315,8 +320,15 @@ export async function completeEvaluation(
     .eq("status", "pending")
     .limit(1);
 
+  // Follow-up só se `evaluation_followup` estiver ligada
+  const settings = await loadAutomationSettings(supabase);
+  if (!settingEnabled(settings, "evaluation_followup")) {
+    return { followup_scheduled: false };
+  }
+  const daysAfter = settingParam(settings, "evaluation_followup", "days_after", 7);
+
   if (!existingFu || existingFu.length === 0) {
-    const followup = new Date(evalDate.getTime() + 7 * 86400000);
+    const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
     // 9-12h SP com minutos aleatórios
     const fp = spParts(followup);
     const followupSp = spDate(
@@ -353,7 +365,11 @@ export async function noShowEvaluation(
     .from("evaluations").update({ status: "no_show" }).eq("id", evaluationId);
   if (uErr) throw uErr;
 
-  // Mensagem de remarcação amanhã 09-12h SP
+  // Mensagem de remarcação só se `no_show_reschedule` estiver ligada
+  const settings = await loadAutomationSettings(supabase);
+  if (!settingEnabled(settings, "no_show_reschedule")) return;
+
+  // Amanhã 09-12h SP
   const now = new Date();
   const tomorrowUTC = new Date(now.getTime() + 86400000);
   const tp = spParts(tomorrowUTC);
