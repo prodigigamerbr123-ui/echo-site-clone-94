@@ -21,6 +21,8 @@ interface Student {
   last_evaluation_date: string | null;
   had_evaluation: boolean;
   created_at: string;
+  plan: string | null;
+  status: string;
 }
 
 const ACTIVE_DAYS = 30;
@@ -76,13 +78,7 @@ export function ListaAlunos() {
     return acc;
   }, {});
 
-  const isActive = (s: Student) => {
-    if (activeStudentIds.has(s.id)) return true;
-    // Recém cadastrado nos últimos 30 dias = ativo
-    const created = new Date(s.created_at);
-    const diff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
-    return diff <= ACTIVE_DAYS;
-  };
+  const isActive = (s: Student) => s.status === 'active';
 
   const filteredStudents = (students || [])
     .filter(s => {
@@ -201,6 +197,7 @@ export function ListaAlunos() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>WhatsApp</TableHead>
+                    <TableHead>Plano</TableHead>
                     <TableHead>Cadastrado em</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -228,6 +225,13 @@ export function ListaAlunos() {
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             {student.phone}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {student.plan ? (
+                            <Badge variant="outline" className="text-xs">{student.plan}</Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
