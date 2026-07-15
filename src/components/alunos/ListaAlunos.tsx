@@ -147,6 +147,9 @@ export function ListaAlunos() {
               <Badge className="gap-1 bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
                 {activeCount} ativos
               </Badge>
+              <Badge variant="secondary" className="gap-1 text-muted-foreground">
+                {total - activeCount} inativos
+              </Badge>
             </div>
           </div>
         </CardHeader>
