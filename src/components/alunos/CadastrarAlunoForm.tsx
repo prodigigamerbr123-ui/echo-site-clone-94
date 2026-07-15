@@ -204,47 +204,28 @@ export function CadastrarAlunoForm() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-primary" />
-            Plano e Situação
+            Plano
           </CardTitle>
           <CardDescription>
-            Defina o plano contratado e o status do aluno
+            Selecione o plano contratado pelo aluno
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="plano" className="text-sm font-medium flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Plano <span className="text-destructive">*</span>
-              </Label>
-              <Select value={formData.plano} onValueChange={(v) => handleInputChange('plano', v)}>
-                <SelectTrigger id="plano" className="h-11">
-                  <SelectValue placeholder="Selecione o plano" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PLAN_OPTIONS.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status" className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Status <span className="text-destructive">*</span>
-              </Label>
-              <Select value={formData.status} onValueChange={(v) => handleInputChange('status', v)}>
-                <SelectTrigger id="status" className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Ativo</SelectItem>
-                  <SelectItem value="inactive">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Novos alunos normalmente entram como Ativo</p>
-            </div>
+          <div className="space-y-2 max-w-md">
+            <Label htmlFor="plano" className="text-sm font-medium flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Plano <span className="text-destructive">*</span>
+            </Label>
+            <Select value={formData.plano} onValueChange={(v) => handleInputChange('plano', v)}>
+              <SelectTrigger id="plano" className="h-11">
+                <SelectValue placeholder="Selecione o plano" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_OPTIONS.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
