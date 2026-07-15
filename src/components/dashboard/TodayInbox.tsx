@@ -78,7 +78,8 @@ export function TodayInbox() {
           .select("id, content, failure_reason, students(name)")
           .eq("status", "failed").gte("updated_at", dayAgo.toISOString()).limit(5),
         supabase.from("students").select("id, last_evaluation_date, had_evaluation, created_at, status")
-          .eq("status", "active"),
+          .eq("status", "active").limit(5000),
+
       ]);
       const overdueCount = (overdue || []).filter((s: any) => {
         if (s.last_evaluation_date) {
