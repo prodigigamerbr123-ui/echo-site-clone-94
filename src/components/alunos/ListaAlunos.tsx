@@ -35,6 +35,7 @@ export function ListaAlunos() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
 
   const { data: students, isLoading } = useQuery({
     queryKey: ['students'],
