@@ -34,6 +34,8 @@ export function AgendarMensagemForm({ onSaved }: Props) {
   const [studentOpen, setStudentOpen] = useState(false);
   const [content, setContent] = useState("");
   const [mode, setMode] = useState<"quick" | "custom">("quick");
+  const [quickWhen, setQuickWhen] = useState<"today" | "later">("today");
+  const [quickRepeat, setQuickRepeat] = useState(false);
   const [quick, setQuick] = useState({ days7: false, days21: false, days45: false });
   const [quickTime, setQuickTime] = useState("10:00");
   const [date, setDate] = useState("");
