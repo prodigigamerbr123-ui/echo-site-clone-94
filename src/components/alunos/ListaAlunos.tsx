@@ -78,13 +78,7 @@ export function ListaAlunos() {
     return acc;
   }, {});
 
-  const isActive = (s: Student) => {
-    if (activeStudentIds.has(s.id)) return true;
-    // Recém cadastrado nos últimos 30 dias = ativo
-    const created = new Date(s.created_at);
-    const diff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
-    return diff <= ACTIVE_DAYS;
-  };
+  const isActive = (s: Student) => s.status === 'active';
 
   const filteredStudents = (students || [])
     .filter(s => {
