@@ -6,10 +6,10 @@ import workoutWordmark from "@/assets/workout-wordmark.png.asset.json";
 export function AppHeader() {
   return (
     <header className="h-16 bg-card border-b border-border shadow-card">
-      <div className="h-full flex items-center justify-between px-4">
-        <div className="flex items-center gap-4">
+      <div className="h-full flex items-center justify-between pl-1 pr-4">
+        <div className="flex items-center gap-2">
           <SidebarTrigger />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
             <img
               src={workoutIcon.url}
               alt="Workout"
@@ -18,7 +18,7 @@ export function AppHeader() {
             <img
               src={workoutWordmark.url}
               alt="Workout Academia"
-              className="h-8 w-auto object-contain"
+              className="h-7 w-auto object-contain -ml-1"
             />
           </div>
         </div>
