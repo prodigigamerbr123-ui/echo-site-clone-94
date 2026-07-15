@@ -34,8 +34,6 @@ interface Student { id: string; name: string; phone: string; }
 
 export default function MensagensAgendadas() {
   const { toast } = useToast();
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,7 +49,6 @@ export default function MensagensAgendadas() {
   const [editStudent, setEditStudent] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(params.get("new") === "1");
 
   useEffect(() => {
     fetchAll();
@@ -70,10 +67,6 @@ export default function MensagensAgendadas() {
     setLoading(false);
   };
 
-  const closeSheet = () => {
-    setSheetOpen(false);
-    if (params.get("new")) { params.delete("new"); setParams(params, { replace: true }); }
-  };
 
   const openEdit = (m: ScheduledMessage) => {
     setEditingMessage(m);
