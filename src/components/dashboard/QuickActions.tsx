@@ -128,7 +128,7 @@ export function QuickActions() {
   return (
     <Card className="overflow-hidden border-primary/10 shadow-card">
       <CardContent className="pt-6">
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {groups.map((group) => (
             <div key={group.title} className="space-y-3">
               <div>
