@@ -11,6 +11,7 @@ import Alunos from "./pages/Alunos";
 import CadastrarAluno from "./pages/CadastrarAluno";
 import EnviarMensagem from "./pages/EnviarMensagem";
 import MensagensAgendadas from "./pages/MensagensAgendadas";
+import AgendarMensagem from "./pages/AgendarMensagem";
 import MensagensPredefinidas from "./pages/MensagensPredefinidas";
 import MensagensEnviadas from "./pages/MensagensEnviadas";
 import AssistenteIA from "./pages/AssistenteIA";
@@ -51,7 +52,11 @@ const App = () => (
                 <CadastrarAluno />
               </AppLayout>
             } />
-            <Route path="/agendar-mensagem" element={<Navigate to="/mensagens-agendadas?new=1" replace />} />
+            <Route path="/agendar-mensagem" element={
+              <AppLayout>
+                <AgendarMensagem />
+              </AppLayout>
+            } />
             <Route path="/whatsapp" element={
               <AppLayout>
                 <WhatsApp />

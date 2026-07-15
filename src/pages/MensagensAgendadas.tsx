@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { Clock, Plus, Filter } from "lucide-react";
+import { Clock, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -17,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import MessageFilters from "@/components/agendarmensagem/MessageFilters";
 import MessagesList, { getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
-import { AgendarMensagemForm } from "@/components/mensagens/AgendarMensagemForm";
+
 
 interface ScheduledMessage {
   id: string;
@@ -36,8 +34,6 @@ interface Student { id: string; name: string; phone: string; }
 
 export default function MensagensAgendadas() {
   const { toast } = useToast();
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,7 +49,6 @@ export default function MensagensAgendadas() {
   const [editStudent, setEditStudent] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(params.get("new") === "1");
 
   useEffect(() => {
     fetchAll();
@@ -72,10 +67,6 @@ export default function MensagensAgendadas() {
     setLoading(false);
   };
 
-  const closeSheet = () => {
-    setSheetOpen(false);
-    if (params.get("new")) { params.delete("new"); setParams(params, { replace: true }); }
-  };
 
   const openEdit = (m: ScheduledMessage) => {
     setEditingMessage(m);
@@ -148,17 +139,12 @@ export default function MensagensAgendadas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg"><Clock className="h-6 w-6 text-primary" /></div>
-          <div>
-            <h1 className="text-2xl font-bold">Mensagens Agendadas</h1>
-            <p className="text-muted-foreground">Fila de envio — pendentes e falhas</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 rounded-lg"><Clock className="h-6 w-6 text-primary" /></div>
+        <div>
+          <h1 className="text-2xl font-bold">Mensagens Agendadas</h1>
+          <p className="text-muted-foreground">Fila de envio — pendentes e falhas</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Nova mensagem agendada
-        </Button>
       </div>
 
       <Card>
@@ -182,7 +168,7 @@ export default function MensagensAgendadas() {
             <div className="text-center py-12">
               <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">Nenhuma mensagem agendada.</p>
-              <Button onClick={() => setSheetOpen(true)} variant="outline"><Plus className="h-4 w-4 mr-2" />Agendar primeira</Button>
+              
             </div>
           ) : (
             <MessagesList
@@ -201,18 +187,6 @@ export default function MensagensAgendadas() {
         </CardContent>
       </Card>
 
-      {/* Sheet Nova Mensagem Agendada */}
-      <Sheet open={sheetOpen} onOpenChange={(o) => o ? setSheetOpen(true) : closeSheet()}>
-        <SheetContent className="overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>Nova mensagem agendada</SheetTitle>
-            <SheetDescription>Rápido (presets) ou personalizado com recorrência.</SheetDescription>
-          </SheetHeader>
-          <div className="mt-6">
-            <AgendarMensagemForm onSaved={() => { closeSheet(); fetchAll(); }} />
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {/* Edit */}
       <Dialog open={!!editingMessage} onOpenChange={(o) => !o && setEditingMessage(null)}>
