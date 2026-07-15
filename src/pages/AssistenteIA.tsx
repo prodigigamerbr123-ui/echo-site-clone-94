@@ -81,7 +81,7 @@ export default function AssistenteIA() {
               onNew={handleNew}
               refreshKey={refreshKey}
             />
-            <div className="h-full min-w-0">
+            <div className="h-full min-w-0 min-h-0 overflow-hidden">
               {ready && (
                 <AIChat
                   key={activeId ?? "new"}
