@@ -251,19 +251,22 @@ export default function AgendarAvaliacao() {
       .single();
     if (error) throw error;
 
-    // 3 mensagens automáticas
-    const auto = buildEvaluationMessages(student.name, new Date(whenIso));
-    if (auto.length > 0) {
-      await supabase.from("scheduled_messages").insert(
-        auto.map((m) => ({
-          student_id: student.id,
-          content: m.content,
-          scheduled_for: m.scheduled_for,
-          message_type: m.message_type,
-          status: "pending",
-          evaluation_id: created!.id,
-        })),
-      );
+    // 3 mensagens automáticas (apenas se toggle ligado)
+    const settings = await fetchAutomationSettings();
+    if (isAutomationEnabled(settings, "evaluation_reminders")) {
+      const auto = buildEvaluationMessages(student.name, new Date(whenIso));
+      if (auto.length > 0) {
+        await supabase.from("scheduled_messages").insert(
+          auto.map((m) => ({
+            student_id: student.id,
+            content: m.content,
+            scheduled_for: m.scheduled_for,
+            message_type: m.message_type,
+            status: "pending",
+            evaluation_id: created!.id,
+          })),
+        );
+      }
     }
   }
 
