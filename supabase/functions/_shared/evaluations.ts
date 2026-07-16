@@ -302,7 +302,13 @@ export async function completeEvaluation(
   if (e1) throw e1;
   if (e2) throw e2;
 
-  // Follow-up 7d — evitar duplicidade
+  const settings = await loadAutomationSettings(supabase);
+  if (!settingEnabled(settings, "evaluation_followup")) {
+    return { followup_scheduled: false };
+  }
+  const daysAfter = Number(settingParam(settings, "evaluation_followup", "days_after", 7));
+
+  // Follow-up — evitar duplicidade
   const { data: existingFu } = await supabase
     .from("scheduled_messages")
     .select("id")
@@ -312,8 +318,7 @@ export async function completeEvaluation(
     .limit(1);
 
   if (!existingFu || existingFu.length === 0) {
-    const followup = new Date(evalDate.getTime() + 7 * 86400000);
-    // 9-12h SP com minutos aleatórios
+    const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
     const fp = spParts(followup);
     const followupSp = spDate(
       fp.y, fp.mo, fp.d,
