@@ -23,6 +23,8 @@ function randomDelayMs() {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  console.log(`[process-scheduled-messages] Início da execução: ${new Date().toISOString()}`);
+
   try {
     const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
