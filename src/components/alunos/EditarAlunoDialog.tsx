@@ -11,6 +11,7 @@ import { formatPhoneBR } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
+import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
 
 interface Student {
   id: string;
