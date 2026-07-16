@@ -126,8 +126,7 @@ serve(async (req: Request) => {
       try {
         const sendResult = await sendEvolutionText({
           baseUrl,
-          instance: EVOLUTION_INSTANCE_NAME,
-          apiKey: EVOLUTION_API_KEY,
+          instanceToken: EVOLUTION_INSTANCE_TOKEN,
           number: phoneCheck.number,
           text: msg.content,
         });
