@@ -34,7 +34,7 @@ const Private = ({ children }: { children: React.ReactNode }) => (
 );
 
 const AuthedGlobalNotifier = () => {
-  const { session } = require("@/hooks/useAuth").useAuth();
+  const { session } = useAuth();
   return session ? <GlobalNotifier /> : null;
 };
 
