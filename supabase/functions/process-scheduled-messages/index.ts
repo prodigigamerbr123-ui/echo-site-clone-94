@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { formatPhone } from "../_shared/phone.ts";
+import { sendEvolutionText } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,16 +122,15 @@ serve(async (req: Request) => {
       if (i > 0) await sleep(randomDelayMs());
 
       try {
-        const resp = await fetch(
-          `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
-            body: JSON.stringify({ number: phoneCheck.number, text: msg.content }),
-          },
-        );
+        const sendResult = await sendEvolutionText({
+          baseUrl,
+          instance: EVOLUTION_INSTANCE_NAME,
+          apiKey: EVOLUTION_API_KEY,
+          number: phoneCheck.number,
+          text: msg.content,
+        });
 
-        if (resp.ok) {
+        if (sendResult.ok) {
           await supabase
             .from("scheduled_messages")
             .update({
@@ -170,9 +170,9 @@ serve(async (req: Request) => {
             else console.error("Erro criando recorrência:", recError);
           }
         } else {
-          const txt = await resp.text();
-          console.error(`Falha ao enviar ${msg.id}:`, txt);
-          await handleFailure(supabase, msg, `HTTP ${resp.status}: ${txt.slice(0, 200)}`);
+          const reason = sendResult.reason || `HTTP ${sendResult.httpStatus || "desconhecido"}`;
+          console.error(`Falha ao enviar ${msg.id}:`, reason, sendResult.bodyText?.slice(0, 300));
+          await handleFailure(supabase, msg, reason.slice(0, 250));
           if (Number(msg.retry_count || 0) < MAX_RETRIES) retried++;
           else failed++;
         }
