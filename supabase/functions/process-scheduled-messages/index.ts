@@ -25,10 +25,9 @@ serve(async (req: Request) => {
 
   try {
     const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
-    const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
-    const EVOLUTION_INSTANCE_NAME = Deno.env.get("EVOLUTION_INSTANCE_NAME");
+    const EVOLUTION_INSTANCE_TOKEN = Deno.env.get("EVOLUTION_INSTANCE_TOKEN");
 
-    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE_NAME) {
+    if (!EVOLUTION_API_URL || !EVOLUTION_INSTANCE_TOKEN) {
       return new Response(JSON.stringify({ error: "Evolution API não configurada" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
