@@ -258,6 +258,7 @@ export default function AgendarAvaliacao() {
     const settings = await fetchAutomationSettings();
     if (isAutomationEnabled(settings, "evaluation_reminders")) {
       const auto = buildEvaluationMessages(student.name, new Date(whenIso));
+      await applyLinkedEvaluationTemplates(auto, student.name, new Date(whenIso));
       if (auto.length > 0) {
         await supabase.from("scheduled_messages").insert(
           auto.map((m) => ({
@@ -271,6 +272,7 @@ export default function AgendarAvaliacao() {
         );
       }
     }
+
   }
 
   const handleCreate = async () => {
