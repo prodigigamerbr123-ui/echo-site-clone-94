@@ -133,22 +133,6 @@ export function StatsOverview() {
 
   const peopleStats: Stat[] = [
     {
-      title: "Aniversariantes",
-      value: v(stats?.birthdaysToday),
-      icon: Cake,
-      description: "Fazem aniversário hoje",
-      gradient: "bg-gradient-to-br from-purple-500 to-pink-600",
-      iconBg: "bg-gradient-to-br from-purple-500 to-pink-600",
-    },
-    {
-      title: "Avaliações Hoje",
-      value: v(stats?.evaluationsToday),
-      icon: ClipboardList,
-      description: "Agendadas para hoje",
-      gradient: "bg-gradient-to-br from-indigo-500 to-violet-600",
-      iconBg: "bg-gradient-to-br from-indigo-500 to-violet-600",
-    },
-    {
       title: "Para Enviar Hoje",
       value: v(stats?.messagesToSendToday),
       icon: Mail,
@@ -163,6 +147,22 @@ export function StatsOverview() {
       description: "Já entregues no dia",
       gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
       iconBg: "bg-gradient-to-br from-emerald-500 to-teal-600",
+    },
+    {
+      title: "Avaliações Hoje",
+      value: v(stats?.evaluationsToday),
+      icon: ClipboardList,
+      description: "Agendadas para hoje",
+      gradient: "bg-gradient-to-br from-indigo-500 to-violet-600",
+      iconBg: "bg-gradient-to-br from-indigo-500 to-violet-600",
+    },
+    {
+      title: "Aniversariantes",
+      value: v(stats?.birthdaysToday),
+      icon: Cake,
+      description: "Fazem aniversário hoje",
+      gradient: "bg-gradient-to-br from-purple-500 to-pink-600",
+      iconBg: "bg-gradient-to-br from-purple-500 to-pink-600",
     },
   ];
 
