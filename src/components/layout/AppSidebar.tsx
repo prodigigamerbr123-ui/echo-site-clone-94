@@ -50,7 +50,7 @@ const menuGroups = [
       { title: "Enviar Mensagem", url: "/enviar-mensagem", icon: Send },
       { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: CalendarPlus },
       { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
-      { title: "Mensagens Enviadas", url: "/mensagens-enviadas", icon: Mail },
+      { title: "Histórico de Mensagens", url: "/mensagens-enviadas", icon: History },
       { title: "Pré-definidas", url: "/mensagens-predefinidas", icon: FileText },
     ],
   },
