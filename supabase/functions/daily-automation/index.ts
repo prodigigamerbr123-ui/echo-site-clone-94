@@ -14,7 +14,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DAILY_LIMIT = 60;
+const DEFAULT_DAILY_LIMIT = 60;
+const DEFAULT_DAYS_OVERDUE = 90;
+
+type SettingsMap = Record<string, { enabled: boolean; params: Record<string, any> }>;
+
+async function loadSettings(supabase: any): Promise<SettingsMap> {
+  const { data } = await supabase
+    .from("automation_settings")
+    .select("key, enabled, params");
+  const map: SettingsMap = {};
+  for (const r of data ?? []) {
+    map[r.key] = { enabled: !!r.enabled, params: (r.params as any) ?? {} };
+  }
+  return map;
+}
+function isEnabled(map: SettingsMap, key: string): boolean {
+  const s = map[key];
+  return s ? s.enabled : true;
+}
+function getParam<T>(map: SettingsMap, key: string, name: string, fallback: T): T {
+  const v = map[key]?.params?.[name];
+  return (v === undefined || v === null ? fallback : v) as T;
+}
 
 const REMINDER_TEMPLATES = [
   (name: string) =>
