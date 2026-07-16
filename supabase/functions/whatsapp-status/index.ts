@@ -12,10 +12,9 @@ serve(async (req: Request) => {
 
   try {
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
-    const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY');
-    const EVOLUTION_INSTANCE_NAME = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+    const EVOLUTION_INSTANCE_TOKEN = Deno.env.get('EVOLUTION_INSTANCE_TOKEN');
 
-    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE_NAME) {
+    if (!EVOLUTION_API_URL || !EVOLUTION_INSTANCE_TOKEN) {
       return new Response(
         JSON.stringify({ error: 'Evolution API não configurada' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -23,14 +22,14 @@ serve(async (req: Request) => {
     }
 
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
-    const headers = { 'apikey': EVOLUTION_API_KEY, 'Content-Type': 'application/json' };
+    const headers = { apikey: EVOLUTION_INSTANCE_TOKEN, 'Content-Type': 'application/json' };
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const action = body?.action || 'status';
 
     if (action === 'logout') {
-      const r = await fetch(`${baseUrl}/instance/logout/${EVOLUTION_INSTANCE_NAME}`, {
-        method: 'DELETE', headers,
+      const r = await fetch(`${baseUrl}/instance/disconnect`, {
+        method: 'POST', headers, body: JSON.stringify({}),
       });
       const data = await r.json().catch(() => ({}));
       return new Response(JSON.stringify({ success: r.ok, data }), {
@@ -38,53 +37,36 @@ serve(async (req: Request) => {
       });
     }
 
-    // Get connection state
-    const stateResp = await fetch(
-      `${baseUrl}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`,
-      { headers }
-    );
-    const stateData = await stateResp.json().catch(() => ({}));
-    const state = stateData?.instance?.state || stateData?.state || 'unknown';
+    // Get connection status
+    const statusResp = await fetch(`${baseUrl}/instance/status`, { headers });
+    const statusText = await statusResp.text();
+    console.log(`[instance/status] http=${statusResp.status} body=${statusText.slice(0, 400)}`);
+    let statusData: any = {};
+    try { statusData = JSON.parse(statusText); } catch (_) {}
+    const d = statusData?.data || statusData;
+    const connected = !!(d?.Connected && d?.LoggedIn);
+    const state = connected ? 'open' : (d?.Connected ? 'connecting' : 'close');
 
     let qrcode: string | null = null;
     let pairingCode: string | null = null;
 
-    // List instances to verify our instance exists
-    const listResp = await fetch(`${baseUrl}/instance/fetchInstances`, { headers });
-    const listText = await listResp.text();
-    console.log(`[fetchInstances] status=${listResp.status} body=${listText.slice(0, 800)}`);
-
-    // If not connected (or explicitly requested), fetch QR code
-    if (state !== 'open' || action === 'connect') {
-      const connUrl = `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`;
-
-      // Try GET first
-      let connResp = await fetch(connUrl, { method: 'GET', headers });
-      let connText = await connResp.text();
-      console.log(`[connect GET] status=${connResp.status} body=${connText.slice(0, 500)}`);
-
-      let connData: any = {};
-      try { connData = JSON.parse(connText); } catch (_) {}
-
-      // If empty response, try POST
-      if (!connData?.base64 && !connData?.qrcode && !connData?.code && !connData?.pairingCode) {
-        connResp = await fetch(connUrl, { method: 'POST', headers, body: JSON.stringify({}) });
-        connText = await connResp.text();
-        console.log(`[connect POST] status=${connResp.status} body=${connText.slice(0, 500)}`);
-        try { connData = JSON.parse(connText); } catch (_) {}
+    if (!connected || action === 'connect') {
+      if (action === 'connect') {
+        await fetch(`${baseUrl}/instance/connect`, {
+          method: 'POST', headers, body: JSON.stringify({ immediate: true }),
+        }).catch(() => {});
       }
-
-      qrcode =
-        connData?.base64 ||
-        connData?.qrcode?.base64 ||
-        connData?.qrcode ||
-        connData?.qr ||
-        null;
-      pairingCode = connData?.pairingCode || connData?.code || null;
+      const qrResp = await fetch(`${baseUrl}/instance/qr`, { headers });
+      const qrText = await qrResp.text();
+      console.log(`[instance/qr] http=${qrResp.status} body=${qrText.slice(0, 200)}`);
+      let qrData: any = {};
+      try { qrData = JSON.parse(qrText); } catch (_) {}
+      qrcode = qrData?.data?.qrcode || qrData?.qrcode || null;
+      pairingCode = qrData?.data?.pairingCode || qrData?.pairingCode || null;
     }
 
     return new Response(
-      JSON.stringify({ state, qrcode, pairingCode, instance: EVOLUTION_INSTANCE_NAME }),
+      JSON.stringify({ state, qrcode, pairingCode, instance: d?.Name || null }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
