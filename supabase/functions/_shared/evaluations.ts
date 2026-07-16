@@ -11,8 +11,11 @@
 //  - noShowEvaluation: status no_show, deleta pendentes, agenda remarcação
 //    para amanhã 09-12h.
 
+import { resolveAutomationMessage } from "./messageTemplates.ts";
+
 // Brasil (sem DST) = UTC-3. Fixo para manter paridade com o browser em SP.
 const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
+
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
