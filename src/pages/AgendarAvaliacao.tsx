@@ -403,9 +403,17 @@ export default function AgendarAvaliacao() {
           const daysAfter = Number(getAutomationParam(settings, "evaluation_followup", "days_after", 7));
           const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
           followup.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+          const name = ev.students?.name ?? "aluno";
+          const content = await resolveAutomationMessage(
+            "evaluation_followup",
+            "evaluation_followup",
+            buildFollowup(name),
+            { nome: name },
+            settings,
+          );
           await supabase.from("scheduled_messages").insert({
             student_id: ev.student_id,
-            content: buildFollowup(ev.students?.name ?? "aluno"),
+            content,
             scheduled_for: followup.toISOString(),
             message_type: "evaluation_followup",
             status: "pending",
@@ -413,6 +421,7 @@ export default function AgendarAvaliacao() {
           });
           followupScheduled = true;
         }
+
       }
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
