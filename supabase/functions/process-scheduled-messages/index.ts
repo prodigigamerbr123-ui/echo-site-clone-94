@@ -157,7 +157,7 @@ serve(async (req: Request) => {
             content: msg.content,
             status: "sent",
           });
-          console.log(`Mensagem ${msg.id} confirmada pela Evolution: ${result.messageId}`);
+          console.log(`[OK] Mensagem enviada msg=${msg.id} evolutionId=${result.messageId} phone=${phoneCheck.number}`);
           sent++;
 
           // Recorrência: enfileira próxima ocorrência se ainda restam
