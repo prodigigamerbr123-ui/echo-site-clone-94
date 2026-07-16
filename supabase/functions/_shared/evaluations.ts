@@ -386,12 +386,18 @@ export async function noShowEvaluation(
     9 + Math.floor(Math.random() * 3),
     Math.floor(Math.random() * 60),
   );
+  const name = ev.students?.name ?? "aluno";
+  const content = await resolveAutomationMessage(
+    supabase, settings, "no_show_reschedule", "evaluation_reschedule",
+    pick(RESCHEDULE_TEMPLATES)(name), { nome: name },
+  );
   await supabase.from("scheduled_messages").insert({
     student_id: ev.student_id,
-    content: pick(RESCHEDULE_TEMPLATES)(ev.students?.name ?? "aluno"),
+    content,
     scheduled_for: tomorrowSp.toISOString(),
     message_type: "evaluation_reschedule",
     status: "pending",
     evaluation_id: evaluationId,
+
   });
 }
