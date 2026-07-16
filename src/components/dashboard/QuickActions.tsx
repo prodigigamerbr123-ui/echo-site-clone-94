@@ -27,7 +27,7 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
     description: "Gerenciar sua base de alunos",
     actions: [
       {
-        to: "/alunos",
+        to: "/cadastrar-aluno",
         icon: UserPlus,
         label: "Cadastrar Aluno",
         className:
