@@ -197,6 +197,8 @@ serve(async (req: Request) => {
       }
     }
 
+    console.log(`[process-scheduled-messages] Resumo: processadas=${claimed.length} enviadas=${sent} falharam=${failed} retentativas=${retried} recorrencias=${recurrenceEnqueued}`);
+
     return new Response(
       JSON.stringify({
         processed: claimed.length,
