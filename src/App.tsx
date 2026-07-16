@@ -1,10 +1,11 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Alunos from "./pages/Alunos";
@@ -20,13 +21,20 @@ import AvaliacaoFisica from "./pages/AvaliacaoFisica";
 import AgendarAvaliacao from "./pages/AgendarAvaliacao";
 import WhatsApp from "./pages/WhatsApp";
 import Configuracoes from "./pages/Configuracoes";
-import { Navigate } from "react-router-dom";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { GlobalNotifier } from "@/components/layout/GlobalNotifier";
 
-
 const queryClient = new QueryClient();
+
+const protectedPage = (Page: React.ComponentType) => (
+  <ProtectedRoute>
+    <AppLayout>
+      <Page />
+    </AppLayout>
+  </ProtectedRoute>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -36,82 +44,27 @@ const App = () => (
         <Sonner />
         <ConfirmDialogHost />
         <BrowserRouter>
-          <GlobalNotifier />
-
-          <Routes>
-            <Route path="/" element={
-              <AppLayout>
-                <Dashboard />
-              </AppLayout>
-            } />
-            <Route path="/alunos" element={
-              <AppLayout>
-                <Alunos />
-              </AppLayout>
-            } />
-            <Route path="/cadastrar-aluno" element={
-              <AppLayout>
-                <CadastrarAluno />
-              </AppLayout>
-            } />
-            <Route path="/agendar-mensagem" element={
-              <AppLayout>
-                <AgendarMensagem />
-              </AppLayout>
-            } />
-            <Route path="/whatsapp" element={
-              <AppLayout>
-                <WhatsApp />
-              </AppLayout>
-            } />
-            <Route path="/enviar-mensagem" element={
-              <AppLayout>
-                <EnviarMensagem />
-              </AppLayout>
-            } />
-            <Route path="/mensagens-agendadas" element={
-              <AppLayout>
-                <MensagensAgendadas />
-              </AppLayout>
-            } />
-            <Route path="/mensagens-predefinidas" element={
-              <AppLayout>
-                <MensagensPredefinidas />
-              </AppLayout>
-            } />
-            <Route path="/mensagens-enviadas" element={
-              <AppLayout>
-                <MensagensEnviadas />
-              </AppLayout>
-            } />
-            <Route path="/assistente-ia" element={
-              <AppLayout>
-                <AssistenteIA />
-              </AppLayout>
-            } />
-            <Route path="/automacoes" element={
-              <AppLayout>
-                <Automacoes />
-              </AppLayout>
-            } />
-            <Route path="/avaliacao-fisica" element={
-              <AppLayout>
-                <AvaliacaoFisica />
-              </AppLayout>
-            } />
-            <Route path="/agendar-avaliacao" element={
-              <AppLayout>
-                <AgendarAvaliacao />
-              </AppLayout>
-            } />
-            <Route path="/configuracoes" element={
-              <AppLayout>
-                <Configuracoes />
-              </AppLayout>
-            } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <GlobalNotifier />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={protectedPage(Dashboard)} />
+              <Route path="/alunos" element={protectedPage(Alunos)} />
+              <Route path="/cadastrar-aluno" element={protectedPage(CadastrarAluno)} />
+              <Route path="/agendar-mensagem" element={protectedPage(AgendarMensagem)} />
+              <Route path="/whatsapp" element={protectedPage(WhatsApp)} />
+              <Route path="/enviar-mensagem" element={protectedPage(EnviarMensagem)} />
+              <Route path="/mensagens-agendadas" element={protectedPage(MensagensAgendadas)} />
+              <Route path="/mensagens-predefinidas" element={protectedPage(MensagensPredefinidas)} />
+              <Route path="/mensagens-enviadas" element={protectedPage(MensagensEnviadas)} />
+              <Route path="/assistente-ia" element={protectedPage(AssistenteIA)} />
+              <Route path="/automacoes" element={protectedPage(Automacoes)} />
+              <Route path="/avaliacao-fisica" element={protectedPage(AvaliacaoFisica)} />
+              <Route path="/agendar-avaliacao" element={protectedPage(AgendarAvaliacao)} />
+              <Route path="/configuracoes" element={protectedPage(Configuracoes)} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
