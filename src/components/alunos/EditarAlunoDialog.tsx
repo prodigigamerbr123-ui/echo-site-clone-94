@@ -116,6 +116,12 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
 
       if (error) throw error;
 
+      const wasActive = (student.status || "active") === "active";
+      const nowInactive = formData.status !== "active";
+      if (wasActive && nowInactive) {
+        await scheduleReengagementIfEnabled(student.id, formData.nome.trim());
+      }
+
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       
