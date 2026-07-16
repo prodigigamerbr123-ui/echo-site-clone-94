@@ -438,21 +438,29 @@ export default function AgendarAvaliacao() {
         .from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
       if (error) throw error;
 
-      // Remarcar msg amanhã 09-12h
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
-      await supabase.from("scheduled_messages").insert({
-        student_id: ev.student_id,
-        content: buildReschedule(ev.students?.name ?? "aluno"),
-        scheduled_for: tomorrow.toISOString(),
-        message_type: "evaluation_reschedule",
-        status: "pending",
-        evaluation_id: ev.id,
-      });
+      // Remarcar msg amanhã 09-12h (apenas se toggle ligado)
+      const settings = await fetchAutomationSettings();
+      let rescheduled = false;
+      if (isAutomationEnabled(settings, "no_show_reschedule")) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+        await supabase.from("scheduled_messages").insert({
+          student_id: ev.student_id,
+          content: buildReschedule(ev.students?.name ?? "aluno"),
+          scheduled_for: tomorrow.toISOString(),
+          message_type: "evaluation_reschedule",
+          status: "pending",
+          evaluation_id: ev.id,
+        });
+        rescheduled = true;
+      }
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
-      toast({ title: "Falta registrada", description: "Mensagem de remarcação enviada para amanhã." });
+      toast({
+        title: "Falta registrada",
+        description: rescheduled ? "Mensagem de remarcação agendada." : "Remarcação automática desligada.",
+      });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
