@@ -70,6 +70,18 @@ export async function scheduleReengagementIfEnabled(
   try {
     const map = await fetchAutomationSettings();
     if (!map.reengagement?.enabled) return false;
+
+    // Anti-duplicata: se já existe reengajamento pendente pra esse aluno, não cria outro.
+    const { data: existing, error: checkErr } = await supabase
+      .from("scheduled_messages")
+      .select("id")
+      .eq("student_id", studentId)
+      .eq("message_type", "reengagement")
+      .eq("status", "pending")
+      .limit(1);
+    if (checkErr) throw checkErr;
+    if (existing && existing.length > 0) return false;
+
     const days = await getAutomationParam("reengagement", "days_after", 20);
     const target = new Date(Date.now() + days * 86400_000);
     // 09..12 BRT = 12..15 UTC (Brasil sem DST)

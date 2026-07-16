@@ -6,6 +6,7 @@ import {
   noShowEvaluation,
   checkScheduleConflicts,
 } from "../_shared/evaluations.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -460,6 +461,10 @@ REGRAS DE COMPORTAMENTO:
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const authFail = await requireUser(req);
+  if (authFail) return authFail;
+
 
   try {
     if (!LOVABLE_API_KEY) {
