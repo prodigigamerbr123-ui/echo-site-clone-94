@@ -50,6 +50,15 @@ export function AppHeader() {
               <Settings className="h-5 w-5" />
             </Link>
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Sair"
+            title="Sair"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
           <ThemeToggle />
         </div>
       </div>
