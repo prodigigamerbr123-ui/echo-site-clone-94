@@ -134,12 +134,20 @@ export function TodayInbox() {
     await supabase.from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
     const t = new Date(); t.setDate(t.getDate() + 1);
     t.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+    const name = ev.students?.name ?? "aluno";
+    const rescheduleContent = await resolveAutomationMessage(
+      "no_show_reschedule",
+      "evaluation_reschedule",
+      buildReschedule(name),
+      { nome: name },
+    );
     await supabase.from("scheduled_messages").insert({
       student_id: ev.student_id,
-      content: buildReschedule(ev.students?.name ?? "aluno"),
+      content: rescheduleContent,
       scheduled_for: t.toISOString(),
       message_type: "evaluation_reschedule", status: "pending", evaluation_id: ev.id,
     });
+
     toast({ title: "Falta registrada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
   };
