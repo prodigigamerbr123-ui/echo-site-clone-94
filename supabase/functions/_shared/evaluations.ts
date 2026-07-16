@@ -339,9 +339,14 @@ export async function completeEvaluation(
       9 + Math.floor(Math.random() * 3),
       Math.floor(Math.random() * 60),
     );
+    const name = ev.students?.name ?? "aluno";
+    const content = await resolveAutomationMessage(
+      supabase, settings, "evaluation_followup", "evaluation_followup",
+      pick(FOLLOWUP_TEMPLATES)(name), { nome: name },
+    );
     await supabase.from("scheduled_messages").insert({
       student_id: ev.student_id,
-      content: pick(FOLLOWUP_TEMPLATES)(ev.students?.name ?? "aluno"),
+      content,
       scheduled_for: followupSp.toISOString(),
       message_type: "evaluation_followup",
       status: "pending",
@@ -349,6 +354,7 @@ export async function completeEvaluation(
     });
     return { followup_scheduled: true };
   }
+
   return { followup_scheduled: false };
 }
 
