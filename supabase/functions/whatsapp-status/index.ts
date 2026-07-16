@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { requireUser } from "../_shared/auth.ts";
+import {
+  fetchEvolutionInstances,
+  getEvolutionInstance,
+  summarizeWhatsAppConnection,
+} from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,7 +43,7 @@ serve(async (req: Request) => {
         method: 'DELETE', headers,
       });
       const data = await r.json().catch(() => ({}));
-      return new Response(JSON.stringify({ success: r.ok, data }), {
+      return new Response(JSON.stringify({ success: r.ok, data, state: 'close', connected: false }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -54,13 +59,14 @@ serve(async (req: Request) => {
     let qrcode: string | null = null;
     let pairingCode: string | null = null;
 
-    // List instances to verify our instance exists
-    const listResp = await fetch(`${baseUrl}/instance/fetchInstances`, { headers });
-    const listText = await listResp.text();
-    console.log(`[fetchInstances] status=${listResp.status} body=${listText.slice(0, 800)}`);
+    // List instances to detect stale sessions that still report state=open.
+    const { status: listStatus, instances } = await fetchEvolutionInstances(baseUrl, headers);
+    const instanceInfo = getEvolutionInstance(instances, EVOLUTION_INSTANCE_NAME);
+    const connection = summarizeWhatsAppConnection(state, instanceInfo);
+    console.log(`[fetchInstances] status=${listStatus} count=${instances.length}`);
 
     // If not connected (or explicitly requested), fetch QR code
-    if (state !== 'open' || action === 'connect') {
+    if (connection.effectiveState !== 'open' || action === 'connect') {
       const connUrl = `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`;
 
       // Try GET first
@@ -89,7 +95,15 @@ serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ state, qrcode, pairingCode, instance: EVOLUTION_INSTANCE_NAME }),
+      JSON.stringify({
+        state: connection.effectiveState,
+        connected: connection.connected,
+        staleSession: connection.staleSession,
+        disconnectionReason: connection.disconnectionReason,
+        qrcode,
+        pairingCode,
+        instance: EVOLUTION_INSTANCE_NAME,
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
