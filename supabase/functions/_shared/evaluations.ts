@@ -247,7 +247,10 @@ export async function createEvaluationWithMessages(
     .single();
   if (error) throw error;
 
-  const auto = buildEvaluationMessages(student.name, scheduledAt);
+  const settings = await loadAutomationSettings(supabase);
+  const remindersOn = settingEnabled(settings, "evaluation_reminders");
+
+  const auto = remindersOn ? buildEvaluationMessages(student.name, scheduledAt) : [];
   if (auto.length > 0) {
     const { error: mErr } = await supabase.from("scheduled_messages").insert(
       auto.map((m) => ({
