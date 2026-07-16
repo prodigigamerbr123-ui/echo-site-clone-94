@@ -1,22 +1,25 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  NotificationSettings,
+  useNotificationSettings,
+} from "@/lib/appSettings";
 
-/**
- * Escuta em tempo real mudanças em scheduled_messages.
- * - 'failed': toast individual sempre (o dono precisa ver imediatamente).
- * - 'sent': acumula e mostra no máximo um toast a cada 10 minutos
- *   ("N mensagens enviadas") para não inundar a tela em envios em massa.
- */
 export function GlobalNotifier() {
+  const { data: settings } = useNotificationSettings();
+  const settingsRef = useRef<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const sentBucketRef = useRef<{ count: number; timer: ReturnType<typeof setTimeout> | null }>({
     count: 0,
     timer: null,
   });
 
   useEffect(() => {
-    const FLUSH_WINDOW_MS = 10 * 60 * 1000; // 10 min
+    if (settings) settingsRef.current = settings;
+  }, [settings]);
 
+  useEffect(() => {
     const flushSent = () => {
       const bucket = sentBucketRef.current;
       if (bucket.count > 0) {
@@ -31,10 +34,13 @@ export function GlobalNotifier() {
     };
 
     const queueSent = () => {
+      const cfg = settingsRef.current;
+      if (!cfg.notify_sent_summary) return;
       const bucket = sentBucketRef.current;
       bucket.count += 1;
       if (!bucket.timer) {
-        bucket.timer = setTimeout(flushSent, FLUSH_WINDOW_MS);
+        const minutes = Math.max(5, Math.min(60, cfg.sent_summary_minutes || 10));
+        bucket.timer = setTimeout(flushSent, minutes * 60 * 1000);
       }
     };
 
@@ -54,6 +60,7 @@ export function GlobalNotifier() {
           }
 
           if (newRow.status === "failed") {
+            if (!settingsRef.current.notify_failed) return;
             let studentName = "";
             if (newRow.student_id) {
               const { data } = await supabase
@@ -75,11 +82,22 @@ export function GlobalNotifier() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "evaluations" },
         (payload: any) => {
+          if (!settingsRef.current.notify_evaluation_created) return;
           const row = payload.new;
           if (!row) return;
           toast("Avaliação agendada", {
             description: new Date(row.scheduled_at).toLocaleString("pt-BR"),
           });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "students" },
+        (payload: any) => {
+          if (!settingsRef.current.notify_student_registered) return;
+          const row = payload.new;
+          if (!row) return;
+          toast("Novo aluno cadastrado", { description: row.name });
         }
       )
       .subscribe();
