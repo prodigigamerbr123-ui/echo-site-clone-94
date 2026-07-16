@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAutomationSettings, isAutomationEnabled, getAutomationParam } from "@/lib/automationSettings";
+import { resolveAutomationMessage } from "@/lib/messageTemplates";
 
 const WELCOME_TEMPLATES = [
   (n: string) => `Oi ${n}! 👋 Seja muito bem-vindo(a) à academia! Bora agendar sua primeira avaliação física pra montarmos seu plano de treino? 💪`,
@@ -20,9 +21,17 @@ export async function scheduleWelcomeIfEnabled(studentId: string, name: string):
     const settings = await fetchAutomationSettings();
     if (!isAutomationEnabled(settings, "welcome_message")) return;
     const when = new Date(Date.now() + 5 * 60 * 1000);
+    const fallback = pick(WELCOME_TEMPLATES)(name);
+    const content = await resolveAutomationMessage(
+      "welcome_message",
+      "welcome",
+      fallback,
+      { nome: name },
+      settings,
+    );
     const { error } = await supabase.from("scheduled_messages").insert({
       student_id: studentId,
-      content: pick(WELCOME_TEMPLATES)(name),
+      content,
       scheduled_for: when.toISOString(),
       message_type: "welcome",
       status: "pending",
@@ -52,9 +61,18 @@ export async function scheduleReengagementIfEnabled(studentId: string, name: str
     // 09-12h Brasília = 12-15h UTC
     when.setUTCHours(12 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
 
+    const fallback = pick(REENGAGEMENT_TEMPLATES)(name);
+    const content = await resolveAutomationMessage(
+      "reengagement",
+      "reengagement",
+      fallback,
+      { nome: name },
+      settings,
+    );
+
     const { error } = await supabase.from("scheduled_messages").insert({
       student_id: studentId,
-      content: pick(REENGAGEMENT_TEMPLATES)(name),
+      content,
       scheduled_for: when.toISOString(),
       message_type: "reengagement",
       status: "pending",
