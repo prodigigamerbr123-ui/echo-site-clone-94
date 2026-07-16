@@ -23,6 +23,8 @@ function randomDelayMs() {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  console.log(`[process-scheduled-messages] Início da execução: ${new Date().toISOString()}`);
+
   try {
     const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
@@ -54,11 +56,14 @@ serve(async (req: Request) => {
     if (claimError) throw claimError;
 
     if (!claimed || claimed.length === 0) {
+      console.log("[process-scheduled-messages] Nenhuma mensagem vencida encontrada");
       return new Response(JSON.stringify({ processed: 0, sent: 0, failed: 0 }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log(`[process-scheduled-messages] Mensagens encontradas: ${claimed.length}`);
 
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
     let sent = 0;
@@ -136,6 +141,7 @@ serve(async (req: Request) => {
         );
 
         const result = await parseEvolutionSendResponse(resp);
+        console.log(`[Evolution] msg=${msg.id} HTTP=${resp.status} ok=${result.ok} id=${result.messageId ?? "-"}`);
 
         if (result.ok) {
           await supabase
@@ -151,7 +157,7 @@ serve(async (req: Request) => {
             content: msg.content,
             status: "sent",
           });
-          console.log(`Mensagem ${msg.id} confirmada pela Evolution: ${result.messageId}`);
+          console.log(`[OK] Mensagem enviada msg=${msg.id} evolutionId=${result.messageId} phone=${phoneCheck.number}`);
           sent++;
 
           // Recorrência: enfileira próxima ocorrência se ainda restam
@@ -178,7 +184,7 @@ serve(async (req: Request) => {
             else console.error("Erro criando recorrência:", recError);
           }
         } else {
-          console.error(`Falha ao enviar ${msg.id}:`, result.error, result.bodyText.slice(0, 500));
+          console.error(`[FAIL] msg=${msg.id} motivo="${result.error}" body=${result.bodyText.slice(0, 300)}`);
           await handleFailure(supabase, msg, result.error || "Evolution não confirmou o envio");
           if (Number(msg.retry_count || 0) < MAX_RETRIES) retried++;
           else failed++;
@@ -190,6 +196,8 @@ serve(async (req: Request) => {
         else failed++;
       }
     }
+
+    console.log(`[process-scheduled-messages] Resumo: processadas=${claimed.length} enviadas=${sent} falharam=${failed} retentativas=${retried} recorrencias=${recurrenceEnqueued}`);
 
     return new Response(
       JSON.stringify({
