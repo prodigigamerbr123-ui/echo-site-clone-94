@@ -23,6 +23,7 @@ import {
   buildEvaluationMessages,
   buildFollowup,
   buildReschedule,
+  applyLinkedEvaluationTemplates,
   AUTO_EVAL_MESSAGE_TYPES,
 } from "@/lib/evaluationMessages";
 import {
@@ -30,6 +31,8 @@ import {
   isAutomationEnabled,
   getAutomationParam,
 } from "@/lib/automationSettings";
+import { resolveAutomationMessage } from "@/lib/messageTemplates";
+
 
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -255,6 +258,7 @@ export default function AgendarAvaliacao() {
     const settings = await fetchAutomationSettings();
     if (isAutomationEnabled(settings, "evaluation_reminders")) {
       const auto = buildEvaluationMessages(student.name, new Date(whenIso));
+      await applyLinkedEvaluationTemplates(auto, student.name, new Date(whenIso));
       if (auto.length > 0) {
         await supabase.from("scheduled_messages").insert(
           auto.map((m) => ({
@@ -268,6 +272,7 @@ export default function AgendarAvaliacao() {
         );
       }
     }
+
   }
 
   const handleCreate = async () => {
@@ -339,6 +344,7 @@ export default function AgendarAvaliacao() {
       const settings = await fetchAutomationSettings();
       if (isAutomationEnabled(settings, "evaluation_reminders")) {
         const auto = buildEvaluationMessages(rescheduleTarget.students?.name ?? "aluno", when);
+        await applyLinkedEvaluationTemplates(auto, rescheduleTarget.students?.name ?? "aluno", when);
         if (auto.length > 0) {
           await supabase.from("scheduled_messages").insert(
             auto.map((m) => ({
@@ -352,6 +358,7 @@ export default function AgendarAvaliacao() {
           );
         }
       }
+
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
       toast({ title: "Avaliação remarcada" });
@@ -396,9 +403,17 @@ export default function AgendarAvaliacao() {
           const daysAfter = Number(getAutomationParam(settings, "evaluation_followup", "days_after", 7));
           const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
           followup.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+          const name = ev.students?.name ?? "aluno";
+          const content = await resolveAutomationMessage(
+            "evaluation_followup",
+            "evaluation_followup",
+            buildFollowup(name),
+            { nome: name },
+            settings,
+          );
           await supabase.from("scheduled_messages").insert({
             student_id: ev.student_id,
-            content: buildFollowup(ev.students?.name ?? "aluno"),
+            content,
             scheduled_for: followup.toISOString(),
             message_type: "evaluation_followup",
             status: "pending",
@@ -406,6 +421,7 @@ export default function AgendarAvaliacao() {
           });
           followupScheduled = true;
         }
+
       }
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
@@ -445,9 +461,17 @@ export default function AgendarAvaliacao() {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+        const name = ev.students?.name ?? "aluno";
+        const content = await resolveAutomationMessage(
+          "no_show_reschedule",
+          "evaluation_reschedule",
+          buildReschedule(name),
+          { nome: name },
+          settings,
+        );
         await supabase.from("scheduled_messages").insert({
           student_id: ev.student_id,
-          content: buildReschedule(ev.students?.name ?? "aluno"),
+          content,
           scheduled_for: tomorrow.toISOString(),
           message_type: "evaluation_reschedule",
           status: "pending",
@@ -455,6 +479,7 @@ export default function AgendarAvaliacao() {
         });
         rescheduled = true;
       }
+
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
       toast({

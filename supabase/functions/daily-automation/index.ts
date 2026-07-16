@@ -9,6 +9,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireCronSecret } from "../_shared/auth.ts";
+import { resolveAutomationMessage } from "../_shared/messageTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -137,9 +138,13 @@ serve(async (req: Request) => {
       for (const s of activeStudents) {
         if (!isBirthdayToday(s.birth_date)) continue;
         if (hasPending.has(`${s.id}:birthday`)) continue;
+        const content = await resolveAutomationMessage(
+          supabase, settings, "birthday", "birthday",
+          pick(BIRTHDAY_TEMPLATES)(s.name), { nome: s.name },
+        );
         birthdayInserts.push({
           student_id: s.id,
-          content: pick(BIRTHDAY_TEMPLATES)(s.name),
+          content,
           scheduled_for: scatterTimeToday().toISOString(),
           message_type: "birthday",
           status: "pending",
@@ -177,14 +182,22 @@ serve(async (req: Request) => {
         });
 
       const remainingSlots = Math.max(0, dailyLimit - birthdayInserts.length);
-      reminderInserts = reminderCandidates.slice(0, remainingSlots).map((s) => ({
-        student_id: s.id,
-        content: pick(REMINDER_TEMPLATES)(s.name),
-        scheduled_for: scatterTimeToday().toISOString(),
-        message_type: "evaluation_reminder",
-        status: "pending",
-      }));
+      const picked = reminderCandidates.slice(0, remainingSlots);
+      for (const s of picked) {
+        const content = await resolveAutomationMessage(
+          supabase, settings, "evaluation_invite", "evaluation_reminder",
+          pick(REMINDER_TEMPLATES)(s.name), { nome: s.name },
+        );
+        reminderInserts.push({
+          student_id: s.id,
+          content,
+          scheduled_for: scatterTimeToday().toISOString(),
+          message_type: "evaluation_reminder",
+          status: "pending",
+        });
+      }
     }
+
 
     const allInserts = [...birthdayInserts, ...reminderInserts];
 

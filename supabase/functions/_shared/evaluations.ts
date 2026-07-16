@@ -11,8 +11,11 @@
 //  - noShowEvaluation: status no_show, deleta pendentes, agenda remarcação
 //    para amanhã 09-12h.
 
+import { resolveAutomationMessage } from "./messageTemplates.ts";
+
 // Brasil (sem DST) = UTC-3. Fixo para manter paridade com o browser em SP.
 const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
+
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -252,6 +255,16 @@ export async function createEvaluationWithMessages(
 
   const auto = remindersOn ? buildEvaluationMessages(student.name, scheduledAt) : [];
   if (auto.length > 0) {
+    const vars = {
+      nome: student.name,
+      data: fmtDateSP(scheduledAt),
+      hora: fmtTimeSP(scheduledAt),
+    };
+    for (const m of auto) {
+      m.content = await resolveAutomationMessage(
+        supabase, settings, "evaluation_reminders", m.message_type, m.content, vars,
+      );
+    }
     const { error: mErr } = await supabase.from("scheduled_messages").insert(
       auto.map((m) => ({
         student_id: studentId,
@@ -264,6 +277,7 @@ export async function createEvaluationWithMessages(
     );
     if (mErr) throw mErr;
   }
+
 
   return { evaluation_id: created.id, messages_created: auto.length };
 }
@@ -325,9 +339,14 @@ export async function completeEvaluation(
       9 + Math.floor(Math.random() * 3),
       Math.floor(Math.random() * 60),
     );
+    const name = ev.students?.name ?? "aluno";
+    const content = await resolveAutomationMessage(
+      supabase, settings, "evaluation_followup", "evaluation_followup",
+      pick(FOLLOWUP_TEMPLATES)(name), { nome: name },
+    );
     await supabase.from("scheduled_messages").insert({
       student_id: ev.student_id,
-      content: pick(FOLLOWUP_TEMPLATES)(ev.students?.name ?? "aluno"),
+      content,
       scheduled_for: followupSp.toISOString(),
       message_type: "evaluation_followup",
       status: "pending",
@@ -335,6 +354,7 @@ export async function completeEvaluation(
     });
     return { followup_scheduled: true };
   }
+
   return { followup_scheduled: false };
 }
 
@@ -366,12 +386,18 @@ export async function noShowEvaluation(
     9 + Math.floor(Math.random() * 3),
     Math.floor(Math.random() * 60),
   );
+  const name = ev.students?.name ?? "aluno";
+  const content = await resolveAutomationMessage(
+    supabase, settings, "no_show_reschedule", "evaluation_reschedule",
+    pick(RESCHEDULE_TEMPLATES)(name), { nome: name },
+  );
   await supabase.from("scheduled_messages").insert({
     student_id: ev.student_id,
-    content: pick(RESCHEDULE_TEMPLATES)(ev.students?.name ?? "aluno"),
+    content,
     scheduled_for: tomorrowSp.toISOString(),
     message_type: "evaluation_reschedule",
     status: "pending",
     evaluation_id: evaluationId,
+
   });
 }
