@@ -6,6 +6,7 @@ import {
   noShowEvaluation,
   checkScheduleConflicts,
 } from "../_shared/evaluations.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
