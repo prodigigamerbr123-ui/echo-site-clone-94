@@ -26,6 +26,12 @@ export const useDashboardStats = () => {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
 
+      // Inactive students
+      const { count: inactiveStudents } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .neq('status', 'active');
+
       // New students this month
       const { count: newStudentsMonth } = await supabase
         .from('students')
