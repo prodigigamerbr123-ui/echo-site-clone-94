@@ -63,7 +63,7 @@ serve(async (req: Request) => {
     const { status: listStatus, instances } = await fetchEvolutionInstances(baseUrl, headers);
     const instanceInfo = getEvolutionInstance(instances, EVOLUTION_INSTANCE_NAME);
     const connection = summarizeWhatsAppConnection(state, instanceInfo);
-    console.log(`[fetchInstances] status=${listStatus} count=${instances.length}`);
+    console.log(`[debug] rawState=${state} listStatus=${listStatus} count=${instances.length} names=${instances.map(i=>i.name).join(',')} matchedName=${instanceInfo?.name} matchedStatus=${instanceInfo?.connectionStatus} reasonCode=${instanceInfo?.disconnectionReasonCode} stale=${connection.staleSession} effective=${connection.effectiveState}`);
 
     // If not connected (or explicitly requested), fetch QR code
     if (connection.effectiveState !== 'open' || action === 'connect') {
