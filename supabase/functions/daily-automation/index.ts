@@ -64,6 +64,10 @@ function daysSince(dateStr: string | null): number {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const authFail = requireCronSecret(req);
+  if (authFail) return authFail;
+
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
