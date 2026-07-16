@@ -74,14 +74,9 @@ export function AutomationStatusCard() {
             <div className="text-2xl font-bold mt-1">{data?.pending ?? 0}</div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm" className="flex-1">
-            <Link to="/mensagens-agendadas">Ver fila</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="flex-1">
-            <Link to="/automacoes">Configurar automações</Link>
-          </Button>
-        </div>
+        <Button asChild variant="outline" size="sm" className="w-full">
+          <Link to="/mensagens-agendadas">Ver fila</Link>
+        </Button>
       </CardContent>
     </Card>
   );

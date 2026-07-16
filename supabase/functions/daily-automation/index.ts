@@ -14,8 +14,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const DEFAULT_DAILY_LIMIT = 60;
-const DEFAULT_DAYS_OVERDUE = 90;
+const DAILY_LIMIT = 60;
 
 const REMINDER_TEMPLATES = [
   (name: string) =>
@@ -69,20 +68,6 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Carrega configurações do dono da academia
-    const { data: settingsRows } = await supabase
-      .from("automation_settings")
-      .select("key, enabled, params");
-    const settings: Record<string, { enabled: boolean; params: any }> = {};
-    for (const r of settingsRows || []) {
-      settings[r.key] = { enabled: !!r.enabled, params: r.params || {} };
-    }
-    const inviteEnabled = settings.evaluation_invite?.enabled ?? true;
-    const birthdayEnabled = settings.birthday?.enabled ?? true;
-    const daysOverdue = Number(settings.evaluation_invite?.params?.days_overdue) || DEFAULT_DAYS_OVERDUE;
-    const dailyLimit = Number(settings.evaluation_invite?.params?.daily_limit) || DEFAULT_DAILY_LIMIT;
-
-
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
     const activeStudents: any[] = [];
     let from = 0;
@@ -112,18 +97,16 @@ serve(async (req: Request) => {
 
     // ---- 1) Aniversariantes de hoje ----
     const birthdayInserts: any[] = [];
-    if (birthdayEnabled) {
-      for (const s of activeStudents) {
-        if (!isBirthdayToday(s.birth_date)) continue;
-        if (hasPending.has(`${s.id}:birthday`)) continue;
-        birthdayInserts.push({
-          student_id: s.id,
-          content: pick(BIRTHDAY_TEMPLATES)(s.name),
-          scheduled_for: scatterTimeToday().toISOString(),
-          message_type: "birthday",
-          status: "pending",
-        });
-      }
+    for (const s of activeStudents) {
+      if (!isBirthdayToday(s.birth_date)) continue;
+      if (hasPending.has(`${s.id}:birthday`)) continue;
+      birthdayInserts.push({
+        student_id: s.id,
+        content: pick(BIRTHDAY_TEMPLATES)(s.name),
+        scheduled_for: scatterTimeToday().toISOString(),
+        message_type: "birthday",
+        status: "pending",
+      });
     }
 
     // Alunos com avaliação futura já marcada (evaluations.status='scheduled')
@@ -138,25 +121,24 @@ serve(async (req: Request) => {
     );
 
     // ---- 2) Lembretes de avaliação vencida ----
-    const reminderCandidates = inviteEnabled
-      ? activeStudents
-          .filter((s) => {
-            if (hasPending.has(`${s.id}:evaluation_reminder`)) return false;
-            if (studentsWithFutureEval.has(s.id)) return false;
-            if (s.last_evaluation_date) {
-              return daysSince(s.last_evaluation_date) > daysOverdue;
-            }
-            // Nunca avaliado, cadastrado há >14 dias
-            return !s.had_evaluation && daysSince(s.created_at) > 14;
-          })
-          .sort((a, b) => {
-            const aRef = a.last_evaluation_date || a.created_at;
-            const bRef = b.last_evaluation_date || b.created_at;
-            return new Date(aRef).getTime() - new Date(bRef).getTime();
-          })
-      : [];
+    const reminderCandidates = activeStudents
+      .filter((s) => {
+        if (hasPending.has(`${s.id}:evaluation_reminder`)) return false;
+        if (studentsWithFutureEval.has(s.id)) return false;
+        if (s.last_evaluation_date) {
+          return daysSince(s.last_evaluation_date) > 90;
+        }
+        // Nunca avaliado, cadastrado há >14 dias
+        return !s.had_evaluation && daysSince(s.created_at) > 14;
+      })
+      // Prioriza os mais antigos primeiro
+      .sort((a, b) => {
+        const aRef = a.last_evaluation_date || a.created_at;
+        const bRef = b.last_evaluation_date || b.created_at;
+        return new Date(aRef).getTime() - new Date(bRef).getTime();
+      });
 
-    const remainingSlots = Math.max(0, dailyLimit - birthdayInserts.length);
+    const remainingSlots = Math.max(0, DAILY_LIMIT - birthdayInserts.length);
     const reminderInserts = reminderCandidates.slice(0, remainingSlots).map((s) => ({
       student_id: s.id,
       content: pick(REMINDER_TEMPLATES)(s.name),
@@ -181,10 +163,7 @@ serve(async (req: Request) => {
       birthdays: birthdayInserts.length,
       reminders: reminderInserts.length,
       candidatesConsidered: reminderCandidates.length,
-      dailyLimit,
-      daysOverdue,
-      inviteEnabled,
-      birthdayEnabled,
+      dailyLimit: DAILY_LIMIT,
       activeStudents: activeStudents.length,
       ranAt: new Date().toISOString(),
     };

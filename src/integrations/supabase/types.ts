@@ -67,27 +67,6 @@ export type Database = {
           },
         ]
       }
-      automation_settings: {
-        Row: {
-          enabled: boolean
-          key: string
-          params: Json
-          updated_at: string
-        }
-        Insert: {
-          enabled?: boolean
-          key: string
-          params?: Json
-          updated_at?: string
-        }
-        Update: {
-          enabled?: boolean
-          key?: string
-          params?: Json
-          updated_at?: string
-        }
-        Relationships: []
-      }
       evaluations: {
         Row: {
           completed_at: string | null

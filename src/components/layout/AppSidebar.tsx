@@ -12,7 +12,6 @@ import {
   History,
   CalendarPlus,
   MessageCircle,
-  Zap,
 } from "lucide-react";
 
 
@@ -56,10 +55,7 @@ const menuGroups = [
   },
   {
     label: "Inteligência",
-    items: [
-      { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
-      { title: "Automações", url: "/automacoes", icon: Zap },
-    ],
+    items: [{ title: "Assistente IA", url: "/assistente-ia", icon: Bot }],
   },
 ];
 

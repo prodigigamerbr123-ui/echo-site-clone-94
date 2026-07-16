@@ -11,7 +11,6 @@ import { formatPhoneBR } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
-import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
 
 interface Student {
   id: string;
@@ -116,16 +115,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
 
       if (error) throw error;
 
-      // Se acabou de ficar inativo (era active), agenda mensagem de reengajamento
-      const wasActive = (student.status || "active") === "active";
-      const becameInactive = formData.status === "inactive";
-      if (wasActive && becameInactive) {
-        await scheduleReengagementIfEnabled(student.id, formData.nome.trim());
-      }
-
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-
+      
       toast({
         title: "Aluno atualizado com sucesso!",
         description: `Os dados de ${formData.nome} foram atualizados.`,
