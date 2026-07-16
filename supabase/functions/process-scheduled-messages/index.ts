@@ -1,12 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { formatPhone } from "../_shared/phone.ts";
-import { requireCronSecret } from "../_shared/auth.ts";
-import {
-  fetchEvolutionInstances,
-  getEvolutionInstance,
-  summarizeWhatsAppConnection,
-} from "../_shared/evolution.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,10 +22,6 @@ function randomDelayMs() {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const authFail = requireCronSecret(req);
-  if (authFail) return authFail;
-
-
   try {
     const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
@@ -48,36 +38,6 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-
-    const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
-    const evolutionHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY };
-
-    // Evita marcar mensagens como enviadas quando a sessão Baileys ficou obsoleta.
-    const stateResp = await fetch(
-      `${baseUrl}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`,
-      { headers: evolutionHeaders },
-    );
-    const stateData = await stateResp.json().catch(() => ({}));
-    const state = stateData?.instance?.state || stateData?.state || "unknown";
-    const { instances } = await fetchEvolutionInstances(baseUrl, evolutionHeaders);
-    const instanceInfo = getEvolutionInstance(instances, EVOLUTION_INSTANCE_NAME);
-    const connection = summarizeWhatsAppConnection(state, instanceInfo);
-
-    if (!connection.connected) {
-      console.warn(
-        `WhatsApp not connected; scheduled messages kept pending. state=${state} reason=${connection.disconnectionReason || "not_open"}`,
-      );
-      return new Response(
-        JSON.stringify({
-          processed: 0,
-          sent: 0,
-          failed: 0,
-          skipped: true,
-          reason: connection.disconnectionReason || "whatsapp_not_connected",
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
 
     // 1) Recuperar mensagens presas em "processing" por >10min
     const { data: resetCount } = await supabase.rpc("reset_stuck_scheduled_messages");
@@ -99,6 +59,7 @@ serve(async (req: Request) => {
       });
     }
 
+    const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
     let sent = 0;
     let failed = 0;
     let retried = 0;

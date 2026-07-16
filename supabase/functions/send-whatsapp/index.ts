@@ -1,12 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { formatPhone } from "../_shared/phone.ts";
-import { requireUser } from "../_shared/auth.ts";
-import {
-  fetchEvolutionInstances,
-  getEvolutionInstance,
-  summarizeWhatsAppConnection,
-} from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,10 +16,6 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
-  const authFail = await requireUser(req);
-  if (authFail) return authFail;
-
 
   try {
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
@@ -56,46 +46,6 @@ serve(async (req: Request) => {
     const results: any[] = [];
     const messagesToSave: any[] = [];
 
-    const evolutionHeaders = { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY };
-    const stateResp = await fetch(
-      `${baseUrl}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`,
-      { headers: evolutionHeaders }
-    );
-    const stateData = await stateResp.json().catch(() => ({}));
-    const state = stateData?.instance?.state || stateData?.state || 'unknown';
-    const { instances } = await fetchEvolutionInstances(baseUrl, evolutionHeaders);
-    const instanceInfo = getEvolutionInstance(instances, EVOLUTION_INSTANCE_NAME);
-    const connection = summarizeWhatsAppConnection(state, instanceInfo);
-
-    if (!connection.connected) {
-      const error = connection.staleSession
-        ? 'WhatsApp removido dos aparelhos conectados. Reconecte pelo QR Code.'
-        : 'WhatsApp desconectado. Reconecte pelo QR Code.';
-
-      for (const student of students) {
-        results.push({
-          studentId: student.id,
-          studentName: student.name,
-          phone: student.phone,
-          status: 'failed',
-          error,
-        });
-        messagesToSave.push({ student_id: student.id, content: message, status: 'failed' });
-      }
-
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
-      const { error: dbError } = await supabase.from('messages').insert(messagesToSave);
-      if (dbError) console.error('DB insert error:', dbError);
-
-      return new Response(
-        JSON.stringify({ success: true, results, summary: { total: students.length, sent: 0, failed: students.length } }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     for (const student of students) {
       const phoneCheck = formatPhone(student.phone);
 
@@ -120,7 +70,7 @@ serve(async (req: Request) => {
           `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`,
           {
             method: 'POST',
-            headers: evolutionHeaders,
+            headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
             body: JSON.stringify({ number: phoneCheck.number, text: message }),
           }
         );

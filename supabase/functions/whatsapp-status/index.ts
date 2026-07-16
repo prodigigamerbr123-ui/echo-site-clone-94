@@ -1,10 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { requireUser } from "../_shared/auth.ts";
-import {
-  fetchEvolutionInstances,
-  getEvolutionInstance,
-  summarizeWhatsAppConnection,
-} from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,10 +9,6 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
-  const authFail = await requireUser(req);
-  if (authFail) return authFail;
-
 
   try {
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
@@ -43,7 +33,7 @@ serve(async (req: Request) => {
         method: 'DELETE', headers,
       });
       const data = await r.json().catch(() => ({}));
-      return new Response(JSON.stringify({ success: r.ok, data, state: 'close', connected: false }), {
+      return new Response(JSON.stringify({ success: r.ok, data }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -59,41 +49,28 @@ serve(async (req: Request) => {
     let qrcode: string | null = null;
     let pairingCode: string | null = null;
 
-    // List instances to detect stale sessions that still report state=open.
-    const { status: listStatus, instances } = await fetchEvolutionInstances(baseUrl, headers);
-    const instanceInfo = getEvolutionInstance(instances, EVOLUTION_INSTANCE_NAME);
-    const connection = summarizeWhatsAppConnection(state, instanceInfo);
-    console.log(`[debug] rawState=${state} listStatus=${listStatus} count=${instances.length} names=${instances.map(i=>i.name).join(',')} matchedName=${instanceInfo?.name} matchedStatus=${instanceInfo?.connectionStatus} reasonCode=${instanceInfo?.disconnectionReasonCode} stale=${connection.staleSession} effective=${connection.effectiveState}`);
+    // List instances to verify our instance exists
+    const listResp = await fetch(`${baseUrl}/instance/fetchInstances`, { headers });
+    const listText = await listResp.text();
+    console.log(`[fetchInstances] status=${listResp.status} body=${listText.slice(0, 800)}`);
 
-    // IMPORTANT: only fetch a QR when the user explicitly asks (action=='connect').
-    // Calling /instance/connect on every status poll invalidates the previous QR
-    // and breaks the handshake mid-scan.
-    if (action === 'connect') {
-      // Evolution only emits a fresh QR when the instance is NOT "open".
-      // Force logout first if the socket is still reporting open (stale session
-      // or explicit re-pair).
-      if (state === 'open') {
-        const logoutResp = await fetch(
-          `${baseUrl}/instance/logout/${EVOLUTION_INSTANCE_NAME}`,
-          { method: 'DELETE', headers },
-        );
-        console.log(`[pre-connect logout] status=${logoutResp.status}`);
-        await new Promise((r) => setTimeout(r, 800));
-      }
-
+    // If not connected (or explicitly requested), fetch QR code
+    if (state !== 'open' || action === 'connect') {
       const connUrl = `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`;
 
+      // Try GET first
       let connResp = await fetch(connUrl, { method: 'GET', headers });
       let connText = await connResp.text();
-      console.log(`[connect GET] status=${connResp.status} body=${connText.slice(0, 300)}`);
+      console.log(`[connect GET] status=${connResp.status} body=${connText.slice(0, 500)}`);
 
       let connData: any = {};
       try { connData = JSON.parse(connText); } catch (_) {}
 
+      // If empty response, try POST
       if (!connData?.base64 && !connData?.qrcode && !connData?.code && !connData?.pairingCode) {
         connResp = await fetch(connUrl, { method: 'POST', headers, body: JSON.stringify({}) });
         connText = await connResp.text();
-        console.log(`[connect POST] status=${connResp.status} body=${connText.slice(0, 300)}`);
+        console.log(`[connect POST] status=${connResp.status} body=${connText.slice(0, 500)}`);
         try { connData = JSON.parse(connText); } catch (_) {}
       }
 
@@ -104,23 +81,10 @@ serve(async (req: Request) => {
         connData?.qr ||
         null;
       pairingCode = connData?.pairingCode || connData?.code || null;
-
-      if (state === 'open') {
-        connection.effectiveState = 'close';
-        connection.connected = false;
-      }
     }
 
     return new Response(
-      JSON.stringify({
-        state: connection.effectiveState,
-        connected: connection.connected,
-        staleSession: connection.staleSession,
-        disconnectionReason: connection.disconnectionReason,
-        qrcode,
-        pairingCode,
-        instance: EVOLUTION_INSTANCE_NAME,
-      }),
+      JSON.stringify({ state, qrcode, pairingCode, instance: EVOLUTION_INSTANCE_NAME }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

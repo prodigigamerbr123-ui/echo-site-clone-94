@@ -8,7 +8,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireCronSecret } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,10 +62,6 @@ function daysSince(dateStr: string | null): number {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  const authFail = requireCronSecret(req);
-  if (authFail) return authFail;
-
 
   try {
     const supabase = createClient(

@@ -18,9 +18,6 @@ type State = "open" | "close" | "connecting" | "unknown" | string;
 
 interface StatusResponse {
   state: State;
-  connected?: boolean;
-  staleSession?: boolean;
-  disconnectionReason?: string | null;
   qrcode: string | null;
   pairingCode: string | null;
   instance?: string;
@@ -72,7 +69,6 @@ export function WhatsAppStatus() {
   const isConnected = data?.state === "open";
   const isConnecting = data?.state === "connecting";
   const isDisconnected = !isConnected && !isConnecting;
-  const isStaleSession = Boolean(data?.staleSession || data?.disconnectionReason === "device_removed");
 
   const qrSrc = data?.qrcode
     ? data.qrcode.startsWith("data:")
@@ -113,8 +109,6 @@ export function WhatsAppStatus() {
                   ? "Mensagens podem ser enviadas normalmente."
                   : isConnecting
                   ? "Aguardando confirmação do dispositivo..."
-                  : isStaleSession
-                  ? "Sessão removida no WhatsApp. Reconecte pelo QR Code."
                   : "Conecte o WhatsApp para enviar mensagens."}
               </CardDescription>
             </div>
@@ -147,9 +141,8 @@ export function WhatsAppStatus() {
             <div className="flex-1 text-sm">
               <p className="font-medium text-destructive">Ação necessária</p>
               <p className="text-muted-foreground text-xs">
-                {isStaleSession
-                  ? "O WhatsApp removeu este aparelho conectado. Limpe a sessão antiga e escaneie um novo QR Code para liberar os envios."
-                  : "Conecte o WhatsApp da academia escaneando o QR Code abaixo para liberar o envio de mensagens."}
+                Conecte o WhatsApp da academia escaneando o QR Code abaixo para liberar o envio de
+                mensagens.
               </p>
             </div>
           </div>
@@ -194,14 +187,14 @@ export function WhatsAppStatus() {
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
             {isConnected ? "Atualizar Status" : "Atualizar / Gerar QR"}
           </Button>
-          {(isConnected || isStaleSession) && (
+          {isConnected && (
             <Button
               variant="destructive"
               onClick={() => fetchStatus("logout")}
               disabled={loading}
             >
               <LogOut className="h-4 w-4 mr-1" />
-              {isStaleSession ? "Limpar sessão" : "Desconectar"}
+              Desconectar
             </Button>
           )}
         </div>
