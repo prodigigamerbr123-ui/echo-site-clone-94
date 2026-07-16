@@ -336,18 +336,21 @@ export default function AgendarAvaliacao() {
         .eq("id", rescheduleTarget.id);
       if (error) throw error;
 
-      const auto = buildEvaluationMessages(rescheduleTarget.students?.name ?? "aluno", when);
-      if (auto.length > 0) {
-        await supabase.from("scheduled_messages").insert(
-          auto.map((m) => ({
-            student_id: rescheduleTarget.student_id,
-            content: m.content,
-            scheduled_for: m.scheduled_for,
-            message_type: m.message_type,
-            status: "pending",
-            evaluation_id: rescheduleTarget.id,
-          })),
-        );
+      const settings = await fetchAutomationSettings();
+      if (isAutomationEnabled(settings, "evaluation_reminders")) {
+        const auto = buildEvaluationMessages(rescheduleTarget.students?.name ?? "aluno", when);
+        if (auto.length > 0) {
+          await supabase.from("scheduled_messages").insert(
+            auto.map((m) => ({
+              student_id: rescheduleTarget.student_id,
+              content: m.content,
+              scheduled_for: m.scheduled_for,
+              message_type: m.message_type,
+              status: "pending",
+              evaluation_id: rescheduleTarget.id,
+            })),
+          );
+        }
       }
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
