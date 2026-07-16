@@ -1,7 +1,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Bot, Settings, LogOut } from "lucide-react";
+import { Bot, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import workoutLogo from "@/assets/workout-combined-v2.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,17 +37,6 @@ export function AppHeader() {
           >
             <Link to="/assistente-ia">
               <Bot className="h-5 w-5" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            aria-label="Configurações"
-            title="Configurações"
-          >
-            <Link to="/configuracoes">
-              <Settings className="h-5 w-5" />
             </Link>
           </Button>
           <Button
