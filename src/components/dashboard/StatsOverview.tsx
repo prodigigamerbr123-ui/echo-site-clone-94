@@ -189,14 +189,14 @@ export function StatsOverview() {
 
   return (
     <div className="space-y-6">
-      <Section icon={Users} title="Alunos">
-        {studentStats.map((s) => (
+      <Section icon={MessageSquare} title="Status das Mensagens">
+        {messageStats.map((s) => (
           <StatCard key={s.title} stat={s} />
         ))}
       </Section>
 
-      <Section icon={MessageSquare} title="Status das Mensagens">
-        {messageStats.map((s) => (
+      <Section icon={Users} title="Alunos">
+        {studentStats.map((s) => (
           <StatCard key={s.title} stat={s} />
         ))}
       </Section>
