@@ -25,6 +25,11 @@ import {
   buildReschedule,
   AUTO_EVAL_MESSAGE_TYPES,
 } from "@/lib/evaluationMessages";
+import {
+  fetchAutomationSettings,
+  isAutomationEnabled,
+  getAutomationParam,
+} from "@/lib/automationSettings";
 
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
