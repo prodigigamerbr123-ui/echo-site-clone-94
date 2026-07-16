@@ -354,6 +354,9 @@ export async function noShowEvaluation(
     .from("evaluations").update({ status: "no_show" }).eq("id", evaluationId);
   if (uErr) throw uErr;
 
+  const settings = await loadAutomationSettings(supabase);
+  if (!settingEnabled(settings, "no_show_reschedule")) return;
+
   // Mensagem de remarcação amanhã 09-12h SP
   const now = new Date();
   const tomorrowUTC = new Date(now.getTime() + 86400000);
