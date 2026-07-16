@@ -28,6 +28,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button
             asChild
             variant="ghost"
@@ -48,7 +49,6 @@ export function AppHeader() {
           >
             <LogOut className="h-5 w-5" />
           </Button>
-          <ThemeToggle />
         </div>
       </div>
     </header>
