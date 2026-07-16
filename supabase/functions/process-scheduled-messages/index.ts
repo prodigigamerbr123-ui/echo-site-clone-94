@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { parseEvolutionSendResponse } from "../_shared/evolution.ts";
 import { formatPhone } from "../_shared/phone.ts";
 
 const corsHeaders = {
@@ -134,7 +135,9 @@ serve(async (req: Request) => {
           },
         );
 
-        if (resp.ok) {
+        const result = await parseEvolutionSendResponse(resp);
+
+        if (result.ok) {
           await supabase
             .from("scheduled_messages")
             .update({
@@ -148,6 +151,7 @@ serve(async (req: Request) => {
             content: msg.content,
             status: "sent",
           });
+          console.log(`Mensagem ${msg.id} confirmada pela Evolution: ${result.messageId}`);
           sent++;
 
           // Recorrência: enfileira próxima ocorrência se ainda restam
@@ -174,9 +178,8 @@ serve(async (req: Request) => {
             else console.error("Erro criando recorrência:", recError);
           }
         } else {
-          const txt = await resp.text();
-          console.error(`Falha ao enviar ${msg.id}:`, txt);
-          await handleFailure(supabase, msg, `HTTP ${resp.status}: ${txt.slice(0, 200)}`);
+          console.error(`Falha ao enviar ${msg.id}:`, result.error, result.bodyText.slice(0, 500));
+          await handleFailure(supabase, msg, result.error || "Evolution não confirmou o envio");
           if (Number(msg.retry_count || 0) < MAX_RETRIES) retried++;
           else failed++;
         }
