@@ -68,6 +68,14 @@ export function StatsOverview() {
       iconBg: "bg-gradient-to-br from-emerald-500 to-teal-600",
     },
     {
+      title: "Alunos Inativos",
+      value: v(stats?.inactiveStudents),
+      icon: Users,
+      description: "Sem status ativo",
+      gradient: "bg-gradient-to-br from-slate-500 to-slate-700",
+      iconBg: "bg-gradient-to-br from-slate-500 to-slate-700",
+    },
+    {
       title: "Novos no Mês",
       value: v(stats?.newStudentsMonth),
       icon: UserPlus,
