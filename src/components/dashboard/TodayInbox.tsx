@@ -110,13 +110,21 @@ export function TodayInbox() {
     if (!existing?.length) {
       const fu = new Date(evalDate.getTime() + 7 * 86400000);
       fu.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+      const name = ev.students?.name ?? "aluno";
+      const content = await resolveAutomationMessage(
+        "evaluation_followup",
+        "evaluation_followup",
+        buildFollowup(name),
+        { nome: name },
+      );
       await supabase.from("scheduled_messages").insert({
         student_id: ev.student_id,
-        content: buildFollowup(ev.students?.name ?? "aluno"),
+        content,
         scheduled_for: fu.toISOString(),
         message_type: "evaluation_followup", status: "pending", evaluation_id: ev.id,
       });
     }
+
     toast({ title: "Avaliação realizada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
   };
