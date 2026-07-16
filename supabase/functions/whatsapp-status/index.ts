@@ -67,6 +67,19 @@ serve(async (req: Request) => {
 
     // If not connected (or explicitly requested), fetch QR code
     if (connection.effectiveState !== 'open' || action === 'connect') {
+      // Evolution only emits a fresh QR when the instance is NOT "open".
+      // If the raw state is still open (stale session or forced reconnect),
+      // logout first so /instance/connect returns a new QR.
+      if (state === 'open') {
+        const logoutResp = await fetch(
+          `${baseUrl}/instance/logout/${EVOLUTION_INSTANCE_NAME}`,
+          { method: 'DELETE', headers },
+        );
+        console.log(`[pre-connect logout] status=${logoutResp.status}`);
+        // small delay to let Evolution reset the socket
+        await new Promise((r) => setTimeout(r, 800));
+      }
+
       const connUrl = `${baseUrl}/instance/connect/${EVOLUTION_INSTANCE_NAME}`;
 
       // Try GET first
@@ -92,6 +105,12 @@ serve(async (req: Request) => {
         connData?.qr ||
         null;
       pairingCode = connData?.pairingCode || connData?.code || null;
+
+      // If we forced a logout, reflect the new state to the client
+      if (state === 'open') {
+        connection.effectiveState = 'close';
+        connection.connected = false;
+      }
     }
 
     return new Response(
