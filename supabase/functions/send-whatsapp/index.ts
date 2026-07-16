@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { formatPhone } from "../_shared/phone.ts";
+import { sendEvolutionText } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,26 +67,24 @@ serve(async (req: Request) => {
       }
 
       try {
-        const resp = await fetch(
-          `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_API_KEY },
-            body: JSON.stringify({ number: phoneCheck.number, text: message }),
-          }
-        );
-        const data = await resp.json();
+        const sendResult = await sendEvolutionText({
+          baseUrl,
+          instance: EVOLUTION_INSTANCE_NAME,
+          apiKey: EVOLUTION_API_KEY,
+          number: phoneCheck.number,
+          text: message,
+        });
 
-        if (resp.ok) {
+        if (sendResult.ok) {
           results.push({
             studentId: student.id, studentName: student.name, phone: student.phone,
-            status: 'sent', messageId: data?.key?.id ?? null,
+            status: 'sent', messageId: sendResult.messageId ?? null,
           });
           messagesToSave.push({ student_id: student.id, content: message, status: 'sent' });
         } else {
           results.push({
             studentId: student.id, studentName: student.name, phone: student.phone,
-            status: 'failed', error: data?.message || data?.error || `HTTP ${resp.status}`,
+            status: 'failed', error: sendResult.reason || `HTTP ${sendResult.httpStatus || 'desconhecido'}`,
           });
           messagesToSave.push({ student_id: student.id, content: message, status: 'failed' });
         }
