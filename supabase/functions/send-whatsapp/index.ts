@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { parseEvolutionSendResponse } from "../_shared/evolution.ts";
 import { formatPhone } from "../_shared/phone.ts";
 
 const corsHeaders = {
@@ -74,18 +75,19 @@ serve(async (req: Request) => {
             body: JSON.stringify({ number: phoneCheck.number, text: message }),
           }
         );
-        const data = await resp.json();
+        const sendResult = await parseEvolutionSendResponse(resp);
 
-        if (resp.ok) {
+        if (sendResult.ok) {
           results.push({
             studentId: student.id, studentName: student.name, phone: student.phone,
-            status: 'sent', messageId: data?.key?.id ?? null,
+            status: 'sent', messageId: sendResult.messageId,
           });
           messagesToSave.push({ student_id: student.id, content: message, status: 'sent' });
         } else {
+          console.error('Evolution send failed:', sendResult.error, sendResult.bodyText.slice(0, 500));
           results.push({
             studentId: student.id, studentName: student.name, phone: student.phone,
-            status: 'failed', error: data?.message || data?.error || `HTTP ${resp.status}`,
+            status: 'failed', error: sendResult.error || `HTTP ${resp.status}`,
           });
           messagesToSave.push({ student_id: student.id, content: message, status: 'failed' });
         }
