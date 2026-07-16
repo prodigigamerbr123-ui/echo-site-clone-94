@@ -4,8 +4,10 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { resolveAutomationMessage } from "@/lib/messageTemplates";
 
 type Tpl = (name: string, when: Date) => string;
+
 
 const CONFIRMATION_TEMPLATES: Tpl[] = [
   (n, w) =>
