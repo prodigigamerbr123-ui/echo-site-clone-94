@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import workoutLogo from "@/assets/workout-logo-circle.png.asset.json";
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -48,12 +48,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="flex flex-col items-center text-center space-y-4">
-          <img src={workoutLogo.url} alt="Workout Academia" className="h-20 w-20 object-contain block" />
-          <div className="space-y-1">
-            <CardTitle>Entrar</CardTitle>
-            <CardDescription>Acesso restrito à equipe da academia</CardDescription>
-          </div>
+        <CardHeader className="text-center space-y-1">
+          <CardTitle>Entrar</CardTitle>
+          <CardDescription>Acesso restrito à equipe da academia</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
