@@ -255,6 +255,7 @@ export default function AgendarAvaliacao() {
     if (error) throw error;
 
     // 3 mensagens automáticas (apenas se toggle ligado)
+    let messagesCreated = 0;
     const settings = await fetchAutomationSettings();
     if (isAutomationEnabled(settings, "evaluation_reminders")) {
       const auto = buildEvaluationMessages(student.name, new Date(whenIso));
@@ -270,9 +271,11 @@ export default function AgendarAvaliacao() {
             evaluation_id: created!.id,
           })),
         );
+        messagesCreated = auto.length;
       }
     }
 
+    return messagesCreated;
   }
 
   const handleCreate = async () => {
@@ -284,11 +287,15 @@ export default function AgendarAvaliacao() {
     }
     setSaving(true);
     try {
-      await scheduleFor(selected, when.toISOString(), notes);
+      const messagesCreated = await scheduleFor(selected, when.toISOString(), notes);
+      const whenLabel = format(when, "dd/MM 'às' HH:mm", { locale: ptBR });
       toast({
         title: "Avaliação agendada",
-        description: `${selected.name} — ${format(when, "dd/MM 'às' HH:mm", { locale: ptBR })}. 3 mensagens automáticas criadas.`,
+        description: messagesCreated > 0
+          ? `${selected.name} — ${whenLabel}. ${messagesCreated} ${messagesCreated === 1 ? "mensagem automática criada" : "mensagens automáticas criadas"}.`
+          : `${selected.name} — ${whenLabel}.`,
       });
+
       setStudentId(""); setDate(""); setTime("09:00"); setNotes("");
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
