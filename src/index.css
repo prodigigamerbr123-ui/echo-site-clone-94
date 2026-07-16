@@ -128,3 +128,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer base {
+  /* Esconde o cursor de texto (caret) em elementos não editáveis */
+  * {
+    caret-color: transparent;
+  }
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    caret-color: auto;
+  }
+}
