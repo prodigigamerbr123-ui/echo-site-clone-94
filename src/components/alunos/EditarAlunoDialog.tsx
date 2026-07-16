@@ -11,6 +11,7 @@ import { formatPhoneBR } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
+import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
 
 interface Student {
   id: string;
@@ -114,6 +115,12 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         .eq('id', student.id);
 
       if (error) throw error;
+
+      const wasActive = (student.status || "active") === "active";
+      const nowInactive = formData.status !== "active";
+      if (wasActive && nowInactive) {
+        await scheduleReengagementIfEnabled(student.id, formData.nome.trim());
+      }
 
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });

@@ -137,7 +137,44 @@ export const AUTO_EVAL_MESSAGE_TYPES = [
   "evaluation_reminder_day",
   "evaluation_followup",
   "evaluation_reschedule",
+  "evaluation_reminder",
+  "birthday",
+  "welcome",
+  "reengagement",
 ] as const;
+
+// -------- Automation settings helpers --------
+
+export type AutomationSettingsMap = Record<
+  string,
+  { enabled: boolean; params: Record<string, any> }
+>;
+
+export async function loadAutomationSettings(
+  supabase: any,
+): Promise<AutomationSettingsMap> {
+  const { data } = await supabase
+    .from("automation_settings")
+    .select("key, enabled, params");
+  const map: AutomationSettingsMap = {};
+  for (const r of data ?? []) {
+    map[r.key] = { enabled: !!r.enabled, params: (r.params as any) ?? {} };
+  }
+  return map;
+}
+export function settingEnabled(map: AutomationSettingsMap, key: string): boolean {
+  const s = map[key];
+  return s ? s.enabled : true;
+}
+export function settingParam<T>(
+  map: AutomationSettingsMap,
+  key: string,
+  name: string,
+  fallback: T,
+): T {
+  const v = map[key]?.params?.[name];
+  return (v === undefined || v === null ? fallback : v) as T;
+}
 
 // -------- Travas de pré-agendamento --------
 
@@ -210,7 +247,10 @@ export async function createEvaluationWithMessages(
     .single();
   if (error) throw error;
 
-  const auto = buildEvaluationMessages(student.name, scheduledAt);
+  const settings = await loadAutomationSettings(supabase);
+  const remindersOn = settingEnabled(settings, "evaluation_reminders");
+
+  const auto = remindersOn ? buildEvaluationMessages(student.name, scheduledAt) : [];
   if (auto.length > 0) {
     const { error: mErr } = await supabase.from("scheduled_messages").insert(
       auto.map((m) => ({
@@ -262,7 +302,13 @@ export async function completeEvaluation(
   if (e1) throw e1;
   if (e2) throw e2;
 
-  // Follow-up 7d — evitar duplicidade
+  const settings = await loadAutomationSettings(supabase);
+  if (!settingEnabled(settings, "evaluation_followup")) {
+    return { followup_scheduled: false };
+  }
+  const daysAfter = Number(settingParam(settings, "evaluation_followup", "days_after", 7));
+
+  // Follow-up — evitar duplicidade
   const { data: existingFu } = await supabase
     .from("scheduled_messages")
     .select("id")
@@ -272,8 +318,7 @@ export async function completeEvaluation(
     .limit(1);
 
   if (!existingFu || existingFu.length === 0) {
-    const followup = new Date(evalDate.getTime() + 7 * 86400000);
-    // 9-12h SP com minutos aleatórios
+    const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
     const fp = spParts(followup);
     const followupSp = spDate(
       fp.y, fp.mo, fp.d,
@@ -308,6 +353,9 @@ export async function noShowEvaluation(
   const { error: uErr } = await supabase
     .from("evaluations").update({ status: "no_show" }).eq("id", evaluationId);
   if (uErr) throw uErr;
+
+  const settings = await loadAutomationSettings(supabase);
+  if (!settingEnabled(settings, "no_show_reschedule")) return;
 
   // Mensagem de remarcação amanhã 09-12h SP
   const now = new Date();

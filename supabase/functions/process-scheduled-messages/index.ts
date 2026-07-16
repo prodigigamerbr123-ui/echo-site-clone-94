@@ -89,9 +89,12 @@ serve(async (req: Request) => {
       }
 
       // Bloqueia mensagens AUTOMÁTICAS para alunos inativos.
-      // Mensagens manuais (message_type === 'manual') seguem normalmente —
-      // o dono pode querer mandar "sentimos sua falta" pra ex-aluno.
-      if (student.status !== "active" && msg.message_type !== "manual") {
+      // Exceções: 'manual' (dono decide) e 'reengagement' (alvo é justamente o inativo).
+      if (
+        student.status !== "active" &&
+        msg.message_type !== "manual" &&
+        msg.message_type !== "reengagement"
+      ) {
         await supabase
           .from("scheduled_messages")
           .update({
