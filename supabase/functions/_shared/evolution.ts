@@ -14,90 +14,63 @@ function safeJson(text: string): any {
   }
 }
 
-function firstString(...values: unknown[]): string | null {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
-}
-
-function extractMessageId(data: any): string | null {
-  return firstString(
-    data?.key?.id,
-    data?.message?.key?.id,
-    data?.data?.key?.id,
-    data?.response?.key?.id,
-    data?.messageId,
-    data?.message_id,
-    data?.id,
-    data?.data?.messageId,
-    data?.data?.message_id,
-    data?.data?.id,
-    data?.response?.messageId,
-    data?.response?.message_id,
-    data?.response?.id,
-  );
-}
-
 function extractError(data: any): string | null {
-  const direct = firstString(
-    data?.error,
-    data?.message,
-    data?.response?.message,
-    data?.data?.message,
-    data?.data?.error,
-  );
-  if (direct) return direct;
-
-  const nested = data?.response?.message;
-  if (Array.isArray(nested)) return nested.filter(Boolean).join("; ");
-
+  if (!data) return null;
+  if (typeof data.error === "string") return data.error;
+  if (data.error && typeof data.error === "object") {
+    return data.error.message || JSON.stringify(data.error);
+  }
+  if (typeof data.message === "string" && data.message !== "success") return data.message;
   return null;
 }
 
-export async function getEvolutionState(baseUrl: string, instance: string, apiKey: string): Promise<string> {
-  const resp = await fetch(`${baseUrl}/instance/connectionState/${instance}`, {
-    headers: { apikey: apiKey, "Content-Type": "application/json" },
-  });
-  const text = await resp.text();
-  const data = safeJson(text);
-  return data?.instance?.state || data?.state || "unknown";
+export async function getEvolutionState(baseUrl: string, instanceToken: string): Promise<string> {
+  try {
+    const resp = await fetch(`${baseUrl}/instance/status`, {
+      headers: { apikey: instanceToken, "Content-Type": "application/json" },
+    });
+    const text = await resp.text();
+    const data = safeJson(text);
+    const d = data?.data || data;
+    if (d?.Connected && d?.LoggedIn) return "open";
+    if (d?.Connected) return "connecting";
+    return "close";
+  } catch (_) {
+    return "unknown";
+  }
 }
 
 export async function sendEvolutionText(params: {
   baseUrl: string;
-  instance: string;
-  apiKey: string;
+  instanceToken: string;
   number: string;
   text: string;
 }): Promise<EvolutionSendResult> {
-  const state = await getEvolutionState(params.baseUrl, params.instance, params.apiKey);
+  const state = await getEvolutionState(params.baseUrl, params.instanceToken);
   if (state !== "open") {
     return { ok: false, reason: `WhatsApp não conectado na Evolution (estado: ${state})` };
   }
 
-  const resp = await fetch(`${params.baseUrl}/message/sendText/${params.instance}`, {
+  const resp = await fetch(`${params.baseUrl}/send/text`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: params.apiKey },
+    headers: { "Content-Type": "application/json", apikey: params.instanceToken },
     body: JSON.stringify({
       number: params.number,
       text: params.text,
       delay: 1200,
-      linkPreview: false,
     }),
   });
 
   const bodyText = await resp.text();
   const data = safeJson(bodyText);
-  const apiStatus = Number(data?.status ?? data?.statusCode ?? data?.response?.status);
-  const messageId = extractMessageId(data);
+  const messageId = data?.data?.Info?.ID || null;
   const apiError = extractError(data);
 
   console.log(
-    `[evolution-send] http=${resp.status} apiStatus=${Number.isFinite(apiStatus) ? apiStatus : "n/a"} messageId=${messageId || "none"} body=${bodyText.slice(0, 500)}`,
+    `[evolution-send] http=${resp.status} messageId=${messageId || "none"} body=${bodyText.slice(0, 500)}`,
   );
 
-  if (!resp.ok || (Number.isFinite(apiStatus) && apiStatus >= 400)) {
+  if (!resp.ok) {
     return {
       ok: false,
       httpStatus: resp.status,
@@ -106,15 +79,11 @@ export async function sendEvolutionText(params: {
     };
   }
 
-  if (apiError && !messageId) {
-    return { ok: false, httpStatus: resp.status, reason: apiError, bodyText };
-  }
-
   if (!messageId) {
     return {
       ok: false,
       httpStatus: resp.status,
-      reason: "Evolution respondeu sem ID de mensagem; não confirmei o envio",
+      reason: apiError || "Evolution respondeu sem ID de mensagem; não confirmei o envio",
       bodyText,
     };
   }
