@@ -1,6 +1,6 @@
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
+import { AISuggestions } from "@/components/dashboard/AISuggestions";
 
 function SectionDivider({ label }: { label: string }) {
   return (
@@ -19,11 +19,11 @@ export default function Dashboard() {
     <div className="space-y-8 max-w-7xl mx-auto">
       <QuickActions />
 
-      <SectionDivider label="Sugestões da IA" />
-      <AIInsightsPanel />
-
       <SectionDivider label="Números" />
       <StatsOverview />
+
+      <SectionDivider label="Sugestões da IA" />
+      <AISuggestions />
     </div>
   );
 }
