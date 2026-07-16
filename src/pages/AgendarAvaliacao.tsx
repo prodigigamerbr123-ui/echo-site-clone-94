@@ -344,6 +344,7 @@ export default function AgendarAvaliacao() {
       const settings = await fetchAutomationSettings();
       if (isAutomationEnabled(settings, "evaluation_reminders")) {
         const auto = buildEvaluationMessages(rescheduleTarget.students?.name ?? "aluno", when);
+        await applyLinkedEvaluationTemplates(auto, rescheduleTarget.students?.name ?? "aluno", when);
         if (auto.length > 0) {
           await supabase.from("scheduled_messages").insert(
             auto.map((m) => ({
@@ -357,6 +358,7 @@ export default function AgendarAvaliacao() {
           );
         }
       }
+
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
       toast({ title: "Avaliação remarcada" });
