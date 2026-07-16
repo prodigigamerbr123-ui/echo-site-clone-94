@@ -23,6 +23,7 @@ import {
   buildEvaluationMessages,
   buildFollowup,
   buildReschedule,
+  applyLinkedEvaluationTemplates,
   AUTO_EVAL_MESSAGE_TYPES,
 } from "@/lib/evaluationMessages";
 import {
@@ -30,6 +31,8 @@ import {
   isAutomationEnabled,
   getAutomationParam,
 } from "@/lib/automationSettings";
+import { resolveAutomationMessage } from "@/lib/messageTemplates";
+
 
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
