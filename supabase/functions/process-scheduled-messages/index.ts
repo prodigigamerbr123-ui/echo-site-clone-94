@@ -184,7 +184,7 @@ serve(async (req: Request) => {
             else console.error("Erro criando recorrência:", recError);
           }
         } else {
-          console.error(`Falha ao enviar ${msg.id}:`, result.error, result.bodyText.slice(0, 500));
+          console.error(`[FAIL] msg=${msg.id} motivo="${result.error}" body=${result.bodyText.slice(0, 300)}`);
           await handleFailure(supabase, msg, result.error || "Evolution não confirmou o envio");
           if (Number(msg.retry_count || 0) < MAX_RETRIES) retried++;
           else failed++;
