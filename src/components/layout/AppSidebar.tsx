@@ -13,6 +13,7 @@ import {
   CalendarPlus,
   MessageCircle,
   Zap,
+  Settings,
 } from "lucide-react";
 
 
