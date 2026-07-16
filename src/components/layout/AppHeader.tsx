@@ -40,17 +40,6 @@ export function AppHeader() {
             </Link>
           </Button>
           <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            aria-label="Configurações"
-            title="Configurações"
-          >
-            <Link to="/configuracoes">
-              <Settings className="h-5 w-5" />
-            </Link>
-          </Button>
-          <Button
             variant="ghost"
             size="icon"
             aria-label="Sair"
