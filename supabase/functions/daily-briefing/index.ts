@@ -21,6 +21,9 @@ function fmtBR(date: Date) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const authFail = await requireUser(req);
+  if (authFail) return authFail;
+
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const now = new Date();
