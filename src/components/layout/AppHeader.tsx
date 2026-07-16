@@ -7,6 +7,14 @@ import workoutLogo from "@/assets/workout-combined-v2.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 
 export function AppHeader() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <header className="h-16 bg-card border-b border-border shadow-card">
       <div className="h-full flex items-center justify-between pl-1 pr-4">
