@@ -56,11 +56,14 @@ serve(async (req: Request) => {
     if (claimError) throw claimError;
 
     if (!claimed || claimed.length === 0) {
+      console.log("[process-scheduled-messages] Nenhuma mensagem vencida encontrada");
       return new Response(JSON.stringify({ processed: 0, sent: 0, failed: 0 }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log(`[process-scheduled-messages] Mensagens encontradas: ${claimed.length}`);
 
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
     let sent = 0;
