@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,10 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const authFail = await requireUser(req);
+  if (authFail) return authFail;
+
 
   try {
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
