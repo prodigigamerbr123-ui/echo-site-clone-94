@@ -59,7 +59,13 @@ const menuGroups = [
     label: "Inteligência",
     items: [
       { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
+    ],
+  },
+  {
+    label: "Manutenção",
+    items: [
       { title: "Automações", url: "/automacoes", icon: Zap },
+      { title: "Configurações", url: "/configuracoes", icon: Settings },
     ],
   },
 ];
