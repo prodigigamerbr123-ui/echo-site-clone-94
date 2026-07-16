@@ -42,7 +42,7 @@ const App = () => (
         <ConfirmDialogHost />
         <BrowserRouter>
           <AuthProvider>
-            <GlobalNotifier />
+            <AuthedGlobalNotifier />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Private><Dashboard /></Private>} />
