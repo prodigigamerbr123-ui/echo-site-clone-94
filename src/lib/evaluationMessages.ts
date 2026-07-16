@@ -132,3 +132,29 @@ export const AUTO_EVAL_MESSAGE_TYPES = [
   "evaluation_reschedule",
 ] as const;
 
+/**
+ * Substitui o content de cada mensagem pelo template pré-definido linkado
+ * (se houver) na automação "evaluation_reminders". Placeholders suportados:
+ * {nome}, {data}, {hora}.
+ */
+export async function applyLinkedEvaluationTemplates(
+  msgs: EvaluationMessage[],
+  studentName: string,
+  scheduledAt: Date,
+): Promise<void> {
+  const vars = {
+    nome: studentName,
+    data: format(scheduledAt, "dd/MM", { locale: ptBR }),
+    hora: format(scheduledAt, "HH:mm"),
+  };
+  for (const m of msgs) {
+    m.content = await resolveAutomationMessage(
+      "evaluation_reminders",
+      m.message_type,
+      m.content,
+      vars,
+    );
+  }
+}
+
+
