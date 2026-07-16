@@ -48,7 +48,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="flex flex-col items-center text-center space-y-4">
+        <CardHeader className="flex flex-col items-start text-left space-y-4">
           <img src={workoutLogo.url} alt="Workout Academia" className="h-14 w-auto object-contain block" />
           <div className="space-y-1">
             <CardTitle>Entrar</CardTitle>
