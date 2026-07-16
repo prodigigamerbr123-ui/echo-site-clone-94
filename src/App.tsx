@@ -33,6 +33,11 @@ const Private = ({ children }: { children: React.ReactNode }) => (
   </ProtectedRoute>
 );
 
+const AuthedGlobalNotifier = () => {
+  const { session } = require("@/hooks/useAuth").useAuth();
+  return session ? <GlobalNotifier /> : null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="workout-theme">
