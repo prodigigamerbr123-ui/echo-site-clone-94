@@ -461,9 +461,17 @@ export default function AgendarAvaliacao() {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+        const name = ev.students?.name ?? "aluno";
+        const content = await resolveAutomationMessage(
+          "no_show_reschedule",
+          "evaluation_reschedule",
+          buildReschedule(name),
+          { nome: name },
+          settings,
+        );
         await supabase.from("scheduled_messages").insert({
           student_id: ev.student_id,
-          content: buildReschedule(ev.students?.name ?? "aluno"),
+          content,
           scheduled_for: tomorrow.toISOString(),
           message_type: "evaluation_reschedule",
           status: "pending",
@@ -471,6 +479,7 @@ export default function AgendarAvaliacao() {
         });
         rescheduled = true;
       }
+
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
       toast({
