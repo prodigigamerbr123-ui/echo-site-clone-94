@@ -51,14 +51,14 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
         icon: Send,
         label: "Enviar Agora",
         className:
-          "bg-gradient-to-br from-[hsl(var(--success))] to-[hsl(142_70%_45%)] text-[hsl(var(--success-foreground))] shadow-[0_4px_20px_-2px_hsl(var(--success)/0.25)] hover:shadow-elegant hover:-translate-y-0.5",
+          "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_4px_20px_-2px_hsl(160_70%_40%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
       },
       {
         to: "/agendar-mensagem",
         icon: Clock,
         label: "Agendar",
         className:
-          "bg-card border border-border hover:border-[hsl(var(--success))]/40 hover:bg-accent text-foreground",
+          "bg-card border border-border hover:border-emerald-500/40 hover:bg-accent text-foreground",
       },
     ],
   },
@@ -71,14 +71,14 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
         icon: MessageSquare,
         label: "Pré-definidas",
         className:
-          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+          "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_4px_20px_-2px_hsl(217_80%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
       },
       {
         to: "/mensagens-enviadas",
         icon: History,
         label: "Histórico",
         className:
-          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+          "bg-card border border-border hover:border-sky-500/40 hover:bg-accent text-foreground",
       },
     ],
   },
@@ -91,14 +91,14 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
         icon: CalendarPlus,
         label: "Agendar",
         className:
-          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-2px_hsl(250_70%_50%/0.25)] hover:shadow-elegant hover:-translate-y-0.5",
+          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-2px_hsl(250_70%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
       },
       {
         to: "/avaliacao-fisica",
         icon: ClipboardList,
         label: "Histórico",
         className:
-          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+          "bg-card border border-border hover:border-violet-500/40 hover:bg-accent text-foreground",
       },
     ],
   },
@@ -111,14 +111,14 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
         icon: Bot,
         label: "Assistente IA",
         className:
-          "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5",
+          "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-[0_4px_20px_-2px_hsl(322_75%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
       },
       {
         to: "/whatsapp",
         icon: MessageCircle,
         label: "WhatsApp",
         className:
-          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+          "bg-card border border-border hover:border-fuchsia-500/40 hover:bg-accent text-foreground",
       },
     ],
   },
