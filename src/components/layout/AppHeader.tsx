@@ -28,7 +28,6 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           <Button
             asChild
             variant="ghost"
@@ -40,6 +39,7 @@ export function AppHeader() {
               <Bot className="h-5 w-5" />
             </Link>
           </Button>
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"
