@@ -11,6 +11,7 @@ import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard,
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPhoneBR } from "@/lib/phone";
+import { scheduleWelcomeIfEnabled } from "@/lib/welcomeReengagement";
 
 export const PLAN_OPTIONS = [
   "Mensal",
