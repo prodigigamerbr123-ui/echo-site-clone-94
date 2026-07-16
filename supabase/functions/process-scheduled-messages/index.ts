@@ -24,6 +24,9 @@ function randomDelayMs() {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const cronFail = requireCronSecret(req);
+  if (cronFail) return cronFail;
+
   try {
     const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_INSTANCE_TOKEN = Deno.env.get("EVOLUTION_INSTANCE_TOKEN");
