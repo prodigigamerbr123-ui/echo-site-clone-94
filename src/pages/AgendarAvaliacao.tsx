@@ -380,33 +380,42 @@ export default function AgendarAvaliacao() {
       if (e1) throw e1;
       if (e2) throw e2;
 
-      // Checar se já existe followup pendente
-      const { data: existingFu } = await supabase
-        .from("scheduled_messages")
-        .select("id")
-        .eq("student_id", ev.student_id)
-        .eq("message_type", "evaluation_followup")
-        .eq("status", "pending")
-        .limit(1);
+      // Follow-up (apenas se toggle ligado)
+      const settings = await fetchAutomationSettings();
+      let followupScheduled = false;
+      if (isAutomationEnabled(settings, "evaluation_followup")) {
+        const { data: existingFu } = await supabase
+          .from("scheduled_messages")
+          .select("id")
+          .eq("student_id", ev.student_id)
+          .eq("message_type", "evaluation_followup")
+          .eq("status", "pending")
+          .limit(1);
 
-      if (!existingFu || existingFu.length === 0) {
-        const followup = new Date(evalDate.getTime() + 7 * 86400000);
-        followup.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
-        await supabase.from("scheduled_messages").insert({
-          student_id: ev.student_id,
-          content: buildFollowup(ev.students?.name ?? "aluno"),
-          scheduled_for: followup.toISOString(),
-          message_type: "evaluation_followup",
-          status: "pending",
-          evaluation_id: ev.id,
-        });
+        if (!existingFu || existingFu.length === 0) {
+          const daysAfter = Number(getAutomationParam(settings, "evaluation_followup", "days_after", 7));
+          const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
+          followup.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+          await supabase.from("scheduled_messages").insert({
+            student_id: ev.student_id,
+            content: buildFollowup(ev.students?.name ?? "aluno"),
+            scheduled_for: followup.toISOString(),
+            message_type: "evaluation_followup",
+            status: "pending",
+            evaluation_id: ev.id,
+          });
+          followupScheduled = true;
+        }
       }
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
       qc.invalidateQueries({ queryKey: ["students-evaluation"] });
       qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
-      toast({ title: "Avaliação marcada como realizada", description: "Follow-up de 7 dias agendado." });
+      toast({
+        title: "Avaliação marcada como realizada",
+        description: followupScheduled ? "Follow-up agendado." : "Follow-up não agendado (automação desligada ou já existente).",
+      });
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally {
