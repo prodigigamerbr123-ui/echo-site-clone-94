@@ -15,6 +15,7 @@ import AgendarMensagem from "./pages/AgendarMensagem";
 import MensagensPredefinidas from "./pages/MensagensPredefinidas";
 import MensagensEnviadas from "./pages/MensagensEnviadas";
 import AssistenteIA from "./pages/AssistenteIA";
+import Automacoes from "./pages/Automacoes";
 import AvaliacaoFisica from "./pages/AvaliacaoFisica";
 import AgendarAvaliacao from "./pages/AgendarAvaliacao";
 import WhatsApp from "./pages/WhatsApp";
@@ -85,6 +86,11 @@ const App = () => (
             <Route path="/assistente-ia" element={
               <AppLayout>
                 <AssistenteIA />
+              </AppLayout>
+            } />
+            <Route path="/automacoes" element={
+              <AppLayout>
+                <Automacoes />
               </AppLayout>
             } />
             <Route path="/avaliacao-fisica" element={
