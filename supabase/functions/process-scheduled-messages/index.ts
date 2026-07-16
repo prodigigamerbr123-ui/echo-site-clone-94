@@ -141,6 +141,7 @@ serve(async (req: Request) => {
         );
 
         const result = await parseEvolutionSendResponse(resp);
+        console.log(`[Evolution] msg=${msg.id} HTTP=${resp.status} ok=${result.ok} id=${result.messageId ?? "-"}`);
 
         if (result.ok) {
           await supabase
