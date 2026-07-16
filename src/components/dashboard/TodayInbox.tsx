@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   buildFollowup, buildReschedule,
 } from "@/lib/evaluationMessages";
+import { resolveAutomationMessage } from "@/lib/messageTemplates";
+
 
 interface Evaluation {
   id: string;
