@@ -255,6 +255,16 @@ export async function createEvaluationWithMessages(
 
   const auto = remindersOn ? buildEvaluationMessages(student.name, scheduledAt) : [];
   if (auto.length > 0) {
+    const vars = {
+      nome: student.name,
+      data: fmtDateSP(scheduledAt),
+      hora: fmtTimeSP(scheduledAt),
+    };
+    for (const m of auto) {
+      m.content = await resolveAutomationMessage(
+        supabase, settings, "evaluation_reminders", m.message_type, m.content, vars,
+      );
+    }
     const { error: mErr } = await supabase.from("scheduled_messages").insert(
       auto.map((m) => ({
         student_id: studentId,
@@ -267,6 +277,7 @@ export async function createEvaluationWithMessages(
     );
     if (mErr) throw mErr;
   }
+
 
   return { evaluation_id: created.id, messages_created: auto.length };
 }
