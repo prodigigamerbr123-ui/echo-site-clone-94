@@ -137,7 +137,44 @@ export const AUTO_EVAL_MESSAGE_TYPES = [
   "evaluation_reminder_day",
   "evaluation_followup",
   "evaluation_reschedule",
+  "evaluation_reminder",
+  "birthday",
+  "welcome",
+  "reengagement",
 ] as const;
+
+// -------- Automation settings helpers --------
+
+export type AutomationSettingsMap = Record<
+  string,
+  { enabled: boolean; params: Record<string, any> }
+>;
+
+export async function loadAutomationSettings(
+  supabase: any,
+): Promise<AutomationSettingsMap> {
+  const { data } = await supabase
+    .from("automation_settings")
+    .select("key, enabled, params");
+  const map: AutomationSettingsMap = {};
+  for (const r of data ?? []) {
+    map[r.key] = { enabled: !!r.enabled, params: (r.params as any) ?? {} };
+  }
+  return map;
+}
+export function settingEnabled(map: AutomationSettingsMap, key: string): boolean {
+  const s = map[key];
+  return s ? s.enabled : true;
+}
+export function settingParam<T>(
+  map: AutomationSettingsMap,
+  key: string,
+  name: string,
+  fallback: T,
+): T {
+  const v = map[key]?.params?.[name];
+  return (v === undefined || v === null ? fallback : v) as T;
+}
 
 // -------- Travas de pré-agendamento --------
 
