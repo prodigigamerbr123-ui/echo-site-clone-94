@@ -24,9 +24,6 @@ function randomDelayMs() {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const expectedDbg = Deno.env.get("CRON_SECRET") || "";
-  const providedDbg = req.headers.get("x-cron-secret") || "";
-  console.log(`CRON DEBUG expected_len=${expectedDbg.length} provided_len=${providedDbg.length} match=${expectedDbg === providedDbg}`);
   const cronFail = requireCronSecret(req);
   if (cronFail) return cronFail;
 
