@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-const MAX_PER_RUN = 12;
+const MAX_PER_RUN = 12; // v2
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MINUTES = 5;
 
