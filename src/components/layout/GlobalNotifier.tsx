@@ -44,14 +44,41 @@ export function GlobalNotifier() {
       }
     };
 
+    const fetchStudentName = async (id: string | null | undefined) => {
+      if (!id) return "";
+      const { data } = await supabase
+        .from("students")
+        .select("name")
+        .eq("id", id)
+        .maybeSingle();
+      return data?.name || "";
+    };
+
     const channel = supabase
-      .channel("global-scheduled-messages")
+      .channel("global-notifier")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "scheduled_messages" },
         async (payload: any) => {
           const oldRow = payload.old || {};
           const newRow = payload.new || {};
+          const cfg = settingsRef.current;
+
+          // Reagendamento (mudou data e continua pending)
+          if (
+            oldRow.scheduled_for &&
+            newRow.scheduled_for &&
+            oldRow.scheduled_for !== newRow.scheduled_for &&
+            newRow.status === "pending" &&
+            oldRow.status === "pending"
+          ) {
+            if (cfg.notify_message_rescheduled) {
+              toast("Mensagem reagendada", {
+                description: new Date(newRow.scheduled_for).toLocaleString("pt-BR"),
+              });
+            }
+          }
+
           if (oldRow.status === newRow.status) return;
 
           if (newRow.status === "sent") {
@@ -59,21 +86,23 @@ export function GlobalNotifier() {
             return;
           }
 
-          if (newRow.status === "failed") {
-            if (!settingsRef.current.notify_failed) return;
-            let studentName = "";
-            if (newRow.student_id) {
-              const { data } = await supabase
-                .from("students")
-                .select("name")
-                .eq("id", newRow.student_id)
-                .maybeSingle();
-              studentName = data?.name || "";
-            }
+          if (newRow.status === "failed" && cfg.notify_failed) {
+            const studentName = await fetchStudentName(newRow.student_id);
             toast.error("Mensagem falhou", {
-              description: [studentName, newRow.failure_reason]
-                .filter(Boolean)
-                .join(" — "),
+              description: [studentName, newRow.failure_reason].filter(Boolean).join(" — "),
+            });
+            return;
+          }
+
+          // Reenfileirada: failed -> pending
+          if (
+            oldRow.status === "failed" &&
+            newRow.status === "pending" &&
+            cfg.notify_message_reenqueued
+          ) {
+            const studentName = await fetchStudentName(newRow.student_id);
+            toast("Mensagem reenfileirada", {
+              description: studentName || "Nova tentativa em breve",
             });
           }
         }
@@ -92,12 +121,67 @@ export function GlobalNotifier() {
       )
       .on(
         "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "evaluations" },
+        async (payload: any) => {
+          const oldRow = payload.old || {};
+          const newRow = payload.new || {};
+          const cfg = settingsRef.current;
+
+          if (
+            oldRow.scheduled_at &&
+            newRow.scheduled_at &&
+            oldRow.scheduled_at !== newRow.scheduled_at &&
+            cfg.notify_evaluation_rescheduled
+          ) {
+            const studentName = await fetchStudentName(newRow.student_id);
+            toast("Avaliação remarcada", {
+              description: [studentName, new Date(newRow.scheduled_at).toLocaleString("pt-BR")]
+                .filter(Boolean)
+                .join(" — "),
+            });
+          }
+
+          if (oldRow.status !== newRow.status) {
+            if (newRow.status === "completed" && cfg.notify_evaluation_completed) {
+              const studentName = await fetchStudentName(newRow.student_id);
+              toast.success("Avaliação realizada", { description: studentName });
+            } else if (newRow.status === "cancelled" && cfg.notify_evaluation_cancelled) {
+              const studentName = await fetchStudentName(newRow.student_id);
+              toast("Avaliação cancelada", { description: studentName });
+            }
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "students" },
         (payload: any) => {
           if (!settingsRef.current.notify_student_registered) return;
           const row = payload.new;
           if (!row) return;
           toast("Novo aluno cadastrado", { description: row.name });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "students" },
+        (payload: any) => {
+          if (!settingsRef.current.notify_student_status_change) return;
+          const oldRow = payload.old || {};
+          const newRow = payload.new || {};
+          if (oldRow.status === newRow.status) return;
+          const label = newRow.status === "active" ? "ativo" : "inativo";
+          toast(`Aluno marcado como ${label}`, { description: newRow.name });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "students" },
+        (payload: any) => {
+          if (!settingsRef.current.notify_student_deleted) return;
+          const row = payload.old;
+          if (!row) return;
+          toast("Aluno excluído", { description: row.name });
         }
       )
       .subscribe();
