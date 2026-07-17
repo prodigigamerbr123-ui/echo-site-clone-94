@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-const MAX_PER_RUN = 12;
+const MAX_PER_RUN = 12; // v2
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MINUTES = 5;
 
@@ -24,6 +24,9 @@ function randomDelayMs() {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const expectedDbg = Deno.env.get("CRON_SECRET") || "";
+  const providedDbg = req.headers.get("x-cron-secret") || "";
+  console.log(`CRON DEBUG expected_len=${expectedDbg.length} provided_len=${providedDbg.length} match=${expectedDbg === providedDbg}`);
   const cronFail = requireCronSecret(req);
   if (cronFail) return cronFail;
 
