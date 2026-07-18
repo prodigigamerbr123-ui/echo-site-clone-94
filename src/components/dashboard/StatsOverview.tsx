@@ -109,7 +109,7 @@ export function StatsOverview() {
     {
       title: "Nesse Mês",
       value: v(stats?.evaluationsMonth),
-      icon: Calendar,
+      icon: CalendarRange,
       description: "Programadas no mês",
       gradient: "bg-gradient-to-br from-cyan-500 to-blue-600",
       iconBg: "bg-gradient-to-br from-cyan-500 to-blue-600",
