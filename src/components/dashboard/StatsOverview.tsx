@@ -106,6 +106,14 @@ export function StatsOverview() {
       iconBg: "bg-gradient-to-br from-blue-500 to-indigo-600",
     },
     {
+      title: "Nesse Mês",
+      value: v(stats?.evaluationsMonth),
+      icon: Calendar,
+      description: "Programadas no mês",
+      gradient: "bg-gradient-to-br from-cyan-500 to-blue-600",
+      iconBg: "bg-gradient-to-br from-cyan-500 to-blue-600",
+    },
+    {
       title: "Atrasadas",
       value: v(stats?.evaluationsOverdue),
       icon: AlertTriangle,

@@ -79,6 +79,14 @@ export const useDashboardStats = () => {
         .gte('scheduled_at', weekStart.toISOString())
         .lte('scheduled_at', weekEnd.toISOString());
 
+      // Evaluations this month (scheduled)
+      const { count: evaluationsMonth } = await supabase
+        .from('evaluations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', monthStart.toISOString())
+        .lte('scheduled_at', monthEnd.toISOString());
+
       // Overdue evaluations (scheduled in the past, not completed)
       const { count: evaluationsOverdue } = await supabase
         .from('evaluations')
@@ -130,6 +138,7 @@ export const useDashboardStats = () => {
         messagesSentToday: messagesSentToday || 0,
         evaluationsToday: evaluationsToday || 0,
         evaluationsWeek: evaluationsWeek || 0,
+        evaluationsMonth: evaluationsMonth || 0,
         evaluationsOverdue: evaluationsOverdue || 0,
         evaluationsCompletedMonth: evaluationsCompletedMonth || 0,
         studentsWithoutEvaluation: studentsWithoutEvaluation || 0,
