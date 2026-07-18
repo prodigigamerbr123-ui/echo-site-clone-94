@@ -138,6 +138,7 @@ export const useDashboardStats = () => {
         messagesSentToday: messagesSentToday || 0,
         evaluationsToday: evaluationsToday || 0,
         evaluationsWeek: evaluationsWeek || 0,
+        evaluationsMonth: evaluationsMonth || 0,
         evaluationsOverdue: evaluationsOverdue || 0,
         evaluationsCompletedMonth: evaluationsCompletedMonth || 0,
         studentsWithoutEvaluation: studentsWithoutEvaluation || 0,
