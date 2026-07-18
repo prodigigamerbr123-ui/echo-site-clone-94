@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Mail,
   Calendar,
+  CalendarRange,
   Clock,
   CheckCircle2,
   MessageSquare,
