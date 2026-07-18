@@ -79,6 +79,14 @@ export const useDashboardStats = () => {
         .gte('scheduled_at', weekStart.toISOString())
         .lte('scheduled_at', weekEnd.toISOString());
 
+      // Evaluations this month (scheduled)
+      const { count: evaluationsMonth } = await supabase
+        .from('evaluations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', monthStart.toISOString())
+        .lte('scheduled_at', monthEnd.toISOString());
+
       // Overdue evaluations (scheduled in the past, not completed)
       const { count: evaluationsOverdue } = await supabase
         .from('evaluations')
