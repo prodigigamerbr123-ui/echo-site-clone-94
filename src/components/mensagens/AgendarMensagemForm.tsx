@@ -49,8 +49,11 @@ export function AgendarMensagemForm({ onSaved }: Props) {
     (async () => {
       const { data: s } = await supabase.from("students").select("id, name, phone").order("name").limit(5000);
       setStudents(s || []);
-      const { data: p } = await supabase.from("predefined_messages").select("*").order("title");
-      setPredefined(p || []);
+      const [{ data: p }, autoIds] = await Promise.all([
+        supabase.from("predefined_messages").select("*").order("title"),
+        fetchAutomationTemplateIds(),
+      ]);
+      setPredefined((p || []).filter((m: any) => !autoIds.has(m.id)));
     })();
   }, []);
 
