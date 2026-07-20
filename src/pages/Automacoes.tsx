@@ -1,3 +1,4 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMemo, useState, useEffect } from "react";
 import { Zap, Eye, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -119,6 +120,7 @@ function daysAgoISO(n: number) {
 type PredefinedMsg = { id: string; title: string; content: string };
 
 export default function Automacoes() {
+  usePageTitle("Automações");
   const qc = useQueryClient();
 
   const { data: settings } = useQuery({

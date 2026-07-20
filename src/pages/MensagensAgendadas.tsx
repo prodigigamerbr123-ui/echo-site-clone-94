@@ -1,3 +1,4 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useState, useEffect } from "react";
 import { Clock, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ interface ScheduledMessage {
 interface Student { id: string; name: string; phone: string; }
 
 export default function MensagensAgendadas() {
+  usePageTitle("Mensagens Agendadas");
   const { toast } = useToast();
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

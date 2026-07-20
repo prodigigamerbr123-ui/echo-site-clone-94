@@ -1,3 +1,4 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useState, useEffect, useMemo } from "react";
 import { Search, Send, Users, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -21,6 +22,7 @@ interface Student { id: string; name: string; phone: string; had_evaluation: boo
 interface PredefinedMessage { id: string; title: string; content: string; }
 
 export default function EnviarMensagem() {
+  usePageTitle("Enviar Mensagem");
   const [students, setStudents] = useState<Student[]>([]);
   const [predefinedMessages, setPredefinedMessages] = useState<PredefinedMessage[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);

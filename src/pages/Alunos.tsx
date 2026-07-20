@@ -1,7 +1,9 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Users } from "lucide-react";
 import { ListaAlunos } from "@/components/alunos/ListaAlunos";
 
 export default function Alunos() {
+  usePageTitle("Alunos");
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">

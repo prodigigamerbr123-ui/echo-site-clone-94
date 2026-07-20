@@ -1,3 +1,4 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, isPast, startOfDay, differenceInDays } from "date-fns";
@@ -88,6 +89,7 @@ async function deletePendingEvalMessages(evaluationId: string) {
 }
 
 export default function AgendarAvaliacao() {
+  usePageTitle("Agendar Avaliação");
   const { toast } = useToast();
   const qc = useQueryClient();
 
