@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Check, X, MapPin } from "lucide-react";
+import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Check, X, MapPin, FileText, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPhoneBR } from "@/lib/phone";
 import { scheduleWelcomeIfEnabled } from "@/lib/welcomeReengagement";
+import { isValidCpf, maskCpf, unmaskCpf } from "@/lib/cpf";
 
 export const PLAN_OPTIONS = [
   "Mensal",
@@ -39,6 +40,8 @@ export function CadastrarAlunoForm() {
     dataNascimento: "",
     plano: "Mensal",
     cidade: "",
+    cpf: "",
+    vencimento: "",
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -67,6 +70,10 @@ export function CadastrarAlunoForm() {
       toast({ title: "Telefone inválido", description: phoneCheck.reason, variant: "destructive" });
       return false;
     }
+    if (formData.cpf.trim() && !isValidCpf(formData.cpf)) {
+      toast({ title: "CPF inválido", description: "Confira os dígitos do CPF.", variant: "destructive" });
+      return false;
+    }
     return true;
   };
 
@@ -84,6 +91,8 @@ export function CadastrarAlunoForm() {
           birth_date: formData.dataNascimento || null,
           plan: formData.plano,
           city: formData.cidade.trim() || null,
+          cpf: formData.cpf.trim() ? unmaskCpf(formData.cpf) : null,
+          payment_due_date: formData.vencimento || null,
           had_evaluation: false,
         }])
         .select()
@@ -98,7 +107,7 @@ export function CadastrarAlunoForm() {
       queryClient.invalidateQueries({ queryKey: ['students-evaluation'] });
 
       setSuccessData({ name: data.name });
-      setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal", cidade: "" });
+      setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal", cidade: "", cpf: "", vencimento: "" });
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar aluno",
@@ -223,6 +232,47 @@ export function CadastrarAlunoForm() {
                 className="h-11"
                 maxLength={100}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cpf" className="text-sm font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                CPF
+              </Label>
+              <Input
+                id="cpf"
+                type="text"
+                inputMode="numeric"
+                placeholder="000.000.000-00"
+                value={maskCpf(formData.cpf)}
+                onChange={(e) => handleInputChange('cpf', unmaskCpf(e.target.value))}
+                className="h-11"
+                maxLength={14}
+              />
+              {formData.cpf.trim() ? (
+                isValidCpf(formData.cpf) ? (
+                  <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> CPF válido</p>
+                ) : (
+                  <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> CPF inválido</p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">Opcional</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vencimento" className="text-sm font-medium flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" />
+                Vencimento da mensalidade
+              </Label>
+              <Input
+                id="vencimento"
+                type="date"
+                value={formData.vencimento}
+                onChange={(e) => handleInputChange('vencimento', e.target.value)}
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">Opcional — usado para lembrete de pagamento</p>
             </div>
           </div>
         </CardContent>

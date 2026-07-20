@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Cake, CreditCard, Activity, Check, X, MapPin } from "lucide-react";
+import { Phone, Cake, CreditCard, Activity, Check, X, MapPin, FileText, CalendarClock } from "lucide-react";
 import { formatPhoneBR } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
 import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
+import { isValidCpf, maskCpf, unmaskCpf } from "@/lib/cpf";
 
 interface Student {
   id: string;
@@ -24,6 +25,8 @@ interface Student {
   plan?: string | null;
   status?: string;
   city?: string | null;
+  cpf?: string | null;
+  payment_due_date?: string | null;
 }
 
 interface EditarAlunoDialogProps {
@@ -43,6 +46,8 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     plano: "Mensal",
     status: "active",
     cidade: "",
+    cpf: "",
+    vencimento: "",
   });
 
   useEffect(() => {
@@ -54,6 +59,8 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         plano: student.plan || "Mensal",
         status: student.status || "active",
         cidade: student.city || "",
+        cpf: student.cpf || "",
+        vencimento: student.payment_due_date || "",
       });
     }
   }, [student]);
@@ -88,6 +95,10 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
       toast({ title: "Telefone inválido", description: phoneCheck.reason, variant: "destructive" });
       return false;
     }
+    if (formData.cpf.trim() && !isValidCpf(formData.cpf)) {
+      toast({ title: "CPF inválido", description: "Confira os dígitos do CPF.", variant: "destructive" });
+      return false;
+    }
     return true;
   };
 
@@ -107,6 +118,8 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         plan: formData.plano,
         status: formData.status,
         city: formData.cidade.trim() || null,
+        cpf: formData.cpf.trim() ? unmaskCpf(formData.cpf) : null,
+        payment_due_date: formData.vencimento || null,
       };
 
       const { error } = await supabase
@@ -146,7 +159,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Aluno</DialogTitle>
           <DialogDescription>
@@ -155,7 +168,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Nome */}
           <div className="space-y-2">
             <Label htmlFor="edit-nome" className="text-sm font-medium">
               Nome completo *
@@ -169,7 +181,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             />
           </div>
 
-          {/* Telefone */}
           <div className="space-y-2">
             <Label htmlFor="edit-telefone" className="text-sm font-medium flex items-center gap-2">
               <Phone className="h-4 w-4" />
@@ -192,7 +203,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             )}
           </div>
 
-          {/* Data de nascimento */}
           <div className="space-y-2">
             <Label htmlFor="edit-dataNascimento" className="text-sm font-medium flex items-center gap-2">
               <Cake className="h-4 w-4" />
@@ -206,7 +216,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             />
           </div>
 
-          {/* Cidade */}
           <div className="space-y-2">
             <Label htmlFor="edit-cidade" className="text-sm font-medium flex items-center gap-2">
               <MapPin className="h-4 w-4" />
@@ -222,7 +231,42 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             />
           </div>
 
-          {/* Plano */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-cpf" className="text-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              CPF
+            </Label>
+            <Input
+              id="edit-cpf"
+              type="text"
+              inputMode="numeric"
+              placeholder="000.000.000-00"
+              value={maskCpf(formData.cpf)}
+              onChange={(e) => handleInputChange('cpf', unmaskCpf(e.target.value))}
+              maxLength={14}
+            />
+            {formData.cpf.trim() && (
+              isValidCpf(formData.cpf) ? (
+                <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> CPF válido</p>
+              ) : (
+                <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> CPF inválido</p>
+              )
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-vencimento" className="text-sm font-medium flex items-center gap-2">
+              <CalendarClock className="h-4 w-4" />
+              Vencimento da mensalidade
+            </Label>
+            <Input
+              id="edit-vencimento"
+              type="date"
+              value={formData.vencimento}
+              onChange={(e) => handleInputChange('vencimento', e.target.value)}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="edit-plano" className="text-sm font-medium flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -240,7 +284,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             </Select>
           </div>
 
-          {/* Status */}
           <div className="space-y-2">
             <Label htmlFor="edit-status" className="text-sm font-medium flex items-center gap-2">
               <Activity className="h-4 w-4" />
@@ -257,7 +300,6 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             </Select>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-2 pt-4">
             <Button 
               type="button" 
