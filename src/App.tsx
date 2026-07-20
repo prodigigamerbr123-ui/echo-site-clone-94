@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -10,11 +10,9 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Alunos from "./pages/Alunos";
 import CadastrarAluno from "./pages/CadastrarAluno";
-import EnviarMensagem from "./pages/EnviarMensagem";
-import MensagensAgendadas from "./pages/MensagensAgendadas";
-import AgendarMensagem from "./pages/AgendarMensagem";
+import Mensagens from "./pages/Mensagens";
+import CaixaDeSaida from "./pages/CaixaDeSaida";
 import MensagensPredefinidas from "./pages/MensagensPredefinidas";
-import MensagensEnviadas from "./pages/MensagensEnviadas";
 import AssistenteIA from "./pages/AssistenteIA";
 import Automacoes from "./pages/Automacoes";
 import AvaliacaoFisica from "./pages/AvaliacaoFisica";
@@ -51,12 +49,15 @@ const App = () => (
               <Route path="/" element={protectedPage(Dashboard)} />
               <Route path="/alunos" element={protectedPage(Alunos)} />
               <Route path="/cadastrar-aluno" element={protectedPage(CadastrarAluno)} />
-              <Route path="/agendar-mensagem" element={protectedPage(AgendarMensagem)} />
+              <Route path="/mensagens" element={protectedPage(Mensagens)} />
+              <Route path="/caixa-de-saida" element={protectedPage(CaixaDeSaida)} />
               <Route path="/whatsapp" element={protectedPage(WhatsApp)} />
-              <Route path="/enviar-mensagem" element={protectedPage(EnviarMensagem)} />
-              <Route path="/mensagens-agendadas" element={protectedPage(MensagensAgendadas)} />
               <Route path="/mensagens-predefinidas" element={protectedPage(MensagensPredefinidas)} />
-              <Route path="/mensagens-enviadas" element={protectedPage(MensagensEnviadas)} />
+              {/* Redirects (rotas antigas) */}
+              <Route path="/enviar-mensagem" element={<Navigate to="/mensagens" replace />} />
+              <Route path="/agendar-mensagem" element={<Navigate to="/mensagens" replace />} />
+              <Route path="/mensagens-agendadas" element={<Navigate to="/caixa-de-saida" replace />} />
+              <Route path="/mensagens-enviadas" element={<Navigate to="/caixa-de-saida" replace />} />
               <Route path="/assistente-ia" element={protectedPage(AssistenteIA)} />
               <Route path="/automacoes" element={protectedPage(Automacoes)} />
               <Route path="/avaliacao-fisica" element={protectedPage(AvaliacaoFisica)} />

@@ -35,7 +35,6 @@ const menuGroups = [
       { title: "Conexão WhatsApp", url: "/whatsapp", icon: MessageCircle },
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
       { title: "Alunos", url: "/alunos", icon: Users },
-      { title: "Cadastrar Aluno", url: "/cadastrar-aluno", icon: UserPlus },
     ],
   },
   {
@@ -48,10 +47,8 @@ const menuGroups = [
   {
     label: "Mensagens",
     items: [
-      { title: "Enviar Mensagem", url: "/enviar-mensagem", icon: Send },
-      { title: "Agendar Mensagem", url: "/agendar-mensagem", icon: CalendarPlus },
-      { title: "Mensagens Agendadas", url: "/mensagens-agendadas", icon: CalendarClock },
-      { title: "Histórico de Mensagens", url: "/mensagens-enviadas", icon: History },
+      { title: "Mensagens", url: "/mensagens", icon: Send },
+      { title: "Caixa de saída", url: "/caixa-de-saida", icon: CalendarClock },
       { title: "Pré-definidas", url: "/mensagens-predefinidas", icon: FileText },
     ],
   },
