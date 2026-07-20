@@ -41,12 +41,13 @@ export default function MensagensPredefinidas() {
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
-        .from("predefined_messages")
-        .select("*")
-        .order("title");
+      const [{ data, error }, autoIds] = await Promise.all([
+        supabase.from("predefined_messages").select("*").order("title"),
+        fetchAutomationTemplateIds(),
+      ]);
       if (error) throw error;
       setMessages(data || []);
+      setAutomationIds(autoIds);
     } catch (error) {
       console.error("Error fetching predefined messages:", error);
       toast({ title: "Erro", description: "Não foi possível carregar as mensagens pré-definidas.", variant: "destructive" });
@@ -55,17 +56,21 @@ export default function MensagensPredefinidas() {
     }
   };
 
+  const manualMessages = useMemo(() => messages.filter((m) => !automationIds.has(m.id)), [messages, automationIds]);
+  const automationMessages = useMemo(() => messages.filter((m) => automationIds.has(m.id)), [messages, automationIds]);
+
+  const currentList = activeTab === "manual" ? manualMessages : automationMessages;
+
   const filteredMessages = useMemo(
     () =>
-      messages.filter((m) => {
+      currentList.filter((m) => {
         const q = searchTerm.toLowerCase();
         return m.title.toLowerCase().includes(q) || m.content.toLowerCase().includes(q);
       }),
-    [messages, searchTerm]
+    [currentList, searchTerm]
   );
 
-  const totalChars = useMemo(() => messages.reduce((acc, m) => acc + m.content.length, 0), [messages]);
-  const withVars = useMemo(() => messages.filter((m) => /\{\w+\}/.test(m.content)).length, [messages]);
+  const withVars = useMemo(() => currentList.filter((m) => /\{\w+\}/.test(m.content)).length, [currentList]);
 
   const handleSaveMessage = async () => {
     if (!title.trim() || !content.trim()) {
