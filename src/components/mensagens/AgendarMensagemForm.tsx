@@ -128,12 +128,12 @@ export function AgendarMensagemForm({ onSaved }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <Label>Aluno</Label>
+        <Label htmlFor="am-student">Aluno</Label>
         <Popover open={studentOpen} onOpenChange={setStudentOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full justify-between font-normal">
+            <Button id="am-student" variant="outline" className="w-full justify-between font-normal">
               {selected ? `${selected.name} - ${selected.phone}` : "Buscar aluno..."}
-              <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+              <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" aria-hidden="true" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -156,12 +156,12 @@ export function AgendarMensagemForm({ onSaved }: Props) {
       </div>
 
       <div>
-        <Label>Pré-definida (opcional)</Label>
+        <Label htmlFor="am-predefined">Pré-definida (opcional)</Label>
         <Select onValueChange={(id) => {
           const m = predefined.find(x => x.id === id);
           if (m) setContent(m.content);
         }}>
-          <SelectTrigger><SelectValue placeholder="Escolher template" /></SelectTrigger>
+          <SelectTrigger id="am-predefined"><SelectValue placeholder="Escolher template" /></SelectTrigger>
           <SelectContent>
             {predefined.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
           </SelectContent>
@@ -170,11 +170,11 @@ export function AgendarMensagemForm({ onSaved }: Props) {
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <Label>Mensagem</Label>
-          <Button type="button" variant="ghost" size="sm" onClick={insertName}>+ {"{nome}"}</Button>
+          <Label htmlFor="am-message">Mensagem</Label>
+          <Button type="button" variant="ghost" size="sm" onClick={insertName} aria-label="Inserir variável nome">+ {"{nome}"}</Button>
         </div>
-        <Textarea value={content} onChange={e => setContent(e.target.value)} className="min-h-24" maxLength={1000} />
-        <p className="text-xs text-muted-foreground mt-1">Use <code>{"{nome}"}</code> para personalizar</p>
+        <Textarea id="am-message" value={content} onChange={e => setContent(e.target.value)} className="min-h-24" maxLength={1000} />
+        <p className="text-xs text-foreground/80 mt-1">Use <code>{"{nome}"}</code> para personalizar</p>
       </div>
 
       <WhatsAppPreview content={content} studentName={selected?.name} />
@@ -217,7 +217,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
               />
               <div className="flex-1">
                 <div className="text-sm font-medium">Quer que a mensagem se repita?</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-foreground/80">
                   Reenvia automaticamente daqui a 7, 21 ou 45 dias
                 </div>
               </div>
@@ -229,7 +229,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
               <Label className="text-sm">
                 {quickWhen === "later" ? "Enviar daqui a:" : "Repetir daqui a:"}
               </Label>
-              <p className="text-xs text-muted-foreground mb-2">
+              <p className="text-xs text-foreground/80 mb-2">
                 Selecione um ou mais períodos
               </p>
               <div className="grid grid-cols-3 gap-2">
@@ -249,7 +249,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
                       onCheckedChange={(v) => setQuick(prev => ({ ...prev, [k]: !!v }))}
                     />
                     <span className="text-sm font-medium">+{d}d</span>
-                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <span className="text-xs text-foreground/80">{label}</span>
                   </label>
                 ))}
               </div>
@@ -257,20 +257,20 @@ export function AgendarMensagemForm({ onSaved }: Props) {
           )}
 
           <div>
-            <Label>Horário de envio</Label>
-            <Input type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} />
+            <Label htmlFor="am-quick-time">Horário de envio</Label>
+            <Input id="am-quick-time" type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} />
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Data</Label>
-              <Input type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+              <Label htmlFor="am-date">Data</Label>
+              <Input id="am-date" type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
             </div>
             <div>
-              <Label>Horário</Label>
-              <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
+              <Label htmlFor="am-time">Horário</Label>
+              <Input id="am-time" type="time" value={time} onChange={e => setTime(e.target.value)} />
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -282,20 +282,29 @@ export function AgendarMensagemForm({ onSaved }: Props) {
               {intervals.map((it, i) => (
                 <div key={it.id} className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <Label className="text-xs">A cada (dias)</Label>
-                    <Input type="number" min={1} value={it.days} onChange={e => setIntervals(prev => prev.map(x => x.id === it.id ? { ...x, days: +e.target.value } : x))} />
+                    <Label htmlFor={`am-int-days-${it.id}`} className="text-xs">A cada (dias)</Label>
+                    <Input id={`am-int-days-${it.id}`} type="number" min={1} value={it.days} onChange={e => setIntervals(prev => prev.map(x => x.id === it.id ? { ...x, days: +e.target.value } : x))} />
                   </div>
                   <div className="flex-1">
-                    <Label className="text-xs">Quantas vezes</Label>
-                    <Input type="number" min={1} value={it.count} onChange={e => setIntervals(prev => prev.map(x => x.id === it.id ? { ...x, count: +e.target.value } : x))} />
+                    <Label htmlFor={`am-int-count-${it.id}`} className="text-xs">Quantas vezes</Label>
+                    <Input id={`am-int-count-${it.id}`} type="number" min={1} value={it.count} onChange={e => setIntervals(prev => prev.map(x => x.id === it.id ? { ...x, count: +e.target.value } : x))} />
                   </div>
                   {intervals.length > 1 && (
-                    <Button variant="ghost" size="icon" onClick={() => setIntervals(prev => prev.filter(x => x.id !== it.id))}><Trash2 className="h-4 w-4" /></Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10"
+                      onClick={() => setIntervals(prev => prev.filter(x => x.id !== it.id))}
+                      aria-label="Remover intervalo de recorrência"
+                      title="Remover intervalo"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
               ))}
               <Button variant="outline" size="sm" onClick={() => setIntervals(prev => [...prev, { id: crypto.randomUUID(), days: 7, count: 4 }])}>
-                <Plus className="h-3 w-3 mr-1" /> Adicionar intervalo
+                <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> Adicionar intervalo
               </Button>
             </div>
           )}
