@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import { fetchAutomationSettings, AutomationSettingsMap } from "@/lib/automationSettings";
 import { invalidateTemplateCache } from "@/lib/messageTemplates";
+import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+
 
 type ParamDef = { name: string; label: string; fallback: number; suffix?: string };
 
