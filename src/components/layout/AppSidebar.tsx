@@ -2,12 +2,10 @@ import { NavLink, useLocation } from "react-router-dom";
 
 import {
   Users,
-  UserPlus,
   FileText,
   Send,
   LayoutDashboard,
   Bot,
-  Mail,
   CalendarClock,
   History,
   CalendarPlus,
