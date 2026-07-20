@@ -286,16 +286,46 @@ export default function MensagensPredefinidas() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por título ou conteúdo..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 h-11"
-        />
-      </div>
+      {/* Tabs + Search */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "manual" | "automation")}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+          <TabsList>
+            <TabsTrigger value="manual" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Manuais
+              <Badge variant="secondary" className="ml-1">{manualMessages.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="automation" className="gap-2">
+              <Zap className="h-4 w-4" />
+              Automação
+              <Badge variant="secondary" className="ml-1">{automationMessages.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>{withVars} com variáveis</span>
+            </div>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10"
+              />
+            </div>
+          </div>
+        </div>
+
+        {activeTab === "automation" && (
+          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Mensagens vinculadas a automações.</span> Elas não aparecem nas opções de envio manual — são usadas apenas pelos disparos automáticos configurados em <span className="font-medium">Automações</span>.
+          </div>
+        )}
+
+        <TabsContent value={activeTab} className="mt-4">
+
 
       {/* List */}
       {filteredMessages.length === 0 ? (
