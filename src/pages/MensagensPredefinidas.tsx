@@ -22,10 +22,12 @@ interface PredefinedMessage {
 
 export default function MensagensPredefinidas() {
   const [messages, setMessages] = useState<PredefinedMessage[]>([]);
+  const [automationIds, setAutomationIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMessage, setEditingMessage] = useState<PredefinedMessage | null>(null);
+  const [activeTab, setActiveTab] = useState<"manual" | "automation">("manual");
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
