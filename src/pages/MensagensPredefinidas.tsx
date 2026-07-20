@@ -254,37 +254,8 @@ export default function MensagensPredefinidas() {
           </Dialog>
         </div>
 
-        {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-3 mt-6">
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <FileText className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="text-lg font-semibold leading-none">{messages.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">templates</div>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="text-lg font-semibold leading-none">{withVars}</div>
-              <div className="text-xs text-muted-foreground mt-1">com variáveis</div>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <MessageSquare className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="text-lg font-semibold leading-none">{totalChars}</div>
-              <div className="text-xs text-muted-foreground mt-1">caracteres</div>
-            </div>
-          </div>
-        </div>
       </div>
+
 
       {/* Tabs + Search */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "manual" | "automation")}>
