@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import { fetchAutomationSettings, AutomationSettingsMap } from "@/lib/automationSettings";
 import { invalidateTemplateCache } from "@/lib/messageTemplates";
+import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+
 
 type ParamDef = { name: string; label: string; fallback: number; suffix?: string };
 
@@ -141,16 +143,18 @@ export default function Automacoes() {
   });
 
   const { data: predefined = [] } = useQuery<PredefinedMsg[]>({
-    queryKey: ["predefined-messages"],
+    queryKey: ["predefined-messages", "automation-only"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("predefined_messages")
         .select("id, title, content")
         .order("title");
       if (error) throw error;
-      return (data ?? []) as PredefinedMsg[];
+      const automationIds = await fetchAutomationTemplateIds();
+      return (data ?? []).filter((p: PredefinedMsg) => automationIds.has(p.id)) as PredefinedMsg[];
     },
   });
+
 
   const { data: lastRun } = useQuery({
     queryKey: ["automation-last-run"],
