@@ -391,6 +391,8 @@ export default function MensagensPredefinidas() {
           })}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
