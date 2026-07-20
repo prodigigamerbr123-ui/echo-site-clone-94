@@ -47,8 +47,11 @@ export default function EnviarMensagem() {
     setStudents(data || []);
   };
   const fetchPredefinedMessages = async () => {
-    const { data } = await supabase.from('predefined_messages').select('*').order('title');
-    setPredefinedMessages(data || []);
+    const [{ data }, autoIds] = await Promise.all([
+      supabase.from('predefined_messages').select('*').order('title'),
+      fetchAutomationTemplateIds(),
+    ]);
+    setPredefinedMessages((data || []).filter((m: any) => !autoIds.has(m.id)));
   };
 
   const filteredStudents = students.filter(s =>
