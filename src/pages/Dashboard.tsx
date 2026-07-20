@@ -1,3 +1,4 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { AISuggestions } from "@/components/dashboard/AISuggestions";
@@ -15,6 +16,7 @@ function SectionDivider({ label }: { label: string }) {
 }
 
 export default function Dashboard() {
+  usePageTitle("Dashboard");
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <SectionDivider label="Atalhos" />

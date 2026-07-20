@@ -301,7 +301,9 @@ export function ListaAlunos() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-10 w-10"
                               onClick={() => setEditingStudent(student)}
+                              aria-label={`Editar aluno ${student.name}`}
                               title="Editar aluno"
                             >
                               <Edit className="h-4 w-4" />
@@ -310,7 +312,8 @@ export function ListaAlunos() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteStudent(student.id, student.name)}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="h-10 w-10 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              aria-label={`Excluir aluno ${student.name}`}
                               title="Excluir aluno"
                             >
                               <Trash2 className="h-4 w-4" />

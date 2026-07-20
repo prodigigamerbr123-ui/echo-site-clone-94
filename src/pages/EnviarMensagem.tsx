@@ -1,3 +1,4 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useState, useEffect, useMemo } from "react";
 import { Search, Send, Users, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -8,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -21,6 +23,7 @@ interface Student { id: string; name: string; phone: string; had_evaluation: boo
 interface PredefinedMessage { id: string; title: string; content: string; }
 
 export default function EnviarMensagem() {
+  usePageTitle("Enviar Mensagem");
   const [students, setStudents] = useState<Student[]>([]);
   const [predefinedMessages, setPredefinedMessages] = useState<PredefinedMessage[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
@@ -210,9 +213,9 @@ export default function EnviarMensagem() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Pré-definidas</label>
+              <Label htmlFor="em-predefined" className="text-sm font-medium mb-2 block">Pré-definidas</Label>
               <Select value={selectedPredefined} onValueChange={handlePredefinedSelect}>
-                <SelectTrigger><SelectValue placeholder="Escolha uma mensagem" /></SelectTrigger>
+                <SelectTrigger id="em-predefined"><SelectValue placeholder="Escolha uma mensagem" /></SelectTrigger>
                 <SelectContent>
                   {predefinedMessages.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
                 </SelectContent>
@@ -220,19 +223,20 @@ export default function EnviarMensagem() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Conteúdo</label>
-                <Button type="button" variant="ghost" size="sm" onClick={insertNameVar}>
+                <Label htmlFor="em-message" className="text-sm font-medium">Conteúdo</Label>
+                <Button type="button" variant="ghost" size="sm" onClick={insertNameVar} aria-label="Inserir variável nome">
                   + Inserir {"{nome}"}
                 </Button>
               </div>
               <Textarea
+                id="em-message"
                 placeholder="Digite a mensagem..."
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 className="min-h-32"
                 maxLength={1000}
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-foreground/80 mt-1">
                 {message.length}/1000 • Use <code>{"{nome}"}</code> para personalizar automaticamente
               </p>
             </div>

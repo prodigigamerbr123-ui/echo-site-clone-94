@@ -177,9 +177,9 @@ export default function MessagesList({
                     <Badge variant="outline" className="text-xs">{getMessageTypeLabel(m.message_type)}</Badge>
                   </div>
                   <p className="text-sm mb-2 break-words">{m.content}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(m.scheduled_for), "dd/MM/yyyy", { locale: ptBR })}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(m.scheduled_for), "HH:mm")}</span>
+                  <div className="flex items-center gap-3 text-xs text-foreground/80">
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" aria-hidden="true" />{format(new Date(m.scheduled_for), "dd/MM/yyyy", { locale: ptBR })}</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" aria-hidden="true" />{format(new Date(m.scheduled_for), "HH:mm")}</span>
                   </div>
                   {m.status === "failed" && (
                     <div className="mt-2 flex items-start gap-2 text-xs bg-destructive/10 border border-destructive/30 rounded p-2">
@@ -190,7 +190,13 @@ export default function MessagesList({
                         </p>
                       </div>
                       {onRetry && (
-                        <Button size="sm" variant="outline" className="h-6" onClick={() => onRetry(m.id)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          onClick={() => onRetry(m.id)}
+                          aria-label="Reenviar mensagem"
+                        >
                           <RotateCcw className="h-3 w-3 mr-1" /> Tentar de novo
                         </Button>
                       )}
@@ -198,10 +204,24 @@ export default function MessagesList({
                   )}
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(m)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10"
+                    onClick={() => onEdit(m)}
+                    aria-label="Editar mensagem agendada"
+                    title="Editar mensagem agendada"
+                  >
                     <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(m.id)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 text-destructive"
+                    onClick={() => onDelete(m.id)}
+                    aria-label="Excluir mensagem agendada"
+                    title="Excluir mensagem agendada"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

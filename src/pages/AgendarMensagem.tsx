@@ -1,9 +1,11 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { CalendarPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AgendarMensagemForm } from "@/components/mensagens/AgendarMensagemForm";
 import { useNavigate } from "react-router-dom";
 
 export default function AgendarMensagem() {
+  usePageTitle("Agendar Mensagem");
   const navigate = useNavigate();
   return (
     <div className="space-y-6">

@@ -1,7 +1,9 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import MensagensEnviadasTab from "@/components/mensagens/MensagensEnviadasTab";
 import { History } from "lucide-react";
 
 export default function MensagensEnviadas() {
+  usePageTitle("Histórico de Mensagens");
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-3">

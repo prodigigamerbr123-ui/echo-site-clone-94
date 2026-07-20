@@ -1,3 +1,4 @@
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -159,6 +160,7 @@ const GROUPS: NotifGroup[] = [
 ];
 
 export default function Configuracoes() {
+  usePageTitle("Configurações");
   const { data: settings, isLoading } = useNotificationSettings();
   const update = useUpdateNotificationSettings();
   const [minutes, setMinutes] = useState<number>(10);
