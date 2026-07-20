@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { hasNameVar, replaceNameVar } from "@/lib/phone";
+import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
 
 interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
 interface PredefinedMessage { id: string; title: string; content: string; }
