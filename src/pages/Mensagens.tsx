@@ -55,12 +55,13 @@ export default function Mensagens() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: s }, { data: p }] = await Promise.all([
+      const [{ data: s }, { data: p }, autoIds] = await Promise.all([
         supabase.from("students").select("id, name, phone, had_evaluation").order("name").limit(5000),
         supabase.from("predefined_messages").select("*").order("title"),
+        fetchAutomationTemplateIds(),
       ]);
       setStudents(s || []);
-      setPredefinedMessages(p || []);
+      setPredefinedMessages((p || []).filter((m: any) => !autoIds.has(m.id)));
       setLoading(false);
     })();
   }, []);
