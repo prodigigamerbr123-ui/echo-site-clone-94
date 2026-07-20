@@ -428,12 +428,10 @@ function AutomationCard({
                 )}
                 <div className="flex items-center gap-2">
                   <Select
-                    value={selectedId ?? "__default__"}
+                    value={selectedId ?? ""}
                     onValueChange={(v) => {
                       if (v === "__new__") {
                         onCreateNew(mt.type, `${def.title} — ${mt.label}`);
-                      } else if (v === "__default__") {
-                        onLinkTemplate(mt.type, null);
                       } else {
                         onLinkTemplate(mt.type, v);
                       }
@@ -443,9 +441,6 @@ function AutomationCard({
                       <SelectValue placeholder="Escolher mensagem" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__default__">
-                        Padrão do sistema (variações)
-                      </SelectItem>
                       {predefined.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                       ))}
