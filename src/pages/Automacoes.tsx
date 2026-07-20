@@ -101,6 +101,18 @@ const AUTOMATIONS: AutomationDef[] = [
     placeholders: ["{nome}"],
     params: [{ name: "days_after", label: "Dias inativo", fallback: 30, suffix: "dias" }],
   },
+  {
+    key: "payment_reminder",
+    title: "Lembrete de vencimento da mensalidade",
+    description: "Avisa o aluno antes e no dia do vencimento da mensalidade.",
+    when: "Diariamente, X dias antes do vencimento e no próprio dia.",
+    messageTypes: [
+      { type: "payment_reminder_before", label: "Aviso antecipado" },
+      { type: "payment_reminder_due", label: "Aviso no dia" },
+    ],
+    placeholders: ["{nome}", "{dias}"],
+    params: [{ name: "days_before", label: "Dias antes do vencimento", fallback: 3, suffix: "dias" }],
+  },
 ];
 
 const ALL_AUTO_TYPES = Array.from(
