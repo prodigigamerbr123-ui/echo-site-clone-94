@@ -344,8 +344,9 @@ export default function MensagensPredefinidas() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleCopyMessage(message.content)}
-                      className="h-8 w-8 p-0"
-                      title="Copiar mensagem"
+                      className="h-10 w-10 p-0"
+                      title="Copiar mensagem pré-definida"
+                      aria-label="Copiar mensagem pré-definida"
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
@@ -353,8 +354,9 @@ export default function MensagensPredefinidas() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEditMessage(message)}
-                      className="h-8 w-8 p-0"
-                      title="Editar mensagem"
+                      className="h-10 w-10 p-0"
+                      title="Editar mensagem pré-definida"
+                      aria-label="Editar mensagem pré-definida"
                     >
                       <Edit className="h-3 w-3" />
                     </Button>
@@ -362,8 +364,9 @@ export default function MensagensPredefinidas() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteMessage(message.id)}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                      title="Excluir mensagem"
+                      className="h-10 w-10 p-0 text-red-600 hover:text-red-700"
+                      title="Excluir mensagem pré-definida"
+                      aria-label="Excluir mensagem pré-definida"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
