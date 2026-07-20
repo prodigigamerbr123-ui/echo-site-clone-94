@@ -1,39 +1,42 @@
 // Textos e helpers para as mensagens automáticas geradas a partir de uma
 // avaliação física (evaluations). Mantém o mesmo padrão de "sortear entre
 // variações" usado no daily-automation.
+//
+// IMPORTANTE: horários calculados em fuso de Brasília (UTC-3) via spTime,
+// para não depender do fuso do navegador. Deve ficar em paridade com
+// supabase/functions/_shared/evaluations.ts (buildEvaluationMessages).
 
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
+import { fmtDateSP, fmtTimeSP, spDate, spParts } from "@/lib/spTime";
 
 type Tpl = (name: string, when: Date) => string;
 
 
 const CONFIRMATION_TEMPLATES: Tpl[] = [
   (n, w) =>
-    `Olá ${n}! ✅ Sua avaliação física está marcada para ${format(w, "dd/MM", { locale: ptBR })} às ${format(w, "HH:mm")}. Qualquer imprevisto, é só me avisar!`,
+    `Olá ${n}! ✅ Sua avaliação física está marcada para ${fmtDateSP(w)} às ${fmtTimeSP(w)}. Qualquer imprevisto, é só me avisar!`,
   (n, w) =>
-    `Oi ${n}! 📅 Confirmado: avaliação física em ${format(w, "dd/MM", { locale: ptBR })} às ${format(w, "HH:mm")}. Te espero! 💪`,
+    `Oi ${n}! 📅 Confirmado: avaliação física em ${fmtDateSP(w)} às ${fmtTimeSP(w)}. Te espero! 💪`,
   (n, w) =>
-    `${n}, tudo certo! ✅ Sua avaliação está agendada pra ${format(w, "dd/MM", { locale: ptBR })} às ${format(w, "HH:mm")}. Se precisar remarcar é só falar.`,
+    `${n}, tudo certo! ✅ Sua avaliação está agendada pra ${fmtDateSP(w)} às ${fmtTimeSP(w)}. Se precisar remarcar é só falar.`,
 ];
 
 const REMINDER_1D_TEMPLATES: Tpl[] = [
   (n, w) =>
-    `Oi ${n}! 👋 Passando pra lembrar da sua avaliação física amanhã às ${format(w, "HH:mm")}. Bora acompanhar sua evolução!`,
+    `Oi ${n}! 👋 Passando pra lembrar da sua avaliação física amanhã às ${fmtTimeSP(w)}. Bora acompanhar sua evolução!`,
   (n, w) =>
-    `${n}, amanhã é dia! 📋 Sua avaliação física está marcada pra ${format(w, "HH:mm")}. Te vejo lá! 💪`,
+    `${n}, amanhã é dia! 📋 Sua avaliação física está marcada pra ${fmtTimeSP(w)}. Te vejo lá! 💪`,
   (n, w) =>
-    `Lembrete rápido, ${n}: amanhã tem avaliação física às ${format(w, "HH:mm")}. Qualquer coisa é só me chamar. ✅`,
+    `Lembrete rápido, ${n}: amanhã tem avaliação física às ${fmtTimeSP(w)}. Qualquer coisa é só me chamar. ✅`,
 ];
 
 const REMINDER_DAY_TEMPLATES: Tpl[] = [
   (n, w) =>
-    `Oi ${n}! ⏰ Sua avaliação física é hoje às ${format(w, "HH:mm")}. Já já te vejo! 💪`,
+    `Oi ${n}! ⏰ Sua avaliação física é hoje às ${fmtTimeSP(w)}. Já já te vejo! 💪`,
   (n, w) =>
-    `${n}, tá chegando a hora! 🏋️ Avaliação física hoje às ${format(w, "HH:mm")}. Te espero!`,
+    `${n}, tá chegando a hora! 🏋️ Avaliação física hoje às ${fmtTimeSP(w)}. Te espero!`,
   (n, w) =>
-    `Lembrete de hoje, ${n}: avaliação física às ${format(w, "HH:mm")}. Se precisar remarcar, me avisa!`,
+    `Lembrete de hoje, ${n}: avaliação física às ${fmtTimeSP(w)}. Se precisar remarcar, me avisa!`,
 ];
 
 const FOLLOWUP_TEMPLATES = [
@@ -72,11 +75,12 @@ export interface EvaluationMessage {
 }
 
 /**
- * Gera até 3 mensagens automáticas para uma avaliação recém-agendada:
- * - CONFIRMAÇÃO: agora + 2 minutos
- * - LEMBRETE VÉSPERA: dia anterior às 18:00 (só se ainda estiver no futuro)
- * - LEMBRETE NO DIA: 3h antes (só se estiver no futuro; e >=12h depois da véspera,
- *   senão substitui a véspera)
+ * Gera até 3 mensagens automáticas para uma avaliação recém-agendada.
+ * Horários calculados no fuso SP (UTC-3), independentes do fuso do navegador:
+ *  - CONFIRMAÇÃO: agora + 2 minutos
+ *  - LEMBRETE VÉSPERA: dia anterior às 18:00 SP (só se ainda estiver no futuro)
+ *  - LEMBRETE NO DIA: 3h antes (só se estiver no futuro; e >=12h depois da véspera,
+ *    senão substitui a véspera)
  */
 export function buildEvaluationMessages(
   studentName: string,
@@ -85,7 +89,7 @@ export function buildEvaluationMessages(
   const now = new Date();
   const msgs: EvaluationMessage[] = [];
 
-  // 1) Confirmação
+  // 1) Confirmação: agora + 2 min
   const confirmAt = new Date(now.getTime() + 2 * 60 * 1000);
   msgs.push({
     scheduled_for: confirmAt.toISOString(),
@@ -93,18 +97,24 @@ export function buildEvaluationMessages(
     content: buildConfirmation(studentName, scheduledAt),
   });
 
-  // 2) Véspera 18:00
-  const eve = new Date(scheduledAt);
-  eve.setDate(eve.getDate() - 1);
-  eve.setHours(18, 0, 0, 0);
+  // 2) Véspera às 18:00 SP — usa Date UTC auxiliar pra decrementar o dia
+  //    corretamente inclusive na virada de mês.
+  const p = spParts(scheduledAt);
+  const eveTmp = new Date(Date.UTC(p.y, p.mo, p.d - 1));
+  const eve = spDate(
+    eveTmp.getUTCFullYear(),
+    eveTmp.getUTCMonth(),
+    eveTmp.getUTCDate(),
+    18,
+    0,
+  );
   const eveInFuture = eve.getTime() > now.getTime();
 
-  // 3) 3h antes
+  // 3) Dia -3h
   const dayOf = new Date(scheduledAt.getTime() - 3 * 60 * 60 * 1000);
   const dayOfInFuture = dayOf.getTime() > now.getTime();
 
-  const gap = dayOf.getTime() - eve.getTime();
-  const collision = gap < 12 * 60 * 60 * 1000;
+  const collision = dayOf.getTime() - eve.getTime() < 12 * 60 * 60 * 1000;
 
   if (eveInFuture && !collision) {
     msgs.push({
@@ -144,8 +154,8 @@ export async function applyLinkedEvaluationTemplates(
 ): Promise<void> {
   const vars = {
     nome: studentName,
-    data: format(scheduledAt, "dd/MM", { locale: ptBR }),
-    hora: format(scheduledAt, "HH:mm"),
+    data: fmtDateSP(scheduledAt),
+    hora: fmtTimeSP(scheduledAt),
   };
   for (const m of msgs) {
     m.content = await resolveAutomationMessage(
@@ -156,5 +166,6 @@ export async function applyLinkedEvaluationTemplates(
     );
   }
 }
+
 
 

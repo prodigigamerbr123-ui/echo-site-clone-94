@@ -345,6 +345,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      complete_evaluation_tx: {
+        Args: { _evaluation_id: string }
+        Returns: undefined
+      }
       reset_stuck_scheduled_messages: { Args: never; Returns: number }
     }
     Enums: {

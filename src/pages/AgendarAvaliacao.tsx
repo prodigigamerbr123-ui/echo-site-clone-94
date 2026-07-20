@@ -32,6 +32,7 @@ import {
   getAutomationParam,
 } from "@/lib/automationSettings";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
+import { spDate, spParts } from "@/lib/spTime";
 
 
 import {
@@ -213,33 +214,60 @@ export default function AgendarAvaliacao() {
     return format(d, "EEEE, dd 'de' MMMM", { locale: ptBR });
   }
 
-  async function scheduleFor(student: Student, whenIso: string, notesText: string) {
-    // Trava duplicidade
-    const alreadyFuture = scheduledFuture.find((e) => e.student_id === student.id);
-    if (alreadyFuture) {
-      const w = format(new Date(alreadyFuture.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
-      const ok = await askConfirm({
-        title: `${student.name} já tem avaliação`,
-        description: `Existe agendamento em ${w}. Criar outro para o mesmo aluno?`,
-        confirmLabel: "Criar mesmo assim",
+  async function scheduleFor(student: Student, whenIso: string, notesText: string, ignoreEvaluationId?: string) {
+    // Consulta FRESCA no banco (não confia no cache do React Query) — evita
+    // duplicidades geradas por duplo clique ou por dados desatualizados.
+    const startOfTodayIso = startOfDay(new Date()).toISOString();
+    const { data: futureEvals, error: qErr } = await supabase
+      .from("evaluations")
+      .select("id, student_id, scheduled_at, students(name)")
+      .eq("status", "scheduled")
+      .gte("scheduled_at", startOfTodayIso);
+    if (qErr) throw qErr;
+
+    const others = (futureEvals ?? []).filter((e) => e.id !== ignoreEvaluationId);
+
+    // (a) mesmo aluno já tem avaliação futura → BLOQUEIA
+    const dup = others.find((e) => e.student_id === student.id);
+    if (dup) {
+      const w = format(new Date(dup.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
+      toast({
+        title: "Aluno já possui avaliação agendada",
+        description: `Este aluno já tem uma avaliação agendada para ${w}. Cancele ou remarque antes de criar outra.`,
+        variant: "destructive",
       });
-      if (!ok) return;
+      return null;
     }
 
-    // Trava conflito de horário (30 min)
+    // (b) outro aluno no mesmo horário exato → PEDE confirmação
     const target = new Date(whenIso).getTime();
-    const conflictEv = scheduledFuture.find((e) => {
-      const d = new Date(e.scheduled_at).getTime();
-      return Math.abs(d - target) < 30 * 60 * 1000 && e.student_id !== student.id;
-    });
-    if (conflictEv) {
-      const w = format(new Date(conflictEv.scheduled_at), "HH:mm");
+    const sameSlot = others.find(
+      (e) => e.student_id !== student.id && new Date(e.scheduled_at).getTime() === target,
+    );
+    if (sameSlot) {
+      const other = (sameSlot as any).students?.name ?? "outro aluno";
       const ok = await askConfirm({
-        title: "Conflito de horário",
-        description: `Já existe avaliação de ${conflictEv.students?.name ?? "outro aluno"} às ${w} (raio de 30 min). Prosseguir?`,
+        title: "Horário já ocupado",
+        description: `Já existe avaliação de ${other} exatamente neste horário. Deseja agendar assim mesmo?`,
         confirmLabel: "Agendar mesmo assim",
       });
-      if (!ok) return;
+      if (!ok) return null;
+    } else {
+      // Conflito próximo (30 min) — mantém o aviso original, sem bloquear
+      const near = others.find((e) => {
+        const d = new Date(e.scheduled_at).getTime();
+        return Math.abs(d - target) < 30 * 60 * 1000 && e.student_id !== student.id;
+      });
+      if (near) {
+        const w = format(new Date(near.scheduled_at), "HH:mm");
+        const other = (near as any).students?.name ?? "outro aluno";
+        const ok = await askConfirm({
+          title: "Conflito de horário",
+          description: `Já existe avaliação de ${other} às ${w} (raio de 30 min). Prosseguir?`,
+          confirmLabel: "Agendar mesmo assim",
+        });
+        if (!ok) return null;
+      }
     }
 
     const { data: created, error } = await supabase
@@ -288,6 +316,7 @@ export default function AgendarAvaliacao() {
     setSaving(true);
     try {
       const messagesCreated = await scheduleFor(selected, when.toISOString(), notes);
+      if (messagesCreated === null) return; // cancelado pelo usuário / bloqueado
       const whenLabel = format(when, "dd/MM 'às' HH:mm", { locale: ptBR });
       toast({
         title: "Avaliação agendada",
@@ -341,6 +370,41 @@ export default function AgendarAvaliacao() {
     }
     setSaving(true);
     try {
+      // Trava fresca no banco também no reagendamento — evita colidir com uma
+      // avaliação criada em outro dispositivo depois que o dialog foi aberto.
+      const startOfTodayIso = startOfDay(new Date()).toISOString();
+      const { data: futureEvals, error: qErr } = await supabase
+        .from("evaluations")
+        .select("id, student_id, scheduled_at, students(name)")
+        .eq("status", "scheduled")
+        .gte("scheduled_at", startOfTodayIso);
+      if (qErr) throw qErr;
+      const others = (futureEvals ?? []).filter((e) => e.id !== rescheduleTarget.id);
+
+      const dup = others.find((e) => e.student_id === rescheduleTarget.student_id);
+      if (dup) {
+        const w = format(new Date(dup.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
+        toast({
+          title: "Aluno já possui avaliação agendada",
+          description: `Este aluno já tem outra avaliação em ${w}. Cancele-a antes de remarcar.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      const target = when.getTime();
+      const sameSlot = others.find(
+        (e) => new Date(e.scheduled_at).getTime() === target,
+      );
+      if (sameSlot) {
+        const other = (sameSlot as any).students?.name ?? "outro aluno";
+        const ok = await askConfirm({
+          title: "Horário já ocupado",
+          description: `Já existe avaliação de ${other} exatamente neste horário. Remarcar assim mesmo?`,
+          confirmLabel: "Remarcar mesmo assim",
+        });
+        if (!ok) return;
+      }
+
       await deletePendingEvalMessages(rescheduleTarget.id);
       const { error } = await supabase
         .from("evaluations")
@@ -382,17 +446,12 @@ export default function AgendarAvaliacao() {
     try {
       await deletePendingEvalMessages(ev.id);
       const evalDate = new Date(ev.scheduled_at);
-      const [{ error: e1 }, { error: e2 }] = await Promise.all([
-        supabase.from("evaluations").update({
-          status: "completed", completed_at: new Date().toISOString(),
-        }).eq("id", ev.id),
-        supabase.from("students").update({
-          had_evaluation: true,
-          last_evaluation_date: format(evalDate, "yyyy-MM-dd"),
-        }).eq("id", ev.student_id),
-      ]);
-      if (e1) throw e1;
-      if (e2) throw e2;
+      // Atômico: marca completed e atualiza had_evaluation/last_evaluation_date
+      // em uma única transação no banco.
+      const { error: rpcErr } = await supabase.rpc("complete_evaluation_tx", {
+        _evaluation_id: ev.id,
+      });
+      if (rpcErr) throw rpcErr;
 
       // Follow-up (apenas se toggle ligado)
       const settings = await fetchAutomationSettings();
@@ -408,8 +467,13 @@ export default function AgendarAvaliacao() {
 
         if (!existingFu || existingFu.length === 0) {
           const daysAfter = Number(getAutomationParam(settings, "evaluation_followup", "days_after", 7));
-          const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
-          followup.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+          const followupBase = new Date(evalDate.getTime() + daysAfter * 86400000);
+          const fp = spParts(followupBase);
+          const followup = spDate(
+            fp.y, fp.mo, fp.d,
+            9 + Math.floor(Math.random() * 3),
+            Math.floor(Math.random() * 60),
+          );
           const name = ev.students?.name ?? "aluno";
           const content = await resolveAutomationMessage(
             "evaluation_followup",
@@ -465,9 +529,14 @@ export default function AgendarAvaliacao() {
       const settings = await fetchAutomationSettings();
       let rescheduled = false;
       if (isAutomationEnabled(settings, "no_show_reschedule")) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+        // Amanhã 09-12h SP (não depende do fuso do navegador)
+        const tomorrowUTC = new Date(Date.now() + 86400000);
+        const tp = spParts(tomorrowUTC);
+        const tomorrow = spDate(
+          tp.y, tp.mo, tp.d,
+          9 + Math.floor(Math.random() * 3),
+          Math.floor(Math.random() * 60),
+        );
         const name = ev.students?.name ?? "aluno";
         const content = await resolveAutomationMessage(
           "no_show_reschedule",

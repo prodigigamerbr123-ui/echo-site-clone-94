@@ -303,18 +303,11 @@ export async function completeEvaluation(
   await deletePendingEvalMessages(supabase, evaluationId);
 
   const evalDate = new Date(ev.scheduled_at);
-  const [{ error: e1 }, { error: e2 }] = await Promise.all([
-    supabase.from("evaluations").update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-    }).eq("id", evaluationId),
-    supabase.from("students").update({
-      had_evaluation: true,
-      last_evaluation_date: fmtDateISOSP(evalDate),
-    }).eq("id", ev.student_id),
-  ]);
-  if (e1) throw e1;
-  if (e2) throw e2;
+  // Atualização atômica de evaluations + students num único statement no banco.
+  const { error: rpcErr } = await supabase.rpc("complete_evaluation_tx", {
+    _evaluation_id: evaluationId,
+  });
+  if (rpcErr) throw rpcErr;
 
   const settings = await loadAutomationSettings(supabase);
   if (!settingEnabled(settings, "evaluation_followup")) {
