@@ -1,9 +1,10 @@
 // Motor de regras que roda 1x/dia (via pg_cron) e agenda mensagens automáticas.
 // - Lembretes de avaliação vencida (>90 dias) ou pendente (>14 dias após cadastro)
 // - Aniversários
+// - Lembretes de vencimento da mensalidade (antes e no dia)
 // - Distribui horários entre 09:00 e 12:00 para não disparar em massa
-// - Sorteia entre 3 variações de texto por tipo
-// - Limita a 60 novos agendamentos por execução
+// - Sorteia entre variações de texto por tipo
+// - Limita a 60 novos agendamentos por execução (avaliação); pagamento tem cap próprio
 // - Só considera alunos com status 'active'
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
@@ -18,6 +19,8 @@ const corsHeaders = {
 
 const DEFAULT_DAILY_LIMIT = 60;
 const DEFAULT_DAYS_OVERDUE = 90;
+const DEFAULT_PAYMENT_DAYS_BEFORE = 3;
+const DEFAULT_PAYMENT_CAP = 200;
 
 type SettingsMap = Record<string, { enabled: boolean; params: Record<string, any> }>;
 
@@ -55,19 +58,42 @@ const BIRTHDAY_TEMPLATES = [
   (name: string) => `${name}, hoje é seu dia! 🎂 Que ele seja tão especial quanto sua dedicação. Feliz aniversário! ❤️`,
 ];
 
+const PAYMENT_BEFORE_TEMPLATE = (name: string, days: number) =>
+  `Oi ${name}! 💪 Passando pra lembrar que sua mensalidade vence em ${days} dias. Qualquer dúvida é só chamar!`;
+
+const PAYMENT_DUE_TEMPLATE = (name: string) =>
+  `Oi ${name}! Sua mensalidade vence hoje. Bora manter o treino em dia? 🏋️ Qualquer coisa estou à disposição!`;
+
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ---- Fuso SP (UTC-3, sem DST) ----
+const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
+function spDateStrToday(): string {
+  const s = new Date(Date.now() + SP_OFFSET_MS);
+  const y = s.getUTCFullYear();
+  const m = String(s.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(s.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+function addDaysISO(dateISO: string, days: number): string {
+  const [y, m, d] = dateISO.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
 }
 
 // Retorna uma data hoje entre 09:00 e 12:00 (horário do servidor Brasília via TZ set)
 function scatterTimeToday(): Date {
   const d = new Date();
-  d.setUTCHours(12, 0, 0, 0); // meio dia UTC ~ 09:00 BRT (aprox); ajusta pra 09-12 BRT
-  // 09..12 BRT == 12..15 UTC
+  d.setUTCHours(12, 0, 0, 0);
   const hourUTC = 12 + Math.floor(Math.random() * 3);
   const min = Math.floor(Math.random() * 60);
   d.setUTCHours(hourUTC, min, 0, 0);
-  // Se já passou (a função roda 08:00 BRT = 11:00 UTC, então tudo estará no futuro)
   return d;
 }
 
@@ -98,11 +124,18 @@ serve(async (req: Request) => {
     const settings = await loadSettings(supabase);
     const birthdayOn = isEnabled(settings, "birthday");
     const inviteOn = isEnabled(settings, "evaluation_invite");
+    const paymentOn = isEnabled(settings, "payment_reminder");
     const daysOverdue = Number(
       getParam(settings, "evaluation_invite", "days_overdue", DEFAULT_DAYS_OVERDUE),
     );
     const dailyLimit = Number(
       getParam(settings, "evaluation_invite", "daily_limit", DEFAULT_DAILY_LIMIT),
+    );
+    const paymentDaysBefore = Number(
+      getParam(settings, "payment_reminder", "days_before", DEFAULT_PAYMENT_DAYS_BEFORE),
+    );
+    const paymentCap = Number(
+      getParam(settings, "payment_reminder", "daily_limit", DEFAULT_PAYMENT_CAP),
     );
 
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
@@ -112,7 +145,7 @@ serve(async (req: Request) => {
     while (true) {
       const { data, error } = await supabase
         .from("students")
-        .select("id, name, birth_date, last_evaluation_date, had_evaluation, created_at, status")
+        .select("id, name, birth_date, last_evaluation_date, had_evaluation, created_at, status, payment_due_date")
         .eq("status", "active")
         .range(from, from + pageSize - 1);
       if (error) throw error;
@@ -127,7 +160,12 @@ serve(async (req: Request) => {
       .from("scheduled_messages")
       .select("student_id, message_type")
       .eq("status", "pending")
-      .in("message_type", ["evaluation_reminder", "birthday"]);
+      .in("message_type", [
+        "evaluation_reminder",
+        "birthday",
+        "payment_reminder_before",
+        "payment_reminder_due",
+      ]);
     const hasPending = new Set(
       (pendings || []).map((p: any) => `${p.student_id}:${p.message_type}`),
     );
@@ -198,8 +236,55 @@ serve(async (req: Request) => {
       }
     }
 
+    // ---- 3) Lembretes de vencimento da mensalidade ----
+    const paymentInserts: any[] = [];
+    let paymentBeforeCount = 0;
+    let paymentDueCount = 0;
+    if (paymentOn) {
+      const todaySP = spDateStrToday();
+      const beforeTarget = addDaysISO(todaySP, paymentDaysBefore);
 
-    const allInserts = [...birthdayInserts, ...reminderInserts];
+      for (const s of activeStudents) {
+        if (paymentInserts.length >= paymentCap) break;
+        if (!s.payment_due_date) continue;
+        const due = String(s.payment_due_date);
+
+        if (due === beforeTarget && !hasPending.has(`${s.id}:payment_reminder_before`)) {
+          const content = await resolveAutomationMessage(
+            supabase, settings, "payment_reminder", "payment_reminder_before",
+            PAYMENT_BEFORE_TEMPLATE(s.name, paymentDaysBefore),
+            { nome: s.name, dias: String(paymentDaysBefore) } as any,
+          );
+          paymentInserts.push({
+            student_id: s.id,
+            content,
+            scheduled_for: scatterTimeToday().toISOString(),
+            message_type: "payment_reminder_before",
+            status: "pending",
+          });
+          paymentBeforeCount++;
+          continue;
+        }
+
+        if (due === todaySP && !hasPending.has(`${s.id}:payment_reminder_due`)) {
+          const content = await resolveAutomationMessage(
+            supabase, settings, "payment_reminder", "payment_reminder_due",
+            PAYMENT_DUE_TEMPLATE(s.name),
+            { nome: s.name, dias: "0" } as any,
+          );
+          paymentInserts.push({
+            student_id: s.id,
+            content,
+            scheduled_for: scatterTimeToday().toISOString(),
+            message_type: "payment_reminder_due",
+            status: "pending",
+          });
+          paymentDueCount++;
+        }
+      }
+    }
+
+    const allInserts = [...birthdayInserts, ...reminderInserts, ...paymentInserts];
 
     let inserted = 0;
     if (allInserts.length > 0) {
@@ -214,11 +299,15 @@ serve(async (req: Request) => {
       inserted,
       birthdays: birthdayInserts.length,
       reminders: reminderInserts.length,
+      payment_before: paymentBeforeCount,
+      payment_due: paymentDueCount,
       candidatesConsidered: reminderCandidates.length,
       dailyLimit,
       daysOverdue,
+      paymentDaysBefore,
       birthdayEnabled: birthdayOn,
       inviteEnabled: inviteOn,
+      paymentEnabled: paymentOn,
       activeStudents: activeStudents.length,
       ranAt: new Date().toISOString(),
     };
