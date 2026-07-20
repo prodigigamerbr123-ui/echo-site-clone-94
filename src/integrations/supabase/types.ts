@@ -273,12 +273,14 @@ export type Database = {
         Row: {
           birth_date: string | null
           city: string | null
+          cpf: string | null
           created_at: string
           evaluation_notes: string | null
           had_evaluation: boolean | null
           id: string
           last_evaluation_date: string | null
           name: string
+          payment_due_date: string | null
           phone: string
           plan: string | null
           status: string
@@ -287,12 +289,14 @@ export type Database = {
         Insert: {
           birth_date?: string | null
           city?: string | null
+          cpf?: string | null
           created_at?: string
           evaluation_notes?: string | null
           had_evaluation?: boolean | null
           id?: string
           last_evaluation_date?: string | null
           name: string
+          payment_due_date?: string | null
           phone: string
           plan?: string | null
           status?: string
@@ -301,12 +305,14 @@ export type Database = {
         Update: {
           birth_date?: string | null
           city?: string | null
+          cpf?: string | null
           created_at?: string
           evaluation_notes?: string | null
           had_evaluation?: boolean | null
           id?: string
           last_evaluation_date?: string | null
           name?: string
+          payment_due_date?: string | null
           phone?: string
           plan?: string | null
           status?: string
