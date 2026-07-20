@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus, ChevronsUpDown } from "lucide-react";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { replaceNameVar } from "@/lib/phone";
+import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
 
 interface Student { id: string; name: string; phone: string; }
 interface PredefinedMessage { id: string; title: string; content: string; }
@@ -48,8 +49,11 @@ export function AgendarMensagemForm({ onSaved }: Props) {
     (async () => {
       const { data: s } = await supabase.from("students").select("id, name, phone").order("name").limit(5000);
       setStudents(s || []);
-      const { data: p } = await supabase.from("predefined_messages").select("*").order("title");
-      setPredefined(p || []);
+      const [{ data: p }, autoIds] = await Promise.all([
+        supabase.from("predefined_messages").select("*").order("title"),
+        fetchAutomationTemplateIds(),
+      ]);
+      setPredefined((p || []).filter((m: any) => !autoIds.has(m.id)));
     })();
   }, []);
 

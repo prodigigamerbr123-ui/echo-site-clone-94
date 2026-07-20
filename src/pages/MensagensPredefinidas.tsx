@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { MessageSquare, Search, Plus, Edit, Trash2, Copy, Sparkles, FileText, Calendar } from "lucide-react";
+import { MessageSquare, Search, Plus, Edit, Trash2, Copy, Sparkles, FileText, Calendar, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
+import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
 
 interface PredefinedMessage {
   id: string;
@@ -20,10 +22,12 @@ interface PredefinedMessage {
 
 export default function MensagensPredefinidas() {
   const [messages, setMessages] = useState<PredefinedMessage[]>([]);
+  const [automationIds, setAutomationIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMessage, setEditingMessage] = useState<PredefinedMessage | null>(null);
+  const [activeTab, setActiveTab] = useState<"manual" | "automation">("manual");
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -37,12 +41,13 @@ export default function MensagensPredefinidas() {
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
-        .from("predefined_messages")
-        .select("*")
-        .order("title");
+      const [{ data, error }, autoIds] = await Promise.all([
+        supabase.from("predefined_messages").select("*").order("title"),
+        fetchAutomationTemplateIds(),
+      ]);
       if (error) throw error;
       setMessages(data || []);
+      setAutomationIds(autoIds);
     } catch (error) {
       console.error("Error fetching predefined messages:", error);
       toast({ title: "Erro", description: "Não foi possível carregar as mensagens pré-definidas.", variant: "destructive" });
@@ -51,17 +56,21 @@ export default function MensagensPredefinidas() {
     }
   };
 
+  const manualMessages = useMemo(() => messages.filter((m) => !automationIds.has(m.id)), [messages, automationIds]);
+  const automationMessages = useMemo(() => messages.filter((m) => automationIds.has(m.id)), [messages, automationIds]);
+
+  const currentList = activeTab === "manual" ? manualMessages : automationMessages;
+
   const filteredMessages = useMemo(
     () =>
-      messages.filter((m) => {
+      currentList.filter((m) => {
         const q = searchTerm.toLowerCase();
         return m.title.toLowerCase().includes(q) || m.content.toLowerCase().includes(q);
       }),
-    [messages, searchTerm]
+    [currentList, searchTerm]
   );
 
-  const totalChars = useMemo(() => messages.reduce((acc, m) => acc + m.content.length, 0), [messages]);
-  const withVars = useMemo(() => messages.filter((m) => /\{\w+\}/.test(m.content)).length, [messages]);
+  const withVars = useMemo(() => currentList.filter((m) => /\{\w+\}/.test(m.content)).length, [currentList]);
 
   const handleSaveMessage = async () => {
     if (!title.trim() || !content.trim()) {
@@ -245,48 +254,49 @@ export default function MensagensPredefinidas() {
           </Dialog>
         </div>
 
-        {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-3 mt-6">
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <FileText className="h-4 w-4 text-primary" />
+      </div>
+
+
+      {/* Tabs + Search */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "manual" | "automation")}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+          <TabsList>
+            <TabsTrigger value="manual" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Manuais
+              <Badge variant="secondary" className="ml-1">{manualMessages.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="automation" className="gap-2">
+              <Zap className="h-4 w-4" />
+              Automação
+              <Badge variant="secondary" className="ml-1">{automationMessages.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>{withVars} com variáveis</span>
             </div>
-            <div>
-              <div className="text-lg font-semibold leading-none">{messages.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">templates</div>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="text-lg font-semibold leading-none">{withVars}</div>
-              <div className="text-xs text-muted-foreground mt-1">com variáveis</div>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
-              <MessageSquare className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <div className="text-lg font-semibold leading-none">{totalChars}</div>
-              <div className="text-xs text-muted-foreground mt-1">caracteres</div>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10"
+              />
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por título ou conteúdo..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 h-11"
-        />
-      </div>
+        {activeTab === "automation" && (
+          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Mensagens vinculadas a automações.</span> Elas não aparecem nas opções de envio manual — são usadas apenas pelos disparos automáticos configurados em <span className="font-medium">Automações</span>.
+          </div>
+        )}
+
+        <TabsContent value={activeTab} className="mt-4">
+
 
       {/* List */}
       {filteredMessages.length === 0 ? (
@@ -381,6 +391,8 @@ export default function MensagensPredefinidas() {
           })}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

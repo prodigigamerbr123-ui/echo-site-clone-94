@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { hasNameVar, replaceNameVar } from "@/lib/phone";
+import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
 
 interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
 interface PredefinedMessage { id: string; title: string; content: string; }
@@ -47,8 +48,11 @@ export default function EnviarMensagem() {
     setStudents(data || []);
   };
   const fetchPredefinedMessages = async () => {
-    const { data } = await supabase.from('predefined_messages').select('*').order('title');
-    setPredefinedMessages(data || []);
+    const [{ data }, autoIds] = await Promise.all([
+      supabase.from('predefined_messages').select('*').order('title'),
+      fetchAutomationTemplateIds(),
+    ]);
+    setPredefinedMessages((data || []).filter((m: any) => !autoIds.has(m.id)));
   };
 
   const filteredStudents = students.filter(s =>
