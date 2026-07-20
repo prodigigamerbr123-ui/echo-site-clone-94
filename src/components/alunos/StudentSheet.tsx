@@ -11,15 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Phone, Calendar, Activity, CalendarPlus, Send, MessageSquare } from "lucide-react";
+import { Phone, Calendar, Activity, CalendarPlus, Send, MessageSquare, FileText, CalendarClock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
+import { maskCpfDisplay } from "@/lib/cpf";
 
 interface Student {
   id: string; name: string; phone: string;
   birth_date: string | null; last_evaluation_date: string | null;
   had_evaluation: boolean; status: string; plan: string | null; created_at: string;
+  cpf?: string | null; payment_due_date?: string | null;
 }
 
 interface Props {
@@ -115,11 +117,24 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
                 <span>{format(new Date(student.birth_date), "dd/MM/yyyy", { locale: ptBR })}</span>
               </div>
             )}
+            {student.cpf && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground flex items-center gap-1"><FileText className="h-3 w-3" /> CPF</span>
+                <span className="font-mono text-xs">{maskCpfDisplay(student.cpf)}</span>
+              </div>
+            )}
+            {student.payment_due_date && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground flex items-center gap-1"><CalendarClock className="h-3 w-3" /> Vencimento</span>
+                <span>{format(new Date(student.payment_due_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Cadastrado em</span>
               <span>{format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
             </div>
           </div>
+
 
           <div className="rounded-lg border p-3 space-y-2 text-sm">
             <div className="flex items-center gap-2 font-medium">
