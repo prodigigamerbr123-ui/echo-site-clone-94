@@ -198,8 +198,12 @@ export async function checkScheduleConflicts(
   studentId: string,
   scheduledAt: Date,
 ): Promise<ScheduleConflictCheck> {
-  const startOfToday = new Date();
-  startOfToday.setUTCHours(0, 0, 0, 0);
+  // Meia-noite de "hoje" em America/Sao_Paulo (UTC-3), não UTC do runtime
+  const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
+  const nowSp = new Date(Date.now() + SP_OFFSET_MS);
+  const startOfToday = new Date(
+    Date.UTC(nowSp.getUTCFullYear(), nowSp.getUTCMonth(), nowSp.getUTCDate(), 0, 0) - SP_OFFSET_MS,
+  );
 
   const { data: futureEvals } = await supabase
     .from("evaluations")

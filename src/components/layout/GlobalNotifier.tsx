@@ -74,7 +74,7 @@ export function GlobalNotifier() {
           ) {
             if (cfg.notify_message_rescheduled) {
               toast("Mensagem reagendada", {
-                description: new Date(newRow.scheduled_for).toLocaleString("pt-BR"),
+                description: new Date(newRow.scheduled_for).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
               });
             }
           }
@@ -115,7 +115,7 @@ export function GlobalNotifier() {
           const row = payload.new;
           if (!row) return;
           toast("Avaliação agendada", {
-            description: new Date(row.scheduled_at).toLocaleString("pt-BR"),
+            description: new Date(row.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
           });
         }
       )
@@ -135,7 +135,7 @@ export function GlobalNotifier() {
           ) {
             const studentName = await fetchStudentName(newRow.student_id);
             toast("Avaliação remarcada", {
-              description: [studentName, new Date(newRow.scheduled_at).toLocaleString("pt-BR")]
+              description: [studentName, new Date(newRow.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })]
                 .filter(Boolean)
                 .join(" — "),
             });

@@ -170,6 +170,7 @@ serve(async (req: Request) => {
               recurrence_interval_days: msg.recurrence_interval_days,
               recurrence_count: Number(msg.recurrence_count) - 1,
               recurrence_parent_id: msg.recurrence_parent_id || msg.id,
+              evaluation_id: msg.evaluation_id ?? null,
             });
             if (!recError) recurrenceEnqueued++;
             else console.error("Erro criando recorrência:", recError);

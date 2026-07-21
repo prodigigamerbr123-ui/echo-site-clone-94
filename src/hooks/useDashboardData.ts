@@ -1,19 +1,26 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, subDays, startOfDay, endOfDay, endOfWeek, startOfWeek } from "date-fns";
+import { subDays } from "date-fns";
+import { spDate, spParts, fmtDateISOSP } from "@/lib/spTime";
 
+// Todas as fronteiras de tempo são calculadas em America/Sao_Paulo (UTC-3)
+// para bater com daily-automation / daily-briefing / process-scheduled-messages.
 export const useDashboardStats = () => {
   return useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const now = new Date();
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-      const todayStart = startOfDay(now);
-      const todayEnd = endOfDay(now);
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      const p = spParts(now);
+      const todayStart = spDate(p.y, p.mo, p.d, 0, 0);
+      const todayEnd = spDate(p.y, p.mo, p.d + 1, 0, 0); // início do próximo dia SP
+      const monthStart = spDate(p.y, p.mo, 1, 0, 0);
+      const monthEnd = spDate(p.y, p.mo + 1, 1, 0, 0);
+      // Semana começando na segunda (SP)
+      const dow = new Date(Date.UTC(p.y, p.mo, p.d)).getUTCDay(); // 0=dom..6=sab
+      const daysFromMon = (dow + 6) % 7;
+      const weekStart = spDate(p.y, p.mo, p.d - daysFromMon, 0, 0);
+      const weekEnd = spDate(p.y, p.mo, p.d - daysFromMon + 7, 0, 0);
 
       // Get total students
       const { count: totalStudents } = await supabase
@@ -109,8 +116,8 @@ export const useDashboardStats = () => {
         .eq('had_evaluation', false);
 
       // Get students with birthdays today - fix the date format comparison
-      const todayMonth = format(now, 'MM');
-      const todayDay = format(now, 'dd');
+      const todayMonth = String(p.mo + 1).padStart(2, "0");
+      const todayDay = String(p.d).padStart(2, "0");
       
       const { data: birthdayStudents } = await supabase
         .from('students')
@@ -127,9 +134,9 @@ export const useDashboardStats = () => {
         return m === todayMonth && d === todayDay;
       }).length || 0;
 
-      // Mensalidade: vencidos (payment_due_date < hoje) e vencendo em 3 dias
-      const todayStr = format(now, 'yyyy-MM-dd');
-      const in3DaysStr = format(subDays(now, -3), 'yyyy-MM-dd');
+      // Mensalidade: vencidos (payment_due_date < hoje) e vencendo em 3 dias (calendário SP)
+      const todayStr = fmtDateISOSP(now);
+      const in3DaysStr = fmtDateISOSP(spDate(p.y, p.mo, p.d + 3, 12, 0));
 
       const { count: paymentOverdueCount } = await supabase
         .from('students')
@@ -171,10 +178,11 @@ export const useTodayActions = () => {
     queryKey: ['today-actions'],
     queryFn: async () => {
       const now = new Date();
+      const p = spParts(now);
       const sevenDaysAgo = subDays(now, 7);
       const twentyOneDaysAgo = subDays(now, 21);
-      const todayMonth = format(now, 'MM');
-      const todayDay = format(now, 'dd');
+      const todayMonth = String(p.mo + 1).padStart(2, "0");
+      const todayDay = String(p.d).padStart(2, "0");
 
       // Get students with birthdays today
       const { data: allStudents } = await supabase
@@ -191,11 +199,17 @@ export const useTodayActions = () => {
         return m === todayMonth && d === todayDay;
       }) || [];
 
+      // Datas SP (yyyy-MM-dd) para janelas de follow-up
+      const sevenAgoStr = fmtDateISOSP(sevenDaysAgo);
+      const sixAgoStr = fmtDateISOSP(subDays(now, 6));
+      const twentyOneAgoStr = fmtDateISOSP(twentyOneDaysAgo);
+      const twentyAgoStr = fmtDateISOSP(subDays(now, 20));
+
       // Get students with evaluations that are overdue (more than 7 days)
       const { data: studentsNeedingEvaluation } = await supabase
         .from('students')
         .select('id, name, phone, last_evaluation_date, had_evaluation')
-        .or(`last_evaluation_date.lt.${format(sevenDaysAgo, 'yyyy-MM-dd')},and(had_evaluation.eq.false)`)
+        .or(`last_evaluation_date.lt.${sevenAgoStr},and(had_evaluation.eq.false)`)
         .limit(5000);
 
 
@@ -203,15 +217,15 @@ export const useTodayActions = () => {
       const { data: studentsNeeding7DayFollowUp } = await supabase
         .from('students')
         .select('id, name, phone, created_at')
-        .gte('created_at', format(sevenDaysAgo, 'yyyy-MM-dd'))
-        .lt('created_at', format(subDays(sevenDaysAgo, -1), 'yyyy-MM-dd'));
+        .gte('created_at', sevenAgoStr)
+        .lt('created_at', sixAgoStr);
 
       // Get students created 21 days ago for second follow-up
       const { data: studentsNeeding21DayFollowUp } = await supabase
         .from('students')
         .select('id, name, phone, created_at')
-        .gte('created_at', format(twentyOneDaysAgo, 'yyyy-MM-dd'))
-        .lt('created_at', format(subDays(twentyOneDaysAgo, -1), 'yyyy-MM-dd'));
+        .gte('created_at', twentyOneAgoStr)
+        .lt('created_at', twentyAgoStr);
 
       const actions = [];
 

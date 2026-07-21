@@ -220,7 +220,11 @@ export function AISuggestions() {
   }
 
   const handleSuggestionClick = (action: string) => {
-    localStorage.setItem("aiSuggestionAction", action);
+    try {
+      localStorage.setItem("aiSuggestionAction", action);
+    } catch {
+      // localStorage indisponível (modo privado / quota) — segue navegação
+    }
     navigate("/assistente-ia");
   };
 

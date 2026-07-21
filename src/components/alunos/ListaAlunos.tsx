@@ -245,6 +245,8 @@ export function ListaAlunos() {
       const { error } = await supabase.from('students').delete().eq('id', studentId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['students-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: "Aluno excluído", description: `${studentName} foi removido do sistema.` });
     } catch (error: any) {
