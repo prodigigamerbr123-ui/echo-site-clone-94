@@ -166,8 +166,9 @@ export async function loadAutomationSettings(
   return map;
 }
 export function settingEnabled(map: AutomationSettingsMap, key: string): boolean {
+  // Alinhado com o frontend (isAutomationEnabled): sem linha == desligado.
   const s = map[key];
-  return s ? s.enabled : true;
+  return s ? s.enabled : false;
 }
 export function settingParam<T>(
   map: AutomationSettingsMap,

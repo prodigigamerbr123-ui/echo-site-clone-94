@@ -85,6 +85,8 @@ export default function MensagensPredefinidas() {
           .update({ title: title.trim(), content: content.trim() })
           .eq("id", editingMessage.id);
         if (error) throw error;
+        const { invalidateTemplateCache } = await import("@/lib/messageTemplates");
+        invalidateTemplateCache();
         toast({ title: "Sucesso!", description: "Mensagem atualizada com sucesso." });
       } else {
         const { error } = await supabase
@@ -118,6 +120,8 @@ export default function MensagensPredefinidas() {
     try {
       const { error } = await supabase.from("predefined_messages").delete().eq("id", id);
       if (error) throw error;
+      const { invalidateTemplateCache } = await import("@/lib/messageTemplates");
+      invalidateTemplateCache();
       toast({ title: "Sucesso!", description: "Mensagem pré-definida excluída." });
       fetchMessages();
     } catch (error) {

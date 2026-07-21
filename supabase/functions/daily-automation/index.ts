@@ -35,8 +35,9 @@ async function loadSettings(supabase: any): Promise<SettingsMap> {
   return map;
 }
 function isEnabled(map: SettingsMap, key: string): boolean {
+  // Alinhado com o frontend: sem linha em automation_settings == desligado.
   const s = map[key];
-  return s ? s.enabled : true;
+  return s ? s.enabled : false;
 }
 function getParam<T>(map: SettingsMap, key: string, name: string, fallback: T): T {
   const v = map[key]?.params?.[name];
@@ -319,6 +320,7 @@ serve(async (req: Request) => {
       );
 
       for (const s of activeStudents) {
+        if (overdueInserts.length >= paymentCap) break; // cap compartilhado com lembretes
         if (!s.payment_due_date) continue;
         const due = String(s.payment_due_date);
         if (due >= todaySP) continue; // ainda não venceu

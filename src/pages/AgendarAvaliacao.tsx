@@ -451,6 +451,7 @@ export default function AgendarAvaliacao() {
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["evaluations-history"] });
       qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({ title: "Avaliação remarcada" });
       setRescheduleTarget(null);
     } catch (e: any) {
@@ -579,6 +580,7 @@ export default function AgendarAvaliacao() {
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["evaluations-history"] });
       qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Falta registrada",
         description: rescheduled ? "Mensagem de remarcação agendada." : "Remarcação automática desligada.",
