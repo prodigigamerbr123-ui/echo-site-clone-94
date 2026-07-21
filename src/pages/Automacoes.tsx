@@ -118,11 +118,16 @@ const AUTOMATIONS: AutomationDef[] = [
     key: "payment_overdue",
     title: "Cobrança de mensalidade vencida",
     description: "Envia cobrança automática para alunos com mensalidade em atraso.",
-    when: "Diariamente, para alunos com vencimento em atraso.",
+    when: "Diariamente, respeitando o intervalo mínimo entre cobranças.",
     messageTypes: [
       { type: "payment_overdue", label: "Cobrança de vencido" },
     ],
     placeholders: ["{nome}", "{dias}"],
+    params: [
+      { name: "days_after_due", label: "Enviar a partir de", fallback: 1, suffix: "dias em atraso" },
+      { name: "repeat_every_days", label: "Repetir a cada", fallback: 7, suffix: "dias" },
+      { name: "daily_limit", label: "Limite diário", fallback: 50, suffix: "msgs" },
+    ],
   },
 ];
 
