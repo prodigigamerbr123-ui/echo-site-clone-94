@@ -314,7 +314,6 @@ serve(async (req: Request) => {
       );
 
       for (const s of activeStudents) {
-        if (overdueInserts.length >= overdueCap) break;
         if (!s.payment_due_date) continue;
         const due = String(s.payment_due_date);
         if (due >= todaySP) continue; // ainda não venceu
