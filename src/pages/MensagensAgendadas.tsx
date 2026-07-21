@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { spDate, fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
 import MessageFilters from "@/components/agendarmensagem/MessageFilters";
 import MessagesList, { getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
 
