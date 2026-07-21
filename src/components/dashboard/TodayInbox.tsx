@@ -12,6 +12,7 @@ import {
   buildFollowup, buildReschedule,
 } from "@/lib/evaluationMessages";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
+import { confirm } from "@/components/ui/confirm-dialog";
 
 
 interface Evaluation {
@@ -95,6 +96,12 @@ export function TodayInbox() {
   });
 
   const markDone = async (ev: Evaluation) => {
+    const ok = await confirm({
+      title: `Marcar avaliação de ${ev.students?.name ?? "aluno"} como realizada?`,
+      description: "Isso conclui a avaliação e agenda automaticamente uma mensagem de follow-up.",
+      confirmLabel: "Marcar realizada",
+    });
+    if (!ok) return;
     const evalDate = new Date(ev.scheduled_at);
     await supabase.from("scheduled_messages").delete()
       .eq("evaluation_id", ev.id).eq("status", "pending");
@@ -130,6 +137,12 @@ export function TodayInbox() {
   };
 
   const markNoShow = async (ev: Evaluation) => {
+    const ok = await confirm({
+      title: `Registrar falta de ${ev.students?.name ?? "aluno"}?`,
+      description: "Isso marca como não comparecida e agenda automaticamente uma mensagem de reagendamento.",
+      confirmLabel: "Registrar falta",
+    });
+    if (!ok) return;
     await supabase.from("scheduled_messages").delete().eq("evaluation_id", ev.id).eq("status", "pending");
     await supabase.from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
     const t = new Date(); t.setDate(t.getDate() + 1);
