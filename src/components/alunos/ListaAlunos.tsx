@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,6 +20,21 @@ import { StudentSheet } from "./StudentSheet";
 import { replaceNameVar } from "@/lib/phone";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
 import { confirm } from "@/components/ui/confirm-dialog";
+
+type ColumnKey = "phone" | "city" | "birthday" | "plan" | "created" | "payment" | "status";
+const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
+  { key: "phone", label: "WhatsApp" },
+  { key: "city", label: "Cidade" },
+  { key: "birthday", label: "Aniversário" },
+  { key: "plan", label: "Plano" },
+  { key: "created", label: "Cadastrado em" },
+  { key: "payment", label: "Pagamento" },
+  { key: "status", label: "Status" },
+];
+const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
+  phone: true, city: true, birthday: true, plan: true, created: true, payment: true, status: true,
+};
+const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v1";
 
 interface Student {
   id: string;
@@ -54,6 +72,24 @@ export function ListaAlunos() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [chargingOverdue, setChargingOverdue] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(() => {
+    if (typeof window === "undefined") return DEFAULT_COLUMNS;
+    try {
+      const raw = window.localStorage.getItem(COLUMNS_STORAGE_KEY);
+      if (!raw) return DEFAULT_COLUMNS;
+      return { ...DEFAULT_COLUMNS, ...JSON.parse(raw) };
+    } catch {
+      return DEFAULT_COLUMNS;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
+    } catch { /* ignore */ }
+  }, [visibleColumns]);
+  const toggleColumn = (k: ColumnKey) =>
+    setVisibleColumns((prev) => ({ ...prev, [k]: !prev[k] }));
+  const visibleCount = Object.values(visibleColumns).filter(Boolean).length;
 
   const { data: students, isLoading } = useQuery({
     queryKey: ['students'],
@@ -325,6 +361,57 @@ export function ListaAlunos() {
                 <AlertCircle className="h-4 w-4" />
                 Cobrar vencidos ({overdueStudents.length})
               </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    <Columns3 className="h-4 w-4" />
+                    Colunas ({visibleCount})
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56 p-2">
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Exibir na lista
+                  </div>
+                  <div className="space-y-1">
+                    {COLUMN_DEFS.map((col) => (
+                      <label
+                        key={col.key}
+                        htmlFor={`col-${col.key}`}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          id={`col-${col.key}`}
+                          checked={visibleColumns[col.key]}
+                          onCheckedChange={() => toggleColumn(col.key)}
+                        />
+                        <span className="text-sm">{col.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between px-2 pt-2 border-t mt-2 gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs flex-1"
+                      onClick={() =>
+                        setVisibleColumns(
+                          COLUMN_DEFS.reduce((acc, c) => ({ ...acc, [c.key]: true }), {} as Record<ColumnKey, boolean>),
+                        )
+                      }
+                    >
+                      Todas
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs flex-1"
+                      onClick={() => setVisibleColumns(DEFAULT_COLUMNS)}
+                    >
+                      Padrão
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardHeader>
@@ -374,13 +461,13 @@ export function ListaAlunos() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
-                      <TableHead>WhatsApp</TableHead>
-                      <TableHead>Cidade</TableHead>
-                      <TableHead>Aniversário</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Cadastrado em</TableHead>
-                      <TableHead>Pagamento</TableHead>
-                      <TableHead>Status</TableHead>
+                      {visibleColumns.phone && <TableHead>WhatsApp</TableHead>}
+                      {visibleColumns.city && <TableHead>Cidade</TableHead>}
+                      {visibleColumns.birthday && <TableHead>Aniversário</TableHead>}
+                      {visibleColumns.plan && <TableHead>Plano</TableHead>}
+                      {visibleColumns.created && <TableHead>Cadastrado em</TableHead>}
+                      {visibleColumns.payment && <TableHead>Pagamento</TableHead>}
+                      {visibleColumns.status && <TableHead>Status</TableHead>}
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -402,53 +489,65 @@ export function ListaAlunos() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              {student.phone}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {student.city ? (
+                          {visibleColumns.phone && (
+                            <TableCell>
                               <div className="flex items-center gap-2 text-sm">
-                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                {student.city}
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                {student.phone}
                               </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {student.birth_date ? (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Cake className="h-4 w-4 text-muted-foreground" />
-                                {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                            </TableCell>
+                          )}
+                          {visibleColumns.city && (
+                            <TableCell>
+                              {student.city ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                                  {student.city}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.birthday && (
+                            <TableCell>
+                              {student.birth_date ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Cake className="h-4 w-4 text-muted-foreground" />
+                                  {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.plan && (
+                            <TableCell>
+                              {student.plan ? (
+                                <Badge variant="outline" className="text-xs">{student.plan}</Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.created && (
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Calendar className="h-4 w-4" />
+                                {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
                               </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {student.plan ? (
-                              <Badge variant="outline" className="text-xs">{student.plan}</Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {pay ? (
-                              <Badge variant="outline" className={pay.cls}>{pay.label}</Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{renderStatusBadge(active)}</TableCell>
+                            </TableCell>
+                          )}
+                          {visibleColumns.payment && (
+                            <TableCell>
+                              {pay ? (
+                                <Badge variant="outline" className={pay.cls}>{pay.label}</Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.status && <TableCell>{renderStatusBadge(active)}</TableCell>}
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <ActionButtons student={student} />
                           </TableCell>
