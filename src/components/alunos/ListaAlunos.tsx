@@ -51,6 +51,7 @@ interface Student {
   status: string;
   city: string | null;
   payment_due_date: string | null;
+  cpf: string | null;
 }
 
 const ACTIVE_DAYS = 30;
