@@ -42,11 +42,13 @@ export function AIChat({ isExpanded, conversationId, onConversationCreated, onCo
   const { toast } = useToast();
 
   useEffect(() => {
-    const stored = localStorage.getItem('aiSuggestionAction');
-    if (stored) {
-      setInputMessage(stored);
-      localStorage.removeItem('aiSuggestionAction');
-    }
+    try {
+      const stored = localStorage.getItem('aiSuggestionAction');
+      if (stored) {
+        setInputMessage(stored);
+        localStorage.removeItem('aiSuggestionAction');
+      }
+    } catch { /* modo privado / quota */ }
   }, []);
 
   // Load history when conversationId changes

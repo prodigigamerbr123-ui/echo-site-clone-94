@@ -184,7 +184,11 @@ export function GlobalNotifier() {
           toast("Aluno excluído", { description: row.name });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[GlobalNotifier] Realtime status:", status);
+        }
+      });
 
     return () => {
       const bucket = sentBucketRef.current;
