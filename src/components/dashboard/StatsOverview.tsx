@@ -86,6 +86,14 @@ export function StatsOverview() {
       gradient: "bg-gradient-to-br from-sky-500 to-blue-600",
       iconBg: "bg-gradient-to-br from-sky-500 to-blue-600",
     },
+    {
+      title: "Vencem em 3 dias",
+      value: v(stats?.paymentDueIn3DaysCount),
+      icon: CalendarClock,
+      description: "Mensalidade próxima",
+      gradient: "bg-gradient-to-br from-amber-500 to-orange-600",
+      iconBg: "bg-gradient-to-br from-amber-500 to-orange-600",
+    },
   ];
 
   const messageStats: Stat[] = [
