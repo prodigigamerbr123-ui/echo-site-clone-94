@@ -755,6 +755,18 @@ export function ListaAlunos() {
                               )}
                             </TableCell>
                           )}
+                          {visibleColumns.lastEval && (
+                            <TableCell>
+                              {student.last_evaluation_date ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Activity className="h-4 w-4 text-muted-foreground" />
+                                  {format(new Date(student.last_evaluation_date), "dd/MM/yyyy", { locale: ptBR })}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
                           {visibleColumns.status && <TableCell>{renderStatusBadge(active)}</TableCell>}
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <ActionButtons student={student} />
