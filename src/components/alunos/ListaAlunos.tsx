@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, Columns3, IdCard, CalendarClock, X, ClipboardList, Activity } from "lucide-react";
 import { maskCpf } from "@/lib/cpf";
+import { spParts, fmtDateISOSP } from "@/lib/spTime";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,9 +57,13 @@ const ACTIVE_DAYS = 30;
 
 function paymentStatus(due: string | null) {
   if (!due) return null;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const d = new Date(due + "T12:00:00");
-  const diffDays = Math.floor((d.getTime() - today.getTime()) / 86400000);
+  const todayIso = fmtDateISOSP(new Date());
+  // Diferença em dias com base em datas de calendário (SP)
+  const [ty, tm, td] = todayIso.split("-").map(Number);
+  const [dy, dm, dd] = due.split("-").map(Number);
+  const t0 = Date.UTC(ty, tm - 1, td);
+  const d0 = Date.UTC(dy, dm - 1, dd);
+  const diffDays = Math.floor((d0 - t0) / 86400000);
   if (diffDays < 0) return { label: "Vencido", cls: "bg-red-500/15 text-red-600 border-red-500/30" };
   if (diffDays <= 3) return { label: `Vence em ${diffDays}d`, cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" };
   return { label: "Em dia", cls: "bg-green-500/15 text-green-600 border-green-500/30" };
@@ -149,9 +154,12 @@ export function ListaAlunos() {
 
   const isActive = (s: Student) => s.status === 'active';
 
-  const currentMonth = new Date().getMonth();
-  const isBirthdayThisMonth = (s: Student) =>
-    !!s.birth_date && new Date(s.birth_date + "T12:00:00").getMonth() === currentMonth;
+  const currentMonth = spParts(new Date()).mo;
+  const isBirthdayThisMonth = (s: Student) => {
+    if (!s.birth_date) return false;
+    const [, mm] = s.birth_date.split("-");
+    return Number(mm) - 1 === currentMonth;
+  };
 
   const matchesPayment = (s: Student) => {
     if (paymentFilter === "all") return true;

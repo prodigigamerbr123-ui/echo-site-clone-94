@@ -142,6 +142,7 @@ export function TodayInbox() {
     toast({ title: "Avaliação realizada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
     qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
@@ -174,6 +175,7 @@ export function TodayInbox() {
     toast({ title: "Falta registrada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
     qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
