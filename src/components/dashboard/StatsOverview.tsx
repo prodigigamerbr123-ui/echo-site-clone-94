@@ -183,6 +183,14 @@ export function StatsOverview() {
       gradient: "bg-gradient-to-br from-purple-500 to-pink-600",
       iconBg: "bg-gradient-to-br from-purple-500 to-pink-600",
     },
+    {
+      title: "Mensalidades Vencidas",
+      value: v(stats?.paymentOverdueCount),
+      icon: DollarSign,
+      description: "Alunos em atraso",
+      gradient: "bg-gradient-to-br from-red-500 to-rose-600",
+      iconBg: "bg-gradient-to-br from-red-500 to-rose-600",
+    },
   ];
 
   const Section = ({
