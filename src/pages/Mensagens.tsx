@@ -178,7 +178,9 @@ export default function Mensagens() {
         if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
       } else {
         if (!customDate || !customTime) throw new Error("Preencha data e horário");
-        const base = new Date(`${customDate}T${customTime}`);
+        const [cy, cmo, cd] = customDate.split("-").map(Number);
+        const [ch, cmi] = customTime.split(":").map(Number);
+        const base = spDate(cy, cmo - 1, cd, ch, cmi);
         if (base <= new Date()) throw new Error("Data deve ser futura");
         for (const stu of selected) {
           const content = replaceNameVar(message.trim(), stu.name);
