@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,6 +20,21 @@ import { StudentSheet } from "./StudentSheet";
 import { replaceNameVar } from "@/lib/phone";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
 import { confirm } from "@/components/ui/confirm-dialog";
+
+type ColumnKey = "phone" | "city" | "birthday" | "plan" | "created" | "payment" | "status";
+const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
+  { key: "phone", label: "WhatsApp" },
+  { key: "city", label: "Cidade" },
+  { key: "birthday", label: "Aniversário" },
+  { key: "plan", label: "Plano" },
+  { key: "created", label: "Cadastrado em" },
+  { key: "payment", label: "Pagamento" },
+  { key: "status", label: "Status" },
+];
+const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
+  phone: true, city: true, birthday: true, plan: true, created: true, payment: true, status: true,
+};
+const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v1";
 
 interface Student {
   id: string;
