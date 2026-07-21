@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3, IdCard, CalendarClock } from "lucide-react";
-import { maskCpfDisplay } from "@/lib/cpf";
+import { maskCpf } from "@/lib/cpf";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
