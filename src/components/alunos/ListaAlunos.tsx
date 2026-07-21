@@ -414,16 +414,6 @@ export function ListaAlunos() {
               <Badge variant="secondary" className="gap-1 text-muted-foreground">
                 {total - activeCount} inativos
               </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 hover:text-red-700"
-                disabled={overdueStudents.length === 0 || chargingOverdue}
-                onClick={handleChargeOverdue}
-              >
-                <AlertCircle className="h-4 w-4" />
-                Cobrar vencidos ({overdueStudents.length})
-              </Button>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-1">
