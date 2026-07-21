@@ -360,7 +360,8 @@ export default function AgendarAvaliacao() {
       .eq("id", ev.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-    qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+    qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     toast({ title: "Avaliação cancelada" });
   };
 
