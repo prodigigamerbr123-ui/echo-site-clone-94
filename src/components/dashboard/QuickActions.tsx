@@ -4,7 +4,7 @@ import {
   Users,
   UserPlus,
   MessageSquare,
-  Clock,
+  
   Send,
   History,
   CalendarPlus,
