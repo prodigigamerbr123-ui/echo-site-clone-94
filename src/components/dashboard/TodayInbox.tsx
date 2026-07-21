@@ -137,6 +137,12 @@ export function TodayInbox() {
   };
 
   const markNoShow = async (ev: Evaluation) => {
+    const ok = await confirm({
+      title: `Registrar falta de ${ev.students?.name ?? "aluno"}?`,
+      description: "Isso marca como não comparecida e agenda automaticamente uma mensagem de reagendamento.",
+      confirmLabel: "Registrar falta",
+    });
+    if (!ok) return;
     await supabase.from("scheduled_messages").delete().eq("evaluation_id", ev.id).eq("status", "pending");
     await supabase.from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
     const t = new Date(); t.setDate(t.getDate() + 1);
