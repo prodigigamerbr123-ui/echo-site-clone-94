@@ -120,7 +120,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
             {student.cpf && (
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground flex items-center gap-1"><FileText className="h-3 w-3" /> CPF</span>
-                <span className="font-mono text-xs">{maskCpf(student.cpf)}</span>
+                <span>{maskCpf(student.cpf)}</span>
               </div>
             )}
             {student.payment_due_date && (
