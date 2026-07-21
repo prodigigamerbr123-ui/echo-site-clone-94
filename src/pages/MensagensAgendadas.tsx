@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { spDate, fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
 import MessageFilters from "@/components/agendarmensagem/MessageFilters";
 import MessagesList, { getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
 
@@ -75,13 +76,15 @@ export default function MensagensAgendadas() {
     setEditStudent(m.student_id);
     setEditContent(m.content);
     const d = new Date(m.scheduled_for);
-    setEditDate(d.toISOString().split("T")[0]);
-    setEditTime(d.toTimeString().slice(0, 5));
+    setEditDate(fmtDateISOSP(d));
+    setEditTime(fmtTimeSP(d));
   };
 
   const saveEdit = async () => {
     if (!editingMessage) return;
-    const dt = new Date(`${editDate}T${editTime}`);
+    const [y, mo, day] = editDate.split("-").map(Number);
+    const [hh, mi] = (editTime || "00:00").split(":").map(Number);
+    const dt = spDate(y, (mo || 1) - 1, day || 1, hh || 0, mi || 0);
     if (dt <= new Date()) {
       toast({ title: "A data deve ser futura", variant: "destructive" });
       return;

@@ -55,7 +55,9 @@ serve(async (req: Request) => {
     let qrcode: string | null = null;
     let pairingCode: string | null = null;
 
-    if (!connected || action === 'connect') {
+    // Só dispara /instance/connect quando NÃO está conectado. Chamar connect
+    // com sessão ativa pode derrubar o WhatsApp que já está logado.
+    if (!connected) {
       if (action === 'connect') {
         try {
           const cr = await fetch(`${baseUrl}/instance/connect`, {

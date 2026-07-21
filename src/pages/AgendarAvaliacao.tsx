@@ -318,7 +318,9 @@ export default function AgendarAvaliacao() {
   const handleCreate = async () => {
     if (!selected) return toast({ title: "Selecione um aluno", variant: "destructive" });
     if (!date) return toast({ title: "Escolha uma data", variant: "destructive" });
-    const when = new Date(`${date}T${time || "09:00"}:00`);
+    const [cy, cmo, cd] = date.split("-").map(Number);
+    const [ch, cmi] = (time || "09:00").split(":").map(Number);
+    const when = spDate(cy, (cmo || 1) - 1, cd || 1, ch || 9, cmi || 0);
     if (when <= new Date()) {
       return toast({ title: "Data inválida", description: "Deve ser no futuro.", variant: "destructive" });
     }
@@ -369,15 +371,18 @@ export default function AgendarAvaliacao() {
 
   const openReschedule = (ev: Evaluation) => {
     const d = new Date(ev.scheduled_at);
+    const p = spParts(d);
     setRescheduleTarget(ev);
-    setRDate(format(d, "yyyy-MM-dd"));
-    setRTime(format(d, "HH:mm"));
+    setRDate(`${p.y}-${String(p.mo + 1).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`);
+    setRTime(`${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`);
   };
 
   const confirmReschedule = async () => {
     if (!rescheduleTarget) return;
     if (!rDate) return toast({ title: "Escolha data", variant: "destructive" });
-    const when = new Date(`${rDate}T${rTime || "09:00"}:00`);
+    const [ry, rmo, rdd] = rDate.split("-").map(Number);
+    const [rh, rmi] = (rTime || "09:00").split(":").map(Number);
+    const when = spDate(ry, (rmo || 1) - 1, rdd || 1, rh || 9, rmi || 0);
     if (when <= new Date()) {
       return toast({ title: "Data inválida", variant: "destructive" });
     }
