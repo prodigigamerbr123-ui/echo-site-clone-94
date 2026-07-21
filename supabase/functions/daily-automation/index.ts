@@ -141,9 +141,6 @@ serve(async (req: Request) => {
     const paymentCap = Number(
       getParam(settings, "payment_reminder", "daily_limit", DEFAULT_PAYMENT_CAP),
     );
-    const overdueCap = Number(
-      getParam(settings, "payment_overdue", "daily_limit", 50),
-    );
 
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
     const activeStudents: any[] = [];
@@ -317,7 +314,6 @@ serve(async (req: Request) => {
       );
 
       for (const s of activeStudents) {
-        if (overdueInserts.length >= overdueCap) break;
         if (!s.payment_due_date) continue;
         const due = String(s.payment_due_date);
         if (due >= todaySP) continue; // ainda não venceu
