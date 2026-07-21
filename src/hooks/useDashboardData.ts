@@ -184,12 +184,11 @@ export const useTodayActions = () => {
         .limit(5000);
 
       // Filter birthdays on the client side
+      // Comparar mês/dia por string para evitar conversão UTC->local (bug de fuso em SP)
       const birthdayStudents = allStudents?.filter(student => {
         if (!student.birth_date) return false;
-        const birthDate = new Date(student.birth_date);
-        const birthMonth = format(birthDate, 'MM');
-        const birthDay = format(birthDate, 'dd');
-        return birthMonth === todayMonth && birthDay === todayDay;
+        const [, m, d] = student.birth_date.split("-");
+        return m === todayMonth && d === todayDay;
       }) || [];
 
       // Get students with evaluations that are overdue (more than 7 days)

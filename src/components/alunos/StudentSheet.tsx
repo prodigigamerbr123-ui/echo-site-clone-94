@@ -37,6 +37,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
 
   const { data: nextEval } = useQuery({
     queryKey: ["student-next-eval", student?.id],
+    staleTime: 0,
     enabled: !!student?.id && open,
     queryFn: async () => {
       const { data } = await supabase.from("evaluations")
@@ -51,6 +52,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
 
   const { data: recent = [] } = useQuery({
     queryKey: ["student-recent-msgs", student?.id],
+    staleTime: 0,
     enabled: !!student?.id && open,
     queryFn: async () => {
       const [{ data: sent }, { data: sched }] = await Promise.all([

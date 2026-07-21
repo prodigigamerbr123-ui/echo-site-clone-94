@@ -28,16 +28,26 @@ export function TodayInbox() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
+  // Retorna [inicio, fim] do dia de HOJE em SP como ISO UTC
+  const spTodayBounds = () => {
+    const p = spParts(new Date());
+    return {
+      startIso: spDate(p.y, p.mo, p.d, 0, 0).toISOString(),
+      endIso: spDate(p.y, p.mo, p.d, 23, 59).toISOString(),
+      mm: String(p.mo + 1).padStart(2, "0"),
+      dd: String(p.d).padStart(2, "0"),
+    };
+  };
+
   const { data: todayEvals = [] } = useQuery({
     queryKey: ["today-evaluations"],
     queryFn: async () => {
-      const start = new Date(); start.setHours(0, 0, 0, 0);
-      const end = new Date(); end.setHours(23, 59, 59, 999);
+      const { startIso, endIso } = spTodayBounds();
       const { data } = await supabase.from("evaluations")
         .select("id, student_id, scheduled_at, status, students(name, phone)")
         .eq("status", "scheduled")
-        .gte("scheduled_at", start.toISOString())
-        .lte("scheduled_at", end.toISOString())
+        .gte("scheduled_at", startIso)
+        .lte("scheduled_at", endIso)
         .order("scheduled_at");
       return (data || []) as Evaluation[];
     },
@@ -50,22 +60,18 @@ export function TodayInbox() {
       const { data: students } = await supabase.from("students")
         .select("id, name, birth_date").not("birth_date", "is", null).limit(5000);
 
-      const now = new Date();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
+      const { startIso, endIso, mm, dd } = spTodayBounds();
       const todays = (students || []).filter((s: any) => {
         if (!s.birth_date) return false;
         const [, m, d] = s.birth_date.split("-");
         return m === mm && d === dd;
       });
       if (todays.length === 0) return [];
-      const start = new Date(); start.setHours(0, 0, 0, 0);
-      const end = new Date(); end.setHours(23, 59, 59, 999);
       const { data: msgs } = await supabase.from("scheduled_messages")
         .select("student_id, status")
         .eq("message_type", "birthday")
-        .gte("scheduled_for", start.toISOString())
-        .lte("scheduled_for", end.toISOString());
+        .gte("scheduled_for", startIso)
+        .lte("scheduled_for", endIso);
       const byStudent = new Map<string, string>();
       for (const m of msgs || []) byStudent.set((m as any).student_id, (m as any).status);
       return todays.map((s: any) => ({ ...s, msgStatus: byStudent.get(s.id) }));
@@ -136,6 +142,7 @@ export function TodayInbox() {
     toast({ title: "Avaliação realizada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
     qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
@@ -168,6 +175,7 @@ export function TodayInbox() {
     toast({ title: "Falta registrada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
     qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 

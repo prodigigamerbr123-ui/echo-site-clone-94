@@ -217,7 +217,8 @@ function fmtBR(iso: string) {
 }
 
 async function studentName(supabase: any, id: string): Promise<string> {
-  const { data } = await supabase.from("students").select("name").eq("id", id).single();
+  const { data, error } = await supabase.from("students").select("name").eq("id", id).maybeSingle();
+  if (error) console.error("studentName error:", error);
   return data?.name ?? "aluno";
 }
 
@@ -229,7 +230,7 @@ async function describeWriteAction(name: string, args: any, supabase: any): Prom
       return `Agendar avaliação de ${n} para ${fmtBR(args.scheduled_at)} (com 3 mensagens automáticas: confirmação, véspera 18h e 3h antes).`;
     }
     case "complete_evaluation": {
-      const { data } = await supabase.from("evaluations").select("scheduled_at, students(name)").eq("id", args.evaluation_id).single();
+      const { data } = await supabase.from("evaluations").select("scheduled_at, students(name)").eq("id", args.evaluation_id).maybeSingle();
       const n = data?.students?.name ?? "aluno";
       const when = data?.scheduled_at ? fmtBR(data.scheduled_at) : "";
       if (args.outcome === "completed") {

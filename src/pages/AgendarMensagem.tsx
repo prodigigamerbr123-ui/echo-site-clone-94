@@ -24,7 +24,7 @@ export default function AgendarMensagem() {
           <CardTitle>Agendar mensagem</CardTitle>
         </CardHeader>
         <CardContent>
-          <AgendarMensagemForm onSaved={() => navigate("/mensagens-agendadas")} />
+          <AgendarMensagemForm onSaved={() => navigate("/caixa-de-saida")} />
         </CardContent>
       </Card>
     </div>

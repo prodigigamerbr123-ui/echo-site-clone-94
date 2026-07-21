@@ -50,8 +50,12 @@ serve(async (req: Request) => {
 
     const results: any[] = [];
     const messagesToSave: any[] = [];
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const randomDelayMs = () => 5000 + Math.floor(Math.random() * 10000); // 5-15s anti-ban
 
-    for (const student of students) {
+    for (let i = 0; i < students.length; i++) {
+      const student = students[i];
+      if (i > 0) await sleep(randomDelayMs());
       const phoneCheck = formatPhone(student.phone);
 
       if (!phoneCheck.ok) {
