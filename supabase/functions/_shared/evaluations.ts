@@ -216,7 +216,10 @@ export async function checkScheduleConflicts(
 
   for (const ev of futureEvals || []) {
     if (ev.student_id === studentId) {
-      res.duplicate = { evaluation_id: ev.id, scheduled_at: ev.scheduled_at };
+      // Preserva a duplicata mais antiga (menor scheduled_at) para mensagem consistente
+      if (!res.duplicate || new Date(ev.scheduled_at).getTime() < new Date(res.duplicate.scheduled_at).getTime()) {
+        res.duplicate = { evaluation_id: ev.id, scheduled_at: ev.scheduled_at };
+      }
     }
     const d = new Date(ev.scheduled_at).getTime();
     if (Math.abs(d - target) < 30 * 60 * 1000 && ev.student_id !== studentId) {

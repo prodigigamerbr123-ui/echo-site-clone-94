@@ -64,13 +64,19 @@ export function GlobalNotifier() {
           const newRow = payload.new || {};
           const cfg = settingsRef.current;
 
-          // Reagendamento (mudou data e continua pending)
+          // Reagendamento manual: mudou data, continua pending, e NÃO é retry
+          // (retry do process-scheduled-messages atualiza scheduled_for + retry_count
+          // ou seta failure_reason — nunca é uma edição do usuário)
+          const isRetry =
+            (Number(newRow.retry_count) || 0) > (Number(oldRow.retry_count) || 0) ||
+            (newRow.failure_reason && newRow.failure_reason !== oldRow.failure_reason);
           if (
             oldRow.scheduled_for &&
             newRow.scheduled_for &&
             oldRow.scheduled_for !== newRow.scheduled_for &&
             newRow.status === "pending" &&
-            oldRow.status === "pending"
+            oldRow.status === "pending" &&
+            !isRetry
           ) {
             if (cfg.notify_message_rescheduled) {
               toast("Mensagem reagendada", {
