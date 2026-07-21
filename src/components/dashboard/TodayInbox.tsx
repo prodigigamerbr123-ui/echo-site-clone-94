@@ -12,6 +12,7 @@ import {
   buildFollowup, buildReschedule,
 } from "@/lib/evaluationMessages";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
+import { confirm } from "@/components/ui/confirm-dialog";
 
 
 interface Evaluation {
