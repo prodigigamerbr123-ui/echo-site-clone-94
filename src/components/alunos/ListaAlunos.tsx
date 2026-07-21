@@ -650,6 +650,7 @@ export function ListaAlunos() {
                       {visibleColumns.created && <TableHead>Cadastrado em</TableHead>}
                       {visibleColumns.dueDate && <TableHead>Vencimento</TableHead>}
                       {visibleColumns.payment && <TableHead>Pagamento</TableHead>}
+                      {visibleColumns.lastEval && <TableHead>Última avaliação</TableHead>}
                       {visibleColumns.status && <TableHead>Status</TableHead>}
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
