@@ -12,6 +12,7 @@ import {
   buildFollowup, buildReschedule,
 } from "@/lib/evaluationMessages";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
+import { fetchAutomationSettings, isAutomationEnabled } from "@/lib/automationSettings";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { spParts, spDate } from "@/lib/spTime";
 
@@ -117,26 +118,30 @@ export function TodayInbox() {
       toast({ title: "Erro", description: rpcErr.message, variant: "destructive" });
       return;
     }
-    const { data: existing } = await supabase.from("scheduled_messages").select("id")
-      .eq("student_id", ev.student_id).eq("message_type", "evaluation_followup")
-      .eq("status", "pending").limit(1);
-    if (!existing?.length) {
-      const base = new Date(evalDate.getTime() + 7 * 86400000);
-      const bp = spParts(base);
-      const fu = spDate(bp.y, bp.mo, bp.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
-      const name = ev.students?.name ?? "aluno";
-      const content = await resolveAutomationMessage(
-        "evaluation_followup",
-        "evaluation_followup",
-        buildFollowup(name),
-        { nome: name },
-      );
-      await supabase.from("scheduled_messages").insert({
-        student_id: ev.student_id,
-        content,
-        scheduled_for: fu.toISOString(),
-        message_type: "evaluation_followup", status: "pending", evaluation_id: ev.id,
-      });
+    const settings = await fetchAutomationSettings();
+    if (isAutomationEnabled(settings, "evaluation_followup")) {
+      const { data: existing } = await supabase.from("scheduled_messages").select("id")
+        .eq("student_id", ev.student_id).eq("message_type", "evaluation_followup")
+        .eq("status", "pending").limit(1);
+      if (!existing?.length) {
+        const base = new Date(evalDate.getTime() + 7 * 86400000);
+        const bp = spParts(base);
+        const fu = spDate(bp.y, bp.mo, bp.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
+        const name = ev.students?.name ?? "aluno";
+        const content = await resolveAutomationMessage(
+          "evaluation_followup",
+          "evaluation_followup",
+          buildFollowup(name),
+          { nome: name },
+          settings,
+        );
+        await supabase.from("scheduled_messages").insert({
+          student_id: ev.student_id,
+          content,
+          scheduled_for: fu.toISOString(),
+          message_type: "evaluation_followup", status: "pending", evaluation_id: ev.id,
+        });
+      }
     }
 
     toast({ title: "Avaliação realizada" });
@@ -155,22 +160,26 @@ export function TodayInbox() {
     if (!ok) return;
     await supabase.from("scheduled_messages").delete().eq("evaluation_id", ev.id).eq("status", "pending");
     await supabase.from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
-    const tomorrowUTC = new Date(Date.now() + 86400000);
-    const tp = spParts(tomorrowUTC);
-    const t = spDate(tp.y, tp.mo, tp.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
-    const name = ev.students?.name ?? "aluno";
-    const rescheduleContent = await resolveAutomationMessage(
-      "no_show_reschedule",
-      "evaluation_reschedule",
-      buildReschedule(name),
-      { nome: name },
-    );
-    await supabase.from("scheduled_messages").insert({
-      student_id: ev.student_id,
-      content: rescheduleContent,
-      scheduled_for: t.toISOString(),
-      message_type: "evaluation_reschedule", status: "pending", evaluation_id: ev.id,
-    });
+    const settings = await fetchAutomationSettings();
+    if (isAutomationEnabled(settings, "no_show_reschedule")) {
+      const tomorrowUTC = new Date(Date.now() + 86400000);
+      const tp = spParts(tomorrowUTC);
+      const t = spDate(tp.y, tp.mo, tp.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
+      const name = ev.students?.name ?? "aluno";
+      const rescheduleContent = await resolveAutomationMessage(
+        "no_show_reschedule",
+        "evaluation_reschedule",
+        buildReschedule(name),
+        { nome: name },
+        settings,
+      );
+      await supabase.from("scheduled_messages").insert({
+        student_id: ev.student_id,
+        content: rescheduleContent,
+        scheduled_for: t.toISOString(),
+        message_type: "evaluation_reschedule", status: "pending", evaluation_id: ev.id,
+      });
+    }
 
     toast({ title: "Falta registrada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
