@@ -148,8 +148,9 @@ export function TodayInbox() {
     if (!ok) return;
     await supabase.from("scheduled_messages").delete().eq("evaluation_id", ev.id).eq("status", "pending");
     await supabase.from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
-    const t = new Date(); t.setDate(t.getDate() + 1);
-    t.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+    const tomorrowUTC = new Date(Date.now() + 86400000);
+    const tp = spParts(tomorrowUTC);
+    const t = spDate(tp.y, tp.mo, tp.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
     const name = ev.students?.name ?? "aluno";
     const rescheduleContent = await resolveAutomationMessage(
       "no_show_reschedule",
@@ -166,6 +167,8 @@ export function TodayInbox() {
 
     toast({ title: "Falta registrada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+    qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
   return (
