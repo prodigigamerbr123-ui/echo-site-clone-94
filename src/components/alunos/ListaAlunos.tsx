@@ -151,23 +151,78 @@ export function ListaAlunos() {
 
   const isActive = (s: Student) => s.status === 'active';
 
+  const currentMonth = new Date().getMonth();
+  const isBirthdayThisMonth = (s: Student) =>
+    !!s.birth_date && new Date(s.birth_date + "T12:00:00").getMonth() === currentMonth;
+
+  const matchesPayment = (s: Student) => {
+    if (paymentFilter === "all") return true;
+    const ps = paymentStatus(s.payment_due_date);
+    if (paymentFilter === "none") return !s.payment_due_date;
+    if (paymentFilter === "overdue") return ps?.label === "Vencido";
+    if (paymentFilter === "due_soon") return !!ps && ps.label.startsWith("Vence em");
+    if (paymentFilter === "ok") return ps?.label === "Em dia";
+    return true;
+  };
+
+  const matchesFlag = (s: Student) => {
+    if (flagFilter === "none") return true;
+    if (flagFilter === "birthday_month") return isBirthdayThisMonth(s);
+    if (flagFilter === "no_evaluation") return !s.had_evaluation;
+    if (flagFilter === "pending_messages") return (pendingByStudent[s.id] || 0) > 0;
+    return true;
+  };
+
+  const availablePlans = Array.from(
+    new Set((students || []).map((s) => s.plan).filter(Boolean) as string[]),
+  ).sort();
+
   const filteredStudents = (students || [])
     .filter(s => {
       const term = searchTerm.toLowerCase();
       const matchesSearch = !term ||
         s.name.toLowerCase().includes(term) ||
-        s.phone.includes(searchTerm);
+        s.phone.includes(searchTerm) ||
+        (s.cpf || "").includes(searchTerm.replace(/\D/g, ""));
       const active = isActive(s);
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && active) ||
         (statusFilter === "inactive" && !active);
-      return matchesSearch && matchesStatus;
+      const matchesPlan = planFilter === "all" || s.plan === planFilter;
+      return matchesSearch && matchesStatus && matchesPlan && matchesPayment(s) && matchesFlag(s);
     })
     .sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "due") {
+        const av = a.payment_due_date ? new Date(a.payment_due_date + "T12:00:00").getTime() : Infinity;
+        const bv = b.payment_due_date ? new Date(b.payment_due_date + "T12:00:00").getTime() : Infinity;
+        return av - bv;
+      }
+      if (sortBy === "last_eval") {
+        const av = a.last_evaluation_date ? new Date(a.last_evaluation_date).getTime() : 0;
+        const bv = b.last_evaluation_date ? new Date(b.last_evaluation_date).getTime() : 0;
+        return bv - av;
+      }
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
+
+  const hasActiveFilters =
+    !!searchTerm ||
+    statusFilter !== "all" ||
+    paymentFilter !== "all" ||
+    planFilter !== "all" ||
+    flagFilter !== "none" ||
+    sortBy !== "recent";
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setPaymentFilter("all");
+    setPlanFilter("all");
+    setFlagFilter("none");
+    setSortBy("recent");
+  };
 
   const handleDeleteStudent = async (studentId: string, studentName: string) => {
     const ok = await (await import("@/components/ui/confirm-dialog")).confirm({
