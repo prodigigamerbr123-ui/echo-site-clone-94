@@ -1,19 +1,26 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, subDays, startOfDay, endOfDay, endOfWeek, startOfWeek } from "date-fns";
+import { subDays } from "date-fns";
+import { spDate, spParts, fmtDateISOSP } from "@/lib/spTime";
 
+// Todas as fronteiras de tempo são calculadas em America/Sao_Paulo (UTC-3)
+// para bater com daily-automation / daily-briefing / process-scheduled-messages.
 export const useDashboardStats = () => {
   return useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const now = new Date();
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-      const todayStart = startOfDay(now);
-      const todayEnd = endOfDay(now);
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      const p = spParts(now);
+      const todayStart = spDate(p.y, p.mo, p.d, 0, 0);
+      const todayEnd = spDate(p.y, p.mo, p.d + 1, 0, 0); // início do próximo dia SP
+      const monthStart = spDate(p.y, p.mo, 1, 0, 0);
+      const monthEnd = spDate(p.y, p.mo + 1, 1, 0, 0);
+      // Semana começando na segunda (SP)
+      const dow = new Date(Date.UTC(p.y, p.mo, p.d)).getUTCDay(); // 0=dom..6=sab
+      const daysFromMon = (dow + 6) % 7;
+      const weekStart = spDate(p.y, p.mo, p.d - daysFromMon, 0, 0);
+      const weekEnd = spDate(p.y, p.mo, p.d - daysFromMon + 7, 0, 0);
 
       // Get total students
       const { count: totalStudents } = await supabase
