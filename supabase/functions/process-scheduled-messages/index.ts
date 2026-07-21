@@ -150,7 +150,7 @@ serve(async (req: Request) => {
             .eq("id", msg.id);
           await supabase.from("messages").insert({
             student_id: msg.student_id,
-            content: msg.content,
+            content: finalText,
             status: "sent",
           });
           sent++;
