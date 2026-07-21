@@ -28,14 +28,18 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const now = new Date();
 
-    // Compute Brasília day boundaries
-    const brNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-    const startOfDay = new Date(brNow); startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(brNow); endOfDay.setHours(23, 59, 59, 999);
-    const tomorrow = new Date(brNow.getTime() + 24 * 60 * 60 * 1000);
-
-    const mm = String(brNow.getMonth() + 1).padStart(2, "0");
-    const dd = String(brNow.getDate()).padStart(2, "0");
+    // Compute Brasília day boundaries via Intl parts (evita bug de DST/toLocaleString)
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(now).reduce<Record<string, string>>((acc, p) => {
+      if (p.type !== "literal") acc[p.type] = p.value;
+      return acc;
+    }, {});
+    const yyyy = parts.year, mm = parts.month, dd = parts.day;
+    // Brasília é UTC-3 fixo (sem DST desde 2019)
+    const startOfDay = new Date(`${yyyy}-${mm}-${dd}T00:00:00-03:00`);
+    const endOfDay = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999-03:00`);
 
     const [
       studentsRes,
