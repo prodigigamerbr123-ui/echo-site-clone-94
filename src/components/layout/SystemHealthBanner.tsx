@@ -95,7 +95,7 @@ export function SystemHealthBanner() {
       <span className="flex-1">
         <strong>{failedCount}</strong> mensagem(ns) falharam nas últimas 24h.
       </span>
-      <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate("/mensagens-agendadas")}>
+      <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate("/caixa-de-saida")}>
         Ver
       </Button>
       <button
