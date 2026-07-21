@@ -341,6 +341,7 @@ serve(async (req: Request) => {
       reminders: reminderInserts.length,
       payment_before: paymentBeforeCount,
       payment_due: paymentDueCount,
+      payment_overdue: overdueInserts.length,
       candidatesConsidered: reminderCandidates.length,
       dailyLimit,
       daysOverdue,
@@ -348,6 +349,7 @@ serve(async (req: Request) => {
       birthdayEnabled: birthdayOn,
       inviteEnabled: inviteOn,
       paymentEnabled: paymentOn,
+      overdueEnabled: overdueOn,
       activeStudents: activeStudents.length,
       ranAt: new Date().toISOString(),
     };
