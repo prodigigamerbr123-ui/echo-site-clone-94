@@ -13,6 +13,8 @@ import {
   ClipboardCheck,
   AlertTriangle,
   Activity,
+  DollarSign,
+  CalendarClock,
 } from "lucide-react";
 import { useDashboardStats } from "@/hooks/useDashboardData";
 
