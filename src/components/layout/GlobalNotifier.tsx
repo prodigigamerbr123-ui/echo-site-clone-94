@@ -207,7 +207,7 @@ export function GlobalNotifier() {
       }
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [session]);
 
   return null;
 }
