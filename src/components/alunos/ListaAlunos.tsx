@@ -508,7 +508,7 @@ export function ListaAlunos() {
                               {student.cpf ? (
                                 <div className="flex items-center gap-2 text-sm font-mono">
                                   <IdCard className="h-4 w-4 text-muted-foreground" />
-                                  {maskCpfDisplay(student.cpf)}
+                                  {maskCpf(student.cpf)}
                                 </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground">—</span>
