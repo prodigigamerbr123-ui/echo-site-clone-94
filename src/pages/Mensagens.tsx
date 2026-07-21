@@ -151,9 +151,9 @@ export default function Mensagens() {
         const [h, m] = quickTime.split(":").map(Number);
         const now = new Date();
         const makeDate = (daysFromNow: number) => {
-          const dt = new Date(now.getTime() + daysFromNow * 86400000);
-          dt.setHours(h, m, 0, 0);
-          return dt;
+          const base = new Date(now.getTime() + daysFromNow * 86400000);
+          const p = spParts(base);
+          return spDate(p.y, p.mo, p.d, h, m);
         };
         for (const stu of selected) {
           const content = replaceNameVar(message.trim(), stu.name);
