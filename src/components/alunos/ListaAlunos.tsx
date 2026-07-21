@@ -461,13 +461,13 @@ export function ListaAlunos() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
-                      <TableHead>WhatsApp</TableHead>
-                      <TableHead>Cidade</TableHead>
-                      <TableHead>Aniversário</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Cadastrado em</TableHead>
-                      <TableHead>Pagamento</TableHead>
-                      <TableHead>Status</TableHead>
+                      {visibleColumns.phone && <TableHead>WhatsApp</TableHead>}
+                      {visibleColumns.city && <TableHead>Cidade</TableHead>}
+                      {visibleColumns.birthday && <TableHead>Aniversário</TableHead>}
+                      {visibleColumns.plan && <TableHead>Plano</TableHead>}
+                      {visibleColumns.created && <TableHead>Cadastrado em</TableHead>}
+                      {visibleColumns.payment && <TableHead>Pagamento</TableHead>}
+                      {visibleColumns.status && <TableHead>Status</TableHead>}
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
