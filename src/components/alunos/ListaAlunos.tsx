@@ -22,20 +22,22 @@ import { replaceNameVar } from "@/lib/phone";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
 import { confirm } from "@/components/ui/confirm-dialog";
 
-type ColumnKey = "phone" | "city" | "birthday" | "plan" | "created" | "payment" | "status";
+type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "status";
 const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
   { key: "phone", label: "WhatsApp" },
+  { key: "cpf", label: "CPF" },
   { key: "city", label: "Cidade" },
   { key: "birthday", label: "Aniversário" },
   { key: "plan", label: "Plano" },
   { key: "created", label: "Cadastrado em" },
+  { key: "dueDate", label: "Vencimento" },
   { key: "payment", label: "Pagamento" },
   { key: "status", label: "Status" },
 ];
 const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
-  phone: true, city: true, birthday: true, plan: true, created: true, payment: true, status: true,
+  phone: true, cpf: false, city: true, birthday: true, plan: true, created: true, dueDate: true, payment: true, status: true,
 };
-const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v1";
+const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v2";
 
 interface Student {
   id: string;
