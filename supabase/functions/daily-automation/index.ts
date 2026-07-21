@@ -90,21 +90,26 @@ function addDaysISO(dateISO: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-// Retorna uma data hoje entre 09:00 e 12:00 (horário do servidor Brasília via TZ set)
+// Retorna uma data hoje entre 12:00 e 15:00 (horário de Brasília, UTC-3 sem DST)
 function scatterTimeToday(): Date {
-  const d = new Date();
-  d.setUTCHours(12, 0, 0, 0);
-  const hourUTC = 12 + Math.floor(Math.random() * 3);
-  const min = Math.floor(Math.random() * 60);
-  d.setUTCHours(hourUTC, min, 0, 0);
-  return d;
+  const nowSp = new Date(Date.now() + SP_OFFSET_MS);
+  const y = nowSp.getUTCFullYear();
+  const mo = nowSp.getUTCMonth();
+  const d = nowSp.getUTCDate();
+  const hSp = 12 + Math.floor(Math.random() * 3);
+  const mi = Math.floor(Math.random() * 60);
+  // Constrói UTC que representa hSp:mi em SP
+  return new Date(Date.UTC(y, mo, d, hSp, mi) - SP_OFFSET_MS);
 }
 
 function isBirthdayToday(birth: string | null): boolean {
   if (!birth) return false;
-  const b = new Date(birth);
-  const now = new Date();
-  return b.getUTCMonth() === now.getUTCMonth() && b.getUTCDate() === now.getUTCDate();
+  // birth vem como "YYYY-MM-DD" (date puro), compara direto por string
+  const [, bm, bd] = birth.split("-");
+  const nowSp = new Date(Date.now() + SP_OFFSET_MS);
+  const mm = String(nowSp.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(nowSp.getUTCDate()).padStart(2, "0");
+  return bm === mm && bd === dd;
 }
 
 function daysSince(dateStr: string | null): number {

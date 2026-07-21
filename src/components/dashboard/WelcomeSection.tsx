@@ -37,14 +37,14 @@ export function WelcomeSection() {
               </Button>
               
               <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link to="/enviar-mensagem">
+                <Link to="/mensagens">
                   <Send className="h-5 w-5" />
                   <span className="text-xs">Enviar Mensagem</span>
                 </Link>
               </Button>
               
               <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link to="/mensagens-agendadas">
+                <Link to="/mensagens">
                   <Clock className="h-5 w-5" />
                   <span className="text-xs">Agendar Mensagem</span>
                 </Link>
@@ -58,7 +58,7 @@ export function WelcomeSection() {
               </Button>
               
               <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link to="/mensagens-enviadas">
+                <Link to="/caixa-de-saida">
                   <Calendar className="h-5 w-5" />
                   <span className="text-xs">Histórico de Mensagens</span>
                 </Link>

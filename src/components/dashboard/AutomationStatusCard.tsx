@@ -75,7 +75,7 @@ export function AutomationStatusCard() {
           </div>
         </div>
         <Button asChild variant="outline" size="sm" className="w-full">
-          <Link to="/mensagens-agendadas">Ver fila</Link>
+          <Link to="/caixa-de-saida">Ver fila</Link>
         </Button>
       </CardContent>
     </Card>

@@ -11,7 +11,8 @@ import { ptBR } from "date-fns/locale";
 export function StudentsSummary() {
   const { data: studentsData, isLoading } = useQuery({
     queryKey: ['students-summary'],
-    queryFn: async () => {
+    staleTime: 0,
+    refetchInterval: 60_000,
       // Get recent students (last 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

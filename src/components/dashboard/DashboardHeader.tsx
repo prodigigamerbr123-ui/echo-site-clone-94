@@ -14,13 +14,13 @@ export function DashboardHeader() {
       </div>
       <div className="flex gap-2">
         <Button asChild>
-          <Link to="/cadastrar-aluno">
+          <Link to="/alunos">
             <Users className="h-4 w-4 mr-2" />
             Cadastrar Aluno
           </Link>
         </Button>
         <Button asChild variant="outline">
-          <Link to="/enviar-mensagem">
+          <Link to="/mensagens">
             <MessageCircle className="h-4 w-4 mr-2" />
             Enviar Mensagem
           </Link>
