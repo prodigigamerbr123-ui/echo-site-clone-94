@@ -96,6 +96,12 @@ export function TodayInbox() {
   });
 
   const markDone = async (ev: Evaluation) => {
+    const ok = await confirm({
+      title: `Marcar avaliação de ${ev.students?.name ?? "aluno"} como realizada?`,
+      description: "Isso conclui a avaliação e agenda automaticamente uma mensagem de follow-up.",
+      confirmLabel: "Marcar realizada",
+    });
+    if (!ok) return;
     const evalDate = new Date(ev.scheduled_at);
     await supabase.from("scheduled_messages").delete()
       .eq("evaluation_id", ev.id).eq("status", "pending");
