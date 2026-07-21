@@ -81,6 +81,7 @@ export function ListaAlunos() {
   const [sortBy, setSortBy] = useState<"recent" | "name" | "due" | "last_eval">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(() => {
     if (typeof window === "undefined") return DEFAULT_COLUMNS;
@@ -231,6 +232,7 @@ export function ListaAlunos() {
   };
 
   const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    if (deletingId) return;
     const ok = await (await import("@/components/ui/confirm-dialog")).confirm({
       title: `Excluir ${studentName}?`,
       description: "Esta ação não pode ser desfeita. Todo o histórico do aluno será perdido.",
@@ -238,6 +240,7 @@ export function ListaAlunos() {
       destructive: true,
     });
     if (!ok) return;
+    setDeletingId(studentId);
     try {
       const { error } = await supabase.from('students').delete().eq('id', studentId);
       if (error) throw error;
@@ -246,6 +249,8 @@ export function ListaAlunos() {
       toast({ title: "Aluno excluído", description: `${studentName} foi removido do sistema.` });
     } catch (error: any) {
       toast({ title: "Erro ao excluir aluno", description: error.message, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -314,6 +319,7 @@ export function ListaAlunos() {
         variant="ghost"
         size="icon"
         onClick={() => handleDeleteStudent(student.id, student.name)}
+        disabled={deletingId === student.id}
         className="h-10 w-10 text-destructive hover:text-destructive hover:bg-destructive/10"
         aria-label={`Excluir aluno ${student.name}`}
         title="Excluir aluno"

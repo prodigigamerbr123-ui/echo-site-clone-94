@@ -15,7 +15,8 @@ export default function AssistenteIA() {
   // Restore last conversation on mount
   useEffect(() => {
     (async () => {
-      const stored = localStorage.getItem(LS_KEY);
+      let stored: string | null = null;
+      try { stored = localStorage.getItem(LS_KEY); } catch { /* ignore */ }
       if (stored) {
         const { data } = await supabase
           .from("ai_conversations")
@@ -41,11 +42,13 @@ export default function AssistenteIA() {
   }, []);
 
   useEffect(() => {
-    if (activeId) localStorage.setItem(LS_KEY, activeId);
+    try {
+      if (activeId) localStorage.setItem(LS_KEY, activeId);
+    } catch { /* ignore */ }
   }, [activeId]);
 
   const handleNew = () => {
-    localStorage.removeItem(LS_KEY);
+    try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
     setActiveId(null);
   };
 

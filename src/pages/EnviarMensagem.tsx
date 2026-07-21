@@ -82,6 +82,17 @@ export default function EnviarMensagem() {
   }, [selectedStudents.length]);
 
   const enqueue = async () => {
+    if (sending) return;
+    if (!message.trim()) {
+      toast({ title: "Digite uma mensagem", variant: "destructive" });
+      setConfirmOpen(false);
+      return;
+    }
+    if (selectedStudents.length === 0) {
+      toast({ title: "Selecione pelo menos um aluno", variant: "destructive" });
+      setConfirmOpen(false);
+      return;
+    }
     setSending(true);
     try {
       const selected = students.filter(s => selectedStudents.includes(s.id));
@@ -278,8 +289,10 @@ export default function EnviarMensagem() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={enqueue}>Enviar para {selectedStudents.length}</AlertDialogAction>
+            <AlertDialogCancel disabled={sending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={enqueue} disabled={sending}>
+              {sending ? "Enviando..." : `Enviar para ${selectedStudents.length}`}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

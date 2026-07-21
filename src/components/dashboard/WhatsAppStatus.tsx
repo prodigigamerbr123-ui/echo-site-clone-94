@@ -56,15 +56,22 @@ export function WhatsAppStatus() {
     [toast]
   );
 
+  const stateRef = useRef<string | undefined>(data?.state);
+  useEffect(() => { stateRef.current = data?.state; }, [data?.state]);
+
   useEffect(() => {
     fetchStatus("status");
-    const interval = setInterval(
-      () => fetchStatus("status"),
-      data?.state === "open" ? 60000 : 10000
-    );
+    // Intervalo fixo curto; pula fetch quando já está conectado (evita recriar timer a cada oscilação)
+    let tick = 0;
+    const interval = setInterval(() => {
+      tick++;
+      // Se conectado, só refetch a cada 6 ciclos (~60s); senão a cada ciclo (~10s)
+      if (stateRef.current === "open" && tick % 6 !== 0) return;
+      fetchStatus("status");
+    }, 10000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.state]);
+  }, []);
 
   const isConnected = data?.state === "open";
   const isConnecting = data?.state === "connecting";
