@@ -1,5 +1,6 @@
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Send, Users, MessageSquare, CalendarClock, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ type QuickWhen = "today" | "later";
 export default function Mensagens() {
   usePageTitle("Mensagens");
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [predefinedMessages, setPredefinedMessages] = useState<PredefinedMessage[]>([]);
@@ -66,6 +68,11 @@ export default function Mensagens() {
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    const pre = searchParams.get("aluno");
+    if (pre && students.length) setSelectedStudents([pre]);
+  }, [students, searchParams]);
 
   const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.phone.includes(searchTerm)
