@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3 } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3, IdCard, CalendarClock } from "lucide-react";
+import { maskCpfDisplay } from "@/lib/cpf";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -21,20 +22,22 @@ import { replaceNameVar } from "@/lib/phone";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
 import { confirm } from "@/components/ui/confirm-dialog";
 
-type ColumnKey = "phone" | "city" | "birthday" | "plan" | "created" | "payment" | "status";
+type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "status";
 const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
   { key: "phone", label: "WhatsApp" },
+  { key: "cpf", label: "CPF" },
   { key: "city", label: "Cidade" },
   { key: "birthday", label: "Aniversário" },
   { key: "plan", label: "Plano" },
   { key: "created", label: "Cadastrado em" },
+  { key: "dueDate", label: "Vencimento" },
   { key: "payment", label: "Pagamento" },
   { key: "status", label: "Status" },
 ];
 const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
-  phone: true, city: true, birthday: true, plan: true, created: true, payment: true, status: true,
+  phone: true, cpf: false, city: true, birthday: true, plan: true, created: true, dueDate: true, payment: true, status: true,
 };
-const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v1";
+const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v2";
 
 interface Student {
   id: string;
@@ -48,6 +51,7 @@ interface Student {
   status: string;
   city: string | null;
   payment_due_date: string | null;
+  cpf: string | null;
 }
 
 const ACTIVE_DAYS = 30;
@@ -462,10 +466,12 @@ export function ListaAlunos() {
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       {visibleColumns.phone && <TableHead>WhatsApp</TableHead>}
+                      {visibleColumns.cpf && <TableHead>CPF</TableHead>}
                       {visibleColumns.city && <TableHead>Cidade</TableHead>}
                       {visibleColumns.birthday && <TableHead>Aniversário</TableHead>}
                       {visibleColumns.plan && <TableHead>Plano</TableHead>}
                       {visibleColumns.created && <TableHead>Cadastrado em</TableHead>}
+                      {visibleColumns.dueDate && <TableHead>Vencimento</TableHead>}
                       {visibleColumns.payment && <TableHead>Pagamento</TableHead>}
                       {visibleColumns.status && <TableHead>Status</TableHead>}
                       <TableHead className="text-right">Ações</TableHead>
@@ -495,6 +501,18 @@ export function ListaAlunos() {
                                 <Phone className="h-4 w-4 text-muted-foreground" />
                                 {student.phone}
                               </div>
+                            </TableCell>
+                          )}
+                          {visibleColumns.cpf && (
+                            <TableCell>
+                              {student.cpf ? (
+                                <div className="flex items-center gap-2 text-sm font-mono">
+                                  <IdCard className="h-4 w-4 text-muted-foreground" />
+                                  {maskCpfDisplay(student.cpf)}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
                             </TableCell>
                           )}
                           {visibleColumns.city && (
@@ -536,6 +554,18 @@ export function ListaAlunos() {
                                 <Calendar className="h-4 w-4" />
                                 {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
                               </div>
+                            </TableCell>
+                          )}
+                          {visibleColumns.dueDate && (
+                            <TableCell>
+                              {student.payment_due_date ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                                  {format(new Date(student.payment_due_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
                             </TableCell>
                           )}
                           {visibleColumns.payment && (
