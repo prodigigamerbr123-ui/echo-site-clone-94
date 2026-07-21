@@ -489,53 +489,65 @@ export function ListaAlunos() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              {student.phone}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {student.city ? (
+                          {visibleColumns.phone && (
+                            <TableCell>
                               <div className="flex items-center gap-2 text-sm">
-                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                {student.city}
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                {student.phone}
                               </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {student.birth_date ? (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Cake className="h-4 w-4 text-muted-foreground" />
-                                {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                            </TableCell>
+                          )}
+                          {visibleColumns.city && (
+                            <TableCell>
+                              {student.city ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                                  {student.city}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.birthday && (
+                            <TableCell>
+                              {student.birth_date ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Cake className="h-4 w-4 text-muted-foreground" />
+                                  {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.plan && (
+                            <TableCell>
+                              {student.plan ? (
+                                <Badge variant="outline" className="text-xs">{student.plan}</Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.created && (
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Calendar className="h-4 w-4" />
+                                {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
                               </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {student.plan ? (
-                              <Badge variant="outline" className="text-xs">{student.plan}</Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {pay ? (
-                              <Badge variant="outline" className={pay.cls}>{pay.label}</Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{renderStatusBadge(active)}</TableCell>
+                            </TableCell>
+                          )}
+                          {visibleColumns.payment && (
+                            <TableCell>
+                              {pay ? (
+                                <Badge variant="outline" className={pay.cls}>{pay.label}</Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {visibleColumns.status && <TableCell>{renderStatusBadge(active)}</TableCell>}
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <ActionButtons student={student} />
                           </TableCell>
