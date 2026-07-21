@@ -27,9 +27,13 @@ export function ThemeProvider({
   storageKey = "workout-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  )
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
+    } catch {
+      return defaultTheme;
+    }
+  })
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -43,20 +47,21 @@ export function ThemeProvider({
         : "light"
 
       root.classList.add(systemTheme)
-      console.log("Applied system theme:", systemTheme)
       return
     }
 
     root.classList.add(theme)
-    console.log("Applied theme:", theme)
   }, [theme])
 
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
+      try {
+        localStorage.setItem(storageKey, theme)
+      } catch {
+        // ignore (private browsing / storage disabled)
+      }
       setTheme(theme)
-      console.log("Theme changed to:", theme)
     },
   }
 
