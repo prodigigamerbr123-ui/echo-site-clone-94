@@ -206,11 +206,22 @@ export const useTodayActions = () => {
       const twentyAgoStr = fmtDateISOSP(subDays(now, 20));
 
       // Get students with evaluations that are overdue (more than 7 days)
-      const { data: studentsNeedingEvaluation } = await supabase
+      // Só ativos e sem avaliação futura já agendada (alinha com daily-automation e AgendarAvaliacao)
+      const { data: rawEvalCandidates } = await supabase
         .from('students')
-        .select('id, name, phone, last_evaluation_date, had_evaluation')
+        .select('id, name, phone, last_evaluation_date, had_evaluation, status')
+        .eq('status', 'active')
         .or(`last_evaluation_date.lt.${sevenAgoStr},and(had_evaluation.eq.false)`)
         .limit(5000);
+      const { data: futureEvals } = await supabase
+        .from('evaluations')
+        .select('student_id')
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', new Date().toISOString());
+      const scheduledSet = new Set((futureEvals || []).map((e: any) => e.student_id));
+      const studentsNeedingEvaluation = (rawEvalCandidates || []).filter(
+        (s: any) => !scheduledSet.has(s.id),
+      );
 
 
       // Get students created 7 days ago for first follow-up
