@@ -9,7 +9,6 @@ import {
   XCircle,
   Loader2,
   RefreshCw,
-  LogOut,
   Smartphone,
   AlertTriangle,
 } from "lucide-react";
@@ -18,8 +17,7 @@ type State = "open" | "close" | "connecting" | "unknown" | string;
 
 interface StatusResponse {
   state: State;
-  qrcode: string | null;
-  pairingCode: string | null;
+  connected?: boolean;
   instance?: string;
   error?: string;
 }
@@ -30,19 +28,14 @@ export function WhatsAppStatus() {
   const { toast } = useToast();
 
   const fetchStatus = useCallback(
-    async (action: "status" | "connect" | "logout" = "status") => {
+    async () => {
       setLoading(true);
       try {
         const { data: resp, error } = await supabase.functions.invoke("whatsapp-status", {
-          body: { action },
+          body: { action: "status" },
         });
         if (error) throw error;
         setData(resp as StatusResponse);
-        if (action === "logout") {
-          toast({ title: "WhatsApp desconectado" });
-        } else if (action === "connect") {
-          toast({ title: "Atualizando conexão...", description: "Buscando novo QR Code." });
-        }
       } catch (err: any) {
         toast({
           title: "Erro ao consultar WhatsApp",
@@ -60,14 +53,14 @@ export function WhatsAppStatus() {
   useEffect(() => { stateRef.current = data?.state; }, [data?.state]);
 
   useEffect(() => {
-    fetchStatus("status");
+    fetchStatus();
     // Intervalo fixo curto; pula fetch quando já está conectado (evita recriar timer a cada oscilação)
     let tick = 0;
     const interval = setInterval(() => {
       tick++;
       // Se conectado, só refetch a cada 6 ciclos (~60s); senão a cada ciclo (~10s)
       if (stateRef.current === "open" && tick % 6 !== 0) return;
-      fetchStatus("status");
+      fetchStatus();
     }, 10000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,12 +69,6 @@ export function WhatsAppStatus() {
   const isConnected = data?.state === "open";
   const isConnecting = data?.state === "connecting";
   const isDisconnected = !isConnected && !isConnecting;
-
-  const qrSrc = data?.qrcode
-    ? data.qrcode.startsWith("data:")
-      ? data.qrcode
-      : `data:image/png;base64,${data.qrcode}`
-    : null;
 
   return (
     <Card
@@ -116,7 +103,7 @@ export function WhatsAppStatus() {
                   ? "Mensagens podem ser enviadas normalmente."
                   : isConnecting
                   ? "Aguardando confirmação do dispositivo..."
-                  : "Conecte o WhatsApp para enviar mensagens."}
+                  : "Conecte o WhatsApp diretamente no painel da Evolution."}
               </CardDescription>
             </div>
           </div>
@@ -148,8 +135,8 @@ export function WhatsAppStatus() {
             <div className="flex-1 text-sm">
               <p className="font-medium text-destructive">Ação necessária</p>
               <p className="text-muted-foreground text-xs">
-                Conecte o WhatsApp da academia escaneando o QR Code abaixo para liberar o envio de
-                mensagens.
+                O site apenas consulta o status. Abra o painel da Evolution para escanear o QR Code
+                e depois volte aqui para atualizar o status.
               </p>
             </div>
           </div>
@@ -161,49 +148,21 @@ export function WhatsAppStatus() {
           </div>
         )}
 
-        {!isConnected && qrSrc && (
-          <div className="flex flex-col items-center gap-3">
-            <div className="rounded-lg border-2 border-primary/20 bg-white p-3 shadow-elegant">
-              <img src={qrSrc} alt="QR Code WhatsApp" className="h-56 w-56" />
-            </div>
-            <p className="text-xs text-muted-foreground text-center max-w-xs">
-              Abra o WhatsApp no celular da academia → <strong>Aparelhos conectados</strong> →{" "}
-              <strong>Conectar um aparelho</strong>
-            </p>
-            {data?.pairingCode && (
-              <p className="text-sm">
-                Ou use o código:{" "}
-                <span className="font-mono font-bold text-primary">{data.pairingCode}</span>
-              </p>
-            )}
-          </div>
-        )}
-
-        {!isConnected && !qrSrc && !loading && (
+        {!isConnected && !loading && (
           <p className="text-sm text-muted-foreground text-center py-4">
-            Não foi possível obter o QR Code. Clique em "Atualizar" para tentar novamente.
+            QR Code disponível somente na Evolution para evitar reinicializações da instância pelo site.
           </p>
         )}
 
         <div className="flex gap-2 pt-2">
           <Button
-            onClick={() => fetchStatus("connect")}
+            onClick={() => fetchStatus()}
             disabled={loading}
             className="flex-1 bg-gradient-to-r from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant"
           >
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
-            {isConnected ? "Atualizar Status" : "Atualizar / Gerar QR"}
+            Atualizar Status
           </Button>
-          {isConnected && (
-            <Button
-              variant="destructive"
-              onClick={() => fetchStatus("logout")}
-              disabled={loading}
-            >
-              <LogOut className="h-4 w-4 mr-1" />
-              Desconectar
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>
