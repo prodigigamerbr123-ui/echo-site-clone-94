@@ -47,18 +47,11 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
     description: "Enviar e programar comunicações",
     actions: [
       {
-        to: "/agendar-mensagem",
-        icon: Clock,
-        label: "Agendar",
+        to: "/mensagens",
+        icon: Send,
+        label: "Enviar mensagem",
         className:
           "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_4px_20px_-2px_hsl(160_70%_40%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/enviar-mensagem",
-        icon: Send,
-        label: "Enviar Agora",
-        className:
-          "bg-card border border-border hover:border-emerald-500/40 hover:bg-accent text-foreground",
       },
     ],
   },
