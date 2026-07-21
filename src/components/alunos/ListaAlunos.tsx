@@ -361,6 +361,57 @@ export function ListaAlunos() {
                 <AlertCircle className="h-4 w-4" />
                 Cobrar vencidos ({overdueStudents.length})
               </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    <Columns3 className="h-4 w-4" />
+                    Colunas ({visibleCount})
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56 p-2">
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Exibir na lista
+                  </div>
+                  <div className="space-y-1">
+                    {COLUMN_DEFS.map((col) => (
+                      <label
+                        key={col.key}
+                        htmlFor={`col-${col.key}`}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          id={`col-${col.key}`}
+                          checked={visibleColumns[col.key]}
+                          onCheckedChange={() => toggleColumn(col.key)}
+                        />
+                        <span className="text-sm">{col.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between px-2 pt-2 border-t mt-2 gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs flex-1"
+                      onClick={() =>
+                        setVisibleColumns(
+                          COLUMN_DEFS.reduce((acc, c) => ({ ...acc, [c.key]: true }), {} as Record<ColumnKey, boolean>),
+                        )
+                      }
+                    >
+                      Todas
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs flex-1"
+                      onClick={() => setVisibleColumns(DEFAULT_COLUMNS)}
+                    >
+                      Padrão
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardHeader>
