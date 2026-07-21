@@ -273,21 +273,27 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
       return { count: data?.length || 0, students: data };
     }
     case "get_dashboard_stats": {
+      // Calcular "hoje" em America/Sao_Paulo (UTC-3), não no fuso do runtime Deno (UTC)
+      const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
       const now = new Date();
-      const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+      const sp = new Date(now.getTime() + SP_OFFSET_MS);
+      const y = sp.getUTCFullYear();
+      const mo = sp.getUTCMonth();
+      const d = sp.getUTCDate();
+      const todayStart = new Date(Date.UTC(y, mo, d, 0, 0) - SP_OFFSET_MS);
+      const todayEnd = new Date(Date.UTC(y, mo, d + 1, 0, 0) - SP_OFFSET_MS);
       const [{ count: totalStudents }, { count: sentToday }, { count: pendingScheduled }, { data: allStudents }] = await Promise.all([
         supabase.from("students").select("*", { count: "exact", head: true }),
-        supabase.from("messages").select("*", { count: "exact", head: true }).gte("sent_at", todayStart.toISOString()).lte("sent_at", todayEnd.toISOString()),
+        supabase.from("messages").select("*", { count: "exact", head: true }).gte("sent_at", todayStart.toISOString()).lt("sent_at", todayEnd.toISOString()),
         supabase.from("scheduled_messages").select("*", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("students").select("name, birth_date, had_evaluation").not("birth_date", "is", null),
       ]);
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
+      const mm = String(mo + 1).padStart(2, "0");
+      const dd = String(d).padStart(2, "0");
       const birthdays = (allStudents || []).filter((s: any) => {
         if (!s.birth_date) return false;
-        const [, m, d] = s.birth_date.split("-");
-        return m === mm && d === dd;
+        const [, m, dy] = s.birth_date.split("-");
+        return m === mm && dy === dd;
       }).map((s: any) => s.name);
       const semAvaliacao = (allStudents || []).filter((s: any) => !s.had_evaluation).length;
       return { totalStudents, messagesSentToday: sentToday, pendingScheduledMessages: pendingScheduled, birthdaysToday: birthdays, studentsWithoutEvaluation: semAvaliacao };
