@@ -135,7 +135,7 @@ export function GlobalNotifier() {
           ) {
             const studentName = await fetchStudentName(newRow.student_id);
             toast("Avaliação remarcada", {
-              description: [studentName, new Date(newRow.scheduled_at).toLocaleString("pt-BR")]
+              description: [studentName, new Date(newRow.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })]
                 .filter(Boolean)
                 .join(" — "),
             });
