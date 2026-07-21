@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3, IdCard, CalendarClock, X, ClipboardList } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3, IdCard, CalendarClock, X, ClipboardList, Activity } from "lucide-react";
 import { maskCpf } from "@/lib/cpf";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -22,7 +22,7 @@ import { replaceNameVar } from "@/lib/phone";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
 import { confirm } from "@/components/ui/confirm-dialog";
 
-type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "status";
+type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "lastEval" | "status";
 const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
   { key: "phone", label: "WhatsApp" },
   { key: "cpf", label: "CPF" },
@@ -32,12 +32,13 @@ const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
   { key: "created", label: "Cadastrado em" },
   { key: "dueDate", label: "Vencimento" },
   { key: "payment", label: "Pagamento" },
+  { key: "lastEval", label: "Última avaliação" },
   { key: "status", label: "Status" },
 ];
 const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
-  phone: true, cpf: false, city: true, birthday: true, plan: true, created: true, dueDate: true, payment: true, status: true,
+  phone: true, cpf: false, city: true, birthday: true, plan: true, created: true, dueDate: true, payment: true, lastEval: true, status: true,
 };
-const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v2";
+const COLUMNS_STORAGE_KEY = "alunos:visibleColumns:v3";
 
 interface Student {
   id: string;
