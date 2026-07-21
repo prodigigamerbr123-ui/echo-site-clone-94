@@ -172,6 +172,7 @@ serve(async (req: Request) => {
         "birthday",
         "payment_reminder_before",
         "payment_reminder_due",
+        "payment_overdue",
       ]);
     const hasPending = new Set(
       (pendings || []).map((p: any) => `${p.student_id}:${p.message_type}`),
