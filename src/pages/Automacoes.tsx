@@ -126,7 +126,6 @@ const AUTOMATIONS: AutomationDef[] = [
     params: [
       { name: "days_after_due", label: "Enviar a partir de", fallback: 1, suffix: "dias em atraso" },
       { name: "repeat_every_days", label: "Repetir a cada", fallback: 7, suffix: "dias" },
-      { name: "daily_limit", label: "Limite diário", fallback: 50, suffix: "msgs" },
     ],
   },
 ];
