@@ -53,6 +53,7 @@ export function ListaAlunos() {
   const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+  const [chargingOverdue, setChargingOverdue] = useState(false);
 
   const { data: students, isLoading } = useQuery({
     queryKey: ['students'],
@@ -162,7 +163,6 @@ export function ListaAlunos() {
   const overdueStudents = (students || []).filter(
     (s) => isActive(s) && paymentStatus(s.payment_due_date)?.label === "Vencido",
   );
-  const [chargingOverdue, setChargingOverdue] = useState(false);
 
   const handleChargeOverdue = async () => {
     if (overdueStudents.length === 0) return;
