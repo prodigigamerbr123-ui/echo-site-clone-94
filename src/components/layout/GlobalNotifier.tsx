@@ -6,8 +6,10 @@ import {
   NotificationSettings,
   useNotificationSettings,
 } from "@/lib/appSettings";
+import { useAuth } from "@/hooks/useAuth";
 
 export function GlobalNotifier() {
+  const { session } = useAuth();
   const { data: settings } = useNotificationSettings();
   const settingsRef = useRef<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const sentBucketRef = useRef<{ count: number; timer: ReturnType<typeof setTimeout> | null }>({
@@ -20,6 +22,7 @@ export function GlobalNotifier() {
   }, [settings]);
 
   useEffect(() => {
+    if (!session) return;
     const flushSent = () => {
       const bucket = sentBucketRef.current;
       if (bucket.count > 0) {
