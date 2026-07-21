@@ -67,7 +67,7 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
           "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_4px_20px_-2px_hsl(217_80%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
       },
       {
-        to: "/mensagens-enviadas",
+        to: "/caixa-de-saida",
         icon: History,
         label: "Histórico",
         className:
