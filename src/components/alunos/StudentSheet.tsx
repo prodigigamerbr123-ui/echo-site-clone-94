@@ -182,10 +182,10 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
           <Separator />
 
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={() => { onOpenChange(false); navigate("/agendar-avaliacao"); }}>
+            <Button variant="outline" onClick={() => { onOpenChange(false); navigate(`/agendar-avaliacao?aluno=${student.id}`); }}>
               <CalendarPlus className="h-4 w-4 mr-2" /> Agendar avaliação
             </Button>
-            <Button variant="outline" onClick={() => { onOpenChange(false); navigate("/enviar-mensagem"); }}>
+            <Button variant="outline" onClick={() => { onOpenChange(false); navigate(`/mensagens?aluno=${student.id}`); }}>
               <Send className="h-4 w-4 mr-2" /> Enviar mensagem
             </Button>
           </div>
