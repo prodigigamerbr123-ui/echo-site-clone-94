@@ -478,18 +478,101 @@ export function ListaAlunos() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-3 flex-col sm:flex-row">
-            <div className="flex-1 relative">
+          {/* Funis rápidos */}
+          {(() => {
+            const activeList = (students || []).filter(isActive);
+            const overdueCount = activeList.filter((s) => paymentStatus(s.payment_due_date)?.label === "Vencido").length;
+            const dueSoonCount = activeList.filter((s) => {
+              const l = paymentStatus(s.payment_due_date)?.label || "";
+              return l.startsWith("Vence em");
+            }).length;
+            const birthdayCount = activeList.filter(isBirthdayThisMonth).length;
+            const noEvalCount = activeList.filter((s) => !s.had_evaluation).length;
+            const pendingCount = activeList.filter((s) => (pendingByStudent[s.id] || 0) > 0).length;
+
+            type Chip = { key: string; label: string; count: number; cls: string; onClick: () => void; active: boolean };
+            const chips: Chip[] = [
+              {
+                key: "overdue",
+                label: "Vencidos",
+                count: overdueCount,
+                cls: "border-red-500/40 text-red-600 hover:bg-red-500/10",
+                active: paymentFilter === "overdue" && statusFilter === "active",
+                onClick: () => {
+                  const on = paymentFilter === "overdue" && statusFilter === "active";
+                  setPaymentFilter(on ? "all" : "overdue");
+                  setStatusFilter(on ? "all" : "active");
+                },
+              },
+              {
+                key: "due_soon",
+                label: "Vence em 3d",
+                count: dueSoonCount,
+                cls: "border-amber-500/40 text-amber-600 hover:bg-amber-500/10",
+                active: paymentFilter === "due_soon" && statusFilter === "active",
+                onClick: () => {
+                  const on = paymentFilter === "due_soon" && statusFilter === "active";
+                  setPaymentFilter(on ? "all" : "due_soon");
+                  setStatusFilter(on ? "all" : "active");
+                },
+              },
+              {
+                key: "birthday",
+                label: "Aniversariantes do mês",
+                count: birthdayCount,
+                cls: "border-pink-500/40 text-pink-600 hover:bg-pink-500/10",
+                active: flagFilter === "birthday_month",
+                onClick: () => setFlagFilter(flagFilter === "birthday_month" ? "none" : "birthday_month"),
+              },
+              {
+                key: "no_eval",
+                label: "Sem avaliação",
+                count: noEvalCount,
+                cls: "border-blue-500/40 text-blue-600 hover:bg-blue-500/10",
+                active: flagFilter === "no_evaluation",
+                onClick: () => setFlagFilter(flagFilter === "no_evaluation" ? "none" : "no_evaluation"),
+              },
+              {
+                key: "pending",
+                label: "Com mensagens pendentes",
+                count: pendingCount,
+                cls: "border-purple-500/40 text-purple-600 hover:bg-purple-500/10",
+                active: flagFilter === "pending_messages",
+                onClick: () => setFlagFilter(flagFilter === "pending_messages" ? "none" : "pending_messages"),
+              },
+            ];
+            return (
+              <div className="flex flex-wrap gap-2">
+                {chips.map((c) => (
+                  <Button
+                    key={c.key}
+                    variant="outline"
+                    size="sm"
+                    onClick={c.onClick}
+                    className={`gap-1.5 h-8 ${c.cls} ${c.active ? "ring-2 ring-offset-1 ring-current" : ""}`}
+                  >
+                    {c.label}
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px]">
+                      {c.count}
+                    </Badge>
+                  </Button>
+                ))}
+              </div>
+            );
+          })()}
+
+          <div className="flex gap-3 flex-col sm:flex-row flex-wrap">
+            <div className="flex-1 min-w-[220px] relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou telefone..."
+                placeholder="Buscar por nome, telefone ou CPF..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
@@ -499,16 +582,51 @@ export function ListaAlunos() {
                 <SelectItem value="inactive">Inativos</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={(v: "recent" | "name") => setSortBy(v)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+            <Select value={paymentFilter} onValueChange={(v: any) => setPaymentFilter(v)}>
+              <SelectTrigger className="w-full sm:w-[170px]">
+                <CalendarClock className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todo pagamento</SelectItem>
+                <SelectItem value="overdue">Vencidos</SelectItem>
+                <SelectItem value="due_soon">Vence em 3 dias</SelectItem>
+                <SelectItem value="ok">Em dia</SelectItem>
+                <SelectItem value="none">Sem data</SelectItem>
+              </SelectContent>
+            </Select>
+            {availablePlans.length > 0 && (
+              <Select value={planFilter} onValueChange={setPlanFilter}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os planos</SelectItem>
+                  {availablePlans.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="w-full sm:w-[190px]">
                 <ArrowUpDown className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="recent">Mais recentes</SelectItem>
                 <SelectItem value="name">Nome (A-Z)</SelectItem>
+                <SelectItem value="due">Vencimento (mais próximo)</SelectItem>
+                <SelectItem value="last_eval">Última avaliação</SelectItem>
               </SelectContent>
             </Select>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+                <X className="h-4 w-4" />
+                Limpar filtros
+              </Button>
+            )}
           </div>
 
           <div className="text-sm text-muted-foreground">
