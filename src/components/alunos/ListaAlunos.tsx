@@ -555,6 +555,7 @@ export function ListaAlunos() {
                                 {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
                               </div>
                             </TableCell>
+                          )}
                           {visibleColumns.dueDate && (
                             <TableCell>
                               {student.payment_due_date ? (
