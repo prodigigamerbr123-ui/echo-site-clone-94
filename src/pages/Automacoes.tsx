@@ -111,6 +111,15 @@ const AUTOMATIONS: AutomationDef[] = [
     messageTypes: [
       { type: "payment_reminder_before", label: "Aviso antecipado" },
       { type: "payment_reminder_due", label: "Aviso no dia" },
+    ],
+    placeholders: ["{nome}", "{dias}"],
+  },
+  {
+    key: "payment_overdue",
+    title: "Cobrança de mensalidade vencida",
+    description: "Envia cobrança automática para alunos com mensalidade em atraso.",
+    when: "Diariamente, para alunos com vencimento em atraso.",
+    messageTypes: [
       { type: "payment_overdue", label: "Cobrança de vencido" },
     ],
     placeholders: ["{nome}", "{dias}"],
