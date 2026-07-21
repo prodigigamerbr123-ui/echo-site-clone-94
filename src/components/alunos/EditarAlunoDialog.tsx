@@ -137,6 +137,8 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
 
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['students-evaluation-agenda'] });
+      queryClient.invalidateQueries({ queryKey: ['students-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       
       toast({
