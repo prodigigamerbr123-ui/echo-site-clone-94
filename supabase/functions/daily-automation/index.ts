@@ -64,6 +64,9 @@ const PAYMENT_BEFORE_TEMPLATE = (name: string, days: number) =>
 const PAYMENT_DUE_TEMPLATE = (name: string) =>
   `Oi ${name}! Sua mensalidade vence hoje. Bora manter o treino em dia? 🏋️ Qualquer coisa estou à disposição!`;
 
+const PAYMENT_OVERDUE_TEMPLATE = (name: string, days: number) =>
+  `Oi ${name}! Sua mensalidade está ${days} ${days === 1 ? "dia" : "dias"} em atraso. Consegue regularizar hoje? Qualquer coisa é só me chamar!`;
+
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -125,6 +128,7 @@ serve(async (req: Request) => {
     const birthdayOn = isEnabled(settings, "birthday");
     const inviteOn = isEnabled(settings, "evaluation_invite");
     const paymentOn = isEnabled(settings, "payment_reminder");
+    const overdueOn = isEnabled(settings, "payment_overdue");
     const daysOverdue = Number(
       getParam(settings, "evaluation_invite", "days_overdue", DEFAULT_DAYS_OVERDUE),
     );
@@ -136,6 +140,9 @@ serve(async (req: Request) => {
     );
     const paymentCap = Number(
       getParam(settings, "payment_reminder", "daily_limit", DEFAULT_PAYMENT_CAP),
+    );
+    const overdueCap = Number(
+      getParam(settings, "payment_overdue", "daily_limit", DEFAULT_PAYMENT_CAP),
     );
 
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
@@ -165,6 +172,7 @@ serve(async (req: Request) => {
         "birthday",
         "payment_reminder_before",
         "payment_reminder_due",
+        "payment_overdue",
       ]);
     const hasPending = new Set(
       (pendings || []).map((p: any) => `${p.student_id}:${p.message_type}`),
@@ -284,7 +292,39 @@ serve(async (req: Request) => {
       }
     }
 
-    const allInserts = [...birthdayInserts, ...reminderInserts, ...paymentInserts];
+    // ---- 4) Cobrança de mensalidade vencida ----
+    const overdueInserts: any[] = [];
+    if (overdueOn) {
+      const todaySP = spDateStrToday();
+      for (const s of activeStudents) {
+        if (overdueInserts.length >= overdueCap) break;
+        if (!s.payment_due_date) continue;
+        const due = String(s.payment_due_date);
+        if (due >= todaySP) continue; // ainda não venceu
+        if (hasPending.has(`${s.id}:payment_overdue`)) continue;
+        const daysLate = Math.max(
+          1,
+          Math.floor(
+            (new Date(todaySP + "T00:00:00Z").getTime() -
+              new Date(due + "T00:00:00Z").getTime()) / 86400000,
+          ),
+        );
+        const content = await resolveAutomationMessage(
+          supabase, settings, "payment_overdue", "payment_overdue",
+          PAYMENT_OVERDUE_TEMPLATE(s.name, daysLate),
+          { nome: s.name, dias: String(daysLate) } as any,
+        );
+        overdueInserts.push({
+          student_id: s.id,
+          content,
+          scheduled_for: scatterTimeToday().toISOString(),
+          message_type: "payment_overdue",
+          status: "pending",
+        });
+      }
+    }
+
+    const allInserts = [...birthdayInserts, ...reminderInserts, ...paymentInserts, ...overdueInserts];
 
     let inserted = 0;
     if (allInserts.length > 0) {
@@ -301,6 +341,7 @@ serve(async (req: Request) => {
       reminders: reminderInserts.length,
       payment_before: paymentBeforeCount,
       payment_due: paymentDueCount,
+      payment_overdue: overdueInserts.length,
       candidatesConsidered: reminderCandidates.length,
       dailyLimit,
       daysOverdue,
@@ -308,6 +349,7 @@ serve(async (req: Request) => {
       birthdayEnabled: birthdayOn,
       inviteEnabled: inviteOn,
       paymentEnabled: paymentOn,
+      overdueEnabled: overdueOn,
       activeStudents: activeStudents.length,
       ranAt: new Date().toISOString(),
     };
