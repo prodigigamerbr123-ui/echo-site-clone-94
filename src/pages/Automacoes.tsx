@@ -114,7 +114,6 @@ const AUTOMATIONS: AutomationDef[] = [
       { type: "payment_overdue", label: "Cobrança de vencido" },
     ],
     placeholders: ["{nome}", "{dias}"],
-    },
   },
 ];
 
