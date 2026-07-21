@@ -106,8 +106,8 @@ const AUTOMATIONS: AutomationDef[] = [
   {
     key: "payment_reminder",
     title: "Lembrete de vencimento da mensalidade",
-    description: "Avisa o aluno antes e no dia do vencimento da mensalidade.",
-    when: "Diariamente, X dias antes do vencimento e no próprio dia.",
+    description: "Avisa o aluno 3 dias antes e no dia do vencimento da mensalidade.",
+    when: "Diariamente, 3 dias antes do vencimento e no próprio dia.",
     messageTypes: [
       { type: "payment_reminder_before", label: "Aviso antecipado" },
       { type: "payment_reminder_due", label: "Aviso no dia" },
