@@ -11,16 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3, IdCard, CalendarClock, X, ClipboardList, Activity } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, Columns3, IdCard, CalendarClock, X, ClipboardList, Activity } from "lucide-react";
 import { maskCpf } from "@/lib/cpf";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarAlunoDialog } from "./EditarAlunoDialog";
 import { StudentSheet } from "./StudentSheet";
-import { replaceNameVar } from "@/lib/phone";
-import { resolveAutomationMessage } from "@/lib/messageTemplates";
-import { confirm } from "@/components/ui/confirm-dialog";
 
 type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "lastEval" | "status";
 const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
@@ -79,7 +76,7 @@ export function ListaAlunos() {
   const [sortBy, setSortBy] = useState<"recent" | "name" | "due" | "last_eval">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
-  const [chargingOverdue, setChargingOverdue] = useState(false);
+  
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(() => {
     if (typeof window === "undefined") return DEFAULT_COLUMNS;
     try {
@@ -259,78 +256,6 @@ export function ListaAlunos() {
   const total = students?.length || 0;
   const activeCount = (students || []).filter(isActive).length;
 
-  const overdueStudents = (students || []).filter(
-    (s) => isActive(s) && paymentStatus(s.payment_due_date)?.label === "Vencido",
-  );
-
-  const handleChargeOverdue = async () => {
-    if (overdueStudents.length === 0) return;
-    const n = overdueStudents.length;
-    const spreadMinutes = n <= 5 ? 0 : n <= 20 ? Math.min(30, n * 2) : n <= 100 ? 60 : Math.ceil(n * 0.6);
-    const ok = await confirm({
-      title: `Cobrar ${n} aluno(s) vencido(s)?`,
-      description: spreadMinutes > 0
-        ? `As mensagens serão distribuídas ao longo de ~${spreadMinutes} min para não bloquear o WhatsApp.`
-        : "As mensagens serão enviadas nos próximos minutos.",
-      confirmLabel: "Cobrar agora",
-    });
-    if (!ok) return;
-    setChargingOverdue(true);
-    try {
-      const ids = overdueStudents.map((s) => s.id);
-      const { data: existing } = await supabase
-        .from("scheduled_messages")
-        .select("student_id")
-        .eq("status", "pending")
-        .eq("message_type", "payment_overdue")
-        .in("student_id", ids);
-      const already = new Set((existing || []).map((r: any) => r.student_id));
-      const targets = overdueStudents.filter((s) => !already.has(s.id));
-      const skipped = n - targets.length;
-
-      if (targets.length === 0) {
-        toast({ title: "Nada a enviar", description: `Todos os ${n} alunos vencidos já têm cobrança na fila.` });
-        return;
-      }
-
-      const fallback = "Oi {nome}! Notamos que sua mensalidade está em atraso. Podemos te ajudar a regularizar? Qualquer dúvida é só chamar. 💪";
-      const now = Date.now();
-      const spanMs = spreadMinutes * 60 * 1000;
-      const rows = await Promise.all(
-        targets.map(async (s, i) => {
-          const content = await resolveAutomationMessage(
-            "payment_reminder",
-            "payment_overdue",
-            fallback,
-            { nome: s.name },
-          );
-          const startOffset = 60 * 1000 + Math.floor(Math.random() * 2 * 60 * 1000);
-          const spreadOffset = targets.length > 1 && spanMs > 0
-            ? Math.floor((spanMs / (targets.length - 1)) * i) + Math.floor(Math.random() * 20000)
-            : 0;
-          return {
-            student_id: s.id,
-            content: replaceNameVar(content, s.name),
-            scheduled_for: new Date(now + startOffset + spreadOffset).toISOString(),
-            message_type: "payment_overdue",
-            status: "pending",
-          };
-        }),
-      );
-
-      const { error } = await supabase.from("scheduled_messages").insert(rows);
-      if (error) throw error;
-      toast({
-        title: `${rows.length} cobrança(s) na fila`,
-        description: skipped > 0 ? `${skipped} pulado(s) — já havia cobrança pendente.` : undefined,
-      });
-      queryClient.invalidateQueries({ queryKey: ["pending-scheduled-by-student"] });
-    } catch (e: any) {
-      toast({ title: "Erro ao enfileirar", description: e.message, variant: "destructive" });
-    } finally {
-      setChargingOverdue(false);
-    }
-  };
 
   const renderStatusBadge = (active: boolean) =>
     active ? (
@@ -414,16 +339,6 @@ export function ListaAlunos() {
               <Badge variant="secondary" className="gap-1 text-muted-foreground">
                 {total - activeCount} inativos
               </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 hover:text-red-700"
-                disabled={overdueStudents.length === 0 || chargingOverdue}
-                onClick={handleChargeOverdue}
-              >
-                <AlertCircle className="h-4 w-4" />
-                Cobrar vencidos ({overdueStudents.length})
-              </Button>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-1">
