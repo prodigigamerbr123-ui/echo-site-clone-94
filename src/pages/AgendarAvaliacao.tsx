@@ -508,8 +508,8 @@ export default function AgendarAvaliacao() {
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
-      qc.invalidateQueries({ queryKey: ["students-evaluation"] });
-      qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Avaliação marcada como realizada",
         description: followupScheduled ? "Follow-up agendado." : "Follow-up não agendado (automação desligada ou já existente).",
