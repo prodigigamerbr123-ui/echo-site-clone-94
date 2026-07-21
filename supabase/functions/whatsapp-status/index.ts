@@ -57,9 +57,17 @@ serve(async (req: Request) => {
 
     if (!connected || action === 'connect') {
       if (action === 'connect') {
-        await fetch(`${baseUrl}/instance/connect`, {
-          method: 'POST', headers, body: JSON.stringify({ immediate: true }),
-        }).catch(() => {});
+        try {
+          const cr = await fetch(`${baseUrl}/instance/connect`, {
+            method: 'POST', headers, body: JSON.stringify({ immediate: true }),
+          });
+          if (!cr.ok) {
+            const ct = await cr.text().catch(() => '');
+            console.warn(`[instance/connect] http=${cr.status} body=${ct.slice(0, 200)}`);
+          }
+        } catch (connErr: any) {
+          console.error('[instance/connect] falha de rede:', connErr?.message || connErr);
+        }
       }
       const qrResp = await fetch(`${baseUrl}/instance/qr`, { headers });
       const qrText = await qrResp.text();
