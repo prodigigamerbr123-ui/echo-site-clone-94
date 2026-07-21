@@ -466,10 +466,12 @@ export function ListaAlunos() {
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       {visibleColumns.phone && <TableHead>WhatsApp</TableHead>}
+                      {visibleColumns.cpf && <TableHead>CPF</TableHead>}
                       {visibleColumns.city && <TableHead>Cidade</TableHead>}
                       {visibleColumns.birthday && <TableHead>Aniversário</TableHead>}
                       {visibleColumns.plan && <TableHead>Plano</TableHead>}
                       {visibleColumns.created && <TableHead>Cadastrado em</TableHead>}
+                      {visibleColumns.dueDate && <TableHead>Vencimento</TableHead>}
                       {visibleColumns.payment && <TableHead>Pagamento</TableHead>}
                       {visibleColumns.status && <TableHead>Status</TableHead>}
                       <TableHead className="text-right">Ações</TableHead>
