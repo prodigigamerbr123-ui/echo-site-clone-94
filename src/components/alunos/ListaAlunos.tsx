@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,13 +26,25 @@ interface Student {
   plan: string | null;
   status: string;
   city: string | null;
+  payment_due_date: string | null;
 }
 
 const ACTIVE_DAYS = 30;
 
+function paymentStatus(due: string | null) {
+  if (!due) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(due + "T12:00:00");
+  const diffDays = Math.floor((d.getTime() - today.getTime()) / 86400000);
+  if (diffDays < 0) return { label: "Vencido", cls: "bg-red-500/15 text-red-600 border-red-500/30" };
+  if (diffDays <= 3) return { label: `Vence em ${diffDays}d`, cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" };
+  return { label: "Em dia", cls: "bg-green-500/15 text-green-600 border-green-500/30" };
+}
+
 export function ListaAlunos() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
@@ -60,7 +73,6 @@ export function ListaAlunos() {
     }
   });
 
-  // Mensagens recentes para determinar atividade e pendências
   const { data: recentMessages = [] } = useQuery({
     queryKey: ['recent-messages-status'],
     queryFn: async () => {
@@ -85,7 +97,6 @@ export function ListaAlunos() {
     }
   });
 
-  const activeStudentIds = new Set(recentMessages.map((m: any) => m.student_id));
   const pendingByStudent = pendingScheduled.reduce((acc: Record<string, number>, m: any) => {
     acc[m.student_id] = (acc[m.student_id] || 0) + 1;
     return acc;
@@ -145,6 +156,64 @@ export function ListaAlunos() {
   const total = students?.length || 0;
   const activeCount = (students || []).filter(isActive).length;
 
+  const renderStatusBadge = (active: boolean) =>
+    active ? (
+      <Badge className="bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
+        <span className="h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5" />
+        Ativo
+      </Badge>
+    ) : (
+      <Badge variant="secondary" className="text-muted-foreground">
+        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground mr-1.5" />
+        Inativo
+      </Badge>
+    );
+
+  const ActionButtons = ({ student }: { student: Student }) => (
+    <div className="flex justify-end gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-10 w-10"
+        onClick={() => navigate(`/mensagens?aluno=${student.id}`)}
+        aria-label={`Enviar mensagem para ${student.name}`}
+        title="Enviar mensagem"
+      >
+        <Send className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-10 w-10"
+        onClick={() => navigate(`/agendar-avaliacao?aluno=${student.id}`)}
+        aria-label={`Agendar avaliação para ${student.name}`}
+        title="Agendar avaliação"
+      >
+        <CalendarPlus className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-10 w-10"
+        onClick={() => setEditingStudent(student)}
+        aria-label={`Editar aluno ${student.name}`}
+        title="Editar aluno"
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => handleDeleteStudent(student.id, student.name)}
+        className="h-10 w-10 text-destructive hover:text-destructive hover:bg-destructive/10"
+        aria-label={`Excluir aluno ${student.name}`}
+        title="Excluir aluno"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <Card>
@@ -173,7 +242,6 @@ export function ListaAlunos() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Filtros */}
           <div className="flex gap-3 flex-col sm:flex-row">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -211,30 +279,114 @@ export function ListaAlunos() {
             {filteredStudents.length} aluno(s) encontrado(s)
           </div>
 
-          {/* Tabela */}
           {filteredStudents.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>WhatsApp</TableHead>
-                    <TableHead>Cidade</TableHead>
-                    <TableHead>Aniversário</TableHead>
-                    <TableHead>Plano</TableHead>
-                    <TableHead>Cadastrado em</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStudents.map((student) => {
-                    const active = isActive(student);
-                    const pendingCount = pendingByStudent[student.id] || 0;
-                    return (
-                      <TableRow key={student.id} className="cursor-pointer" onClick={() => setViewingStudent(student)}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+            <>
+              {/* Tabela — desktop */}
+              <div className="hidden md:block border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>WhatsApp</TableHead>
+                      <TableHead>Cidade</TableHead>
+                      <TableHead>Aniversário</TableHead>
+                      <TableHead>Plano</TableHead>
+                      <TableHead>Cadastrado em</TableHead>
+                      <TableHead>Pagamento</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStudents.map((student) => {
+                      const active = isActive(student);
+                      const pendingCount = pendingByStudent[student.id] || 0;
+                      const pay = paymentStatus(student.payment_due_date);
+                      return (
+                        <TableRow key={student.id} className="cursor-pointer" onClick={() => setViewingStudent(student)}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{student.name}</span>
+                              {pendingCount > 0 && (
+                                <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-600">
+                                  <Bell className="h-3 w-3" />
+                                  {pendingCount}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                              {student.phone}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {student.city ? (
+                              <div className="flex items-center gap-2 text-sm">
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                {student.city}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {student.birth_date ? (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Cake className="h-4 w-4 text-muted-foreground" />
+                                {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {student.plan ? (
+                              <Badge variant="outline" className="text-xs">{student.plan}</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {pay ? (
+                              <Badge variant="outline" className={pay.cls}>{pay.label}</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{renderStatusBadge(active)}</TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <ActionButtons student={student} />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Cards — mobile */}
+              <div className="md:hidden space-y-3">
+                {filteredStudents.map((student) => {
+                  const active = isActive(student);
+                  const pendingCount = pendingByStudent[student.id] || 0;
+                  const pay = paymentStatus(student.payment_due_date);
+                  return (
+                    <div
+                      key={student.id}
+                      className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-accent/40 transition-colors"
+                      onClick={() => setViewingStudent(student)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{student.name}</span>
                             {pendingCount > 0 && (
                               <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-600">
@@ -243,89 +395,25 @@ export function ListaAlunos() {
                               </Badge>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <Phone className="h-3.5 w-3.5" />
                             {student.phone}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {student.city ? (
-                            <div className="flex items-center gap-2 text-sm">
-                              <MapPin className="h-4 w-4 text-muted-foreground" />
-                              {student.city}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {student.birth_date ? (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Cake className="h-4 w-4 text-muted-foreground" />
-                              {format(new Date(student.birth_date), "dd/MM", { locale: ptBR })}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {student.plan ? (
-                            <Badge variant="outline" className="text-xs">{student.plan}</Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {active ? (
-                            <Badge className="bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
-                              <span className="h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5" />
-                              Ativo
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-muted-foreground">
-                              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground mr-1.5" />
-                              Inativo
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10"
-                              onClick={() => setEditingStudent(student)}
-                              aria-label={`Editar aluno ${student.name}`}
-                              title="Editar aluno"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteStudent(student.id, student.name)}
-                              className="h-10 w-10 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              aria-label={`Excluir aluno ${student.name}`}
-                              title="Excluir aluno"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {pay && <Badge variant="outline" className={pay.cls}>{pay.label}</Badge>}
+                        {renderStatusBadge(active)}
+                        {student.plan && <Badge variant="outline" className="text-xs">{student.plan}</Badge>}
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ActionButtons student={student} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               {searchTerm || statusFilter !== "all"

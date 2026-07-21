@@ -1,5 +1,6 @@
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isTomorrow, isPast, startOfDay, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -92,6 +93,7 @@ export default function AgendarAvaliacao() {
   usePageTitle("Agendar Avaliação");
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
 
   // form
   const [studentId, setStudentId] = useState("");
@@ -128,6 +130,11 @@ export default function AgendarAvaliacao() {
       return all;
     },
   });
+
+  useEffect(() => {
+    const pre = searchParams.get("aluno");
+    if (pre && students?.some((s) => s.id === pre)) setStudentId(pre);
+  }, [students, searchParams]);
 
   const { data: evaluations } = useQuery({
     queryKey: ["evaluations-list"],
