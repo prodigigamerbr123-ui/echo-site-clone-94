@@ -115,7 +115,7 @@ export function GlobalNotifier() {
           const row = payload.new;
           if (!row) return;
           toast("Avaliação agendada", {
-            description: new Date(row.scheduled_at).toLocaleString("pt-BR"),
+            description: new Date(row.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
           });
         }
       )
