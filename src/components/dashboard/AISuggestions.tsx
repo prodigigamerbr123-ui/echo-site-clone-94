@@ -46,8 +46,8 @@ export function AISuggestions() {
     setRefreshing(true);
     try {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["todayActions"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboardStats"] }),
+        queryClient.invalidateQueries({ queryKey: ["today-actions"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
       ]);
       setSeed((s) => s + 1);
     } finally {

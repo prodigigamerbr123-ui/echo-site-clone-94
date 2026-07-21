@@ -120,12 +120,11 @@ export const useDashboardStats = () => {
 
 
       // Filter birthdays on the client side since Supabase has issues with date comparisons
+      // Comparar mês/dia por string para evitar conversão UTC->local (bug de fuso em SP)
       const birthdaysToday = birthdayStudents?.filter(student => {
         if (!student.birth_date) return false;
-        const birthDate = new Date(student.birth_date);
-        const birthMonth = format(birthDate, 'MM');
-        const birthDay = format(birthDate, 'dd');
-        return birthMonth === todayMonth && birthDay === todayDay;
+        const [, m, d] = student.birth_date.split("-");
+        return m === todayMonth && d === todayDay;
       }).length || 0;
 
       return {

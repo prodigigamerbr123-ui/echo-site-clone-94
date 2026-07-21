@@ -13,6 +13,7 @@ import { Trash2, Plus, ChevronsUpDown } from "lucide-react";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { replaceNameVar } from "@/lib/phone";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+import { spDate, spParts } from "@/lib/spTime";
 
 interface Student { id: string; name: string; phone: string; }
 interface PredefinedMessage { id: string; title: string; content: string; }
@@ -74,9 +75,9 @@ export function AgendarMensagemForm({ onSaved }: Props) {
         const [h, m] = quickTime.split(":").map(Number);
         const now = new Date();
         const makeDate = (daysFromNow: number) => {
-          const dt = new Date(now.getTime() + daysFromNow * 86400000);
-          dt.setHours(h, m, 0, 0);
-          return dt;
+          const base = new Date(now.getTime() + daysFromNow * 86400000);
+          const p = spParts(base);
+          return spDate(p.y, p.mo, p.d, h, m);
         };
 
         if (quickWhen === "today") {
@@ -101,7 +102,9 @@ export function AgendarMensagemForm({ onSaved }: Props) {
         if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
       } else {
         if (!date || !time) throw new Error("Preencha data e horário");
-        const base = new Date(`${date}T${time}`);
+        const [dy, dmo, dd] = date.split("-").map(Number);
+        const [th, tmi] = time.split(":").map(Number);
+        const base = spDate(dy, dmo - 1, dd, th, tmi);
         if (base <= new Date()) throw new Error("Data deve ser futura");
         rows.push({ student_id: studentId, content: finalContent, scheduled_for: base.toISOString(), message_type: "manual", status: "pending" });
         if (recurrence) {

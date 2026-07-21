@@ -19,6 +19,7 @@ import {
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { hasNameVar, replaceNameVar } from "@/lib/phone";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+import { spDate, spParts } from "@/lib/spTime";
 
 interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
 interface PredefinedMessage { id: string; title: string; content: string; }
@@ -151,9 +152,9 @@ export default function Mensagens() {
         const [h, m] = quickTime.split(":").map(Number);
         const now = new Date();
         const makeDate = (daysFromNow: number) => {
-          const dt = new Date(now.getTime() + daysFromNow * 86400000);
-          dt.setHours(h, m, 0, 0);
-          return dt;
+          const base = new Date(now.getTime() + daysFromNow * 86400000);
+          const p = spParts(base);
+          return spDate(p.y, p.mo, p.d, h, m);
         };
         for (const stu of selected) {
           const content = replaceNameVar(message.trim(), stu.name);
@@ -177,7 +178,9 @@ export default function Mensagens() {
         if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
       } else {
         if (!customDate || !customTime) throw new Error("Preencha data e horário");
-        const base = new Date(`${customDate}T${customTime}`);
+        const [cy, cmo, cd] = customDate.split("-").map(Number);
+        const [ch, cmi] = customTime.split(":").map(Number);
+        const base = spDate(cy, cmo - 1, cd, ch, cmi);
         if (base <= new Date()) throw new Error("Data deve ser futura");
         for (const stu of selected) {
           const content = replaceNameVar(message.trim(), stu.name);
