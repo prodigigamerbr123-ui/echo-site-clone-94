@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit2, Trash2, Calendar, Clock, User, MessageSquare, Bot, Hand, RotateCcw, AlertCircle } from "lucide-react";
 import { AUTO_EVAL_MESSAGE_TYPES } from "@/lib/evaluationMessages";
+import { spDate, spParts } from "@/lib/spTime";
 
 interface ScheduledMessage {
   id: string;
