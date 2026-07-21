@@ -15,7 +15,7 @@ import { Phone, Calendar, Activity, CalendarPlus, Send, MessageSquare, FileText,
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
-import { maskCpfDisplay } from "@/lib/cpf";
+import { maskCpf } from "@/lib/cpf";
 
 interface Student {
   id: string; name: string; phone: string;
@@ -120,7 +120,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
             {student.cpf && (
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground flex items-center gap-1"><FileText className="h-3 w-3" /> CPF</span>
-                <span className="font-mono text-xs">{maskCpfDisplay(student.cpf)}</span>
+                <span className="font-mono text-xs">{maskCpf(student.cpf)}</span>
               </div>
             )}
             {student.payment_due_date && (
