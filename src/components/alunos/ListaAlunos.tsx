@@ -72,7 +72,10 @@ export function ListaAlunos() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "overdue" | "due_soon" | "ok" | "none">("all");
+  const [planFilter, setPlanFilter] = useState<string>("all");
+  const [flagFilter, setFlagFilter] = useState<"none" | "birthday_month" | "no_evaluation" | "pending_messages">("none");
+  const [sortBy, setSortBy] = useState<"recent" | "name" | "due" | "last_eval">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [chargingOverdue, setChargingOverdue] = useState(false);
