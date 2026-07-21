@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit2, Trash2, Calendar, Clock, User, MessageSquare, Bot, Hand, RotateCcw, AlertCircle } from "lucide-react";
 import { AUTO_EVAL_MESSAGE_TYPES } from "@/lib/evaluationMessages";
+import { spDate, spParts } from "@/lib/spTime";
 
 interface ScheduledMessage {
   id: string;
@@ -86,15 +87,15 @@ function applyFilters(
       m.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.students?.phone.includes(searchTerm);
     const md = new Date(m.scheduled_for);
-    const today = new Date();
-    const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const nowSP = spParts(new Date());
+    const startToday = spDate(nowSP.y, nowSP.mo, nowSP.d, 0, 0);
+    const startMonth = spDate(nowSP.y, nowSP.mo, 1, 0, 0);
     let matchD = true;
     if (dateFilter === "today") {
-      const end = new Date(startToday); end.setDate(end.getDate() + 1);
+      const end = spDate(nowSP.y, nowSP.mo, nowSP.d + 1, 0, 0);
       matchD = md >= startToday && md < end;
     } else if (dateFilter === "this-month") {
-      const end = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const end = spDate(nowSP.y, nowSP.mo + 1, 1, 0, 0);
       matchD = md >= startMonth && md < end;
     } else if (dateFilter === "custom") {
       if (customDateRange.from && customDateRange.to) {
