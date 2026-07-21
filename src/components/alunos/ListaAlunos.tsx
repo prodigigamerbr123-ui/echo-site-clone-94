@@ -232,6 +232,8 @@ export function ListaAlunos() {
       setChargingOverdue(false);
     }
   };
+
+  const renderStatusBadge = (active: boolean) =>
     active ? (
       <Badge className="bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
         <span className="h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5" />
