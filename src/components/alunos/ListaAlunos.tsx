@@ -11,16 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, AlertCircle, Columns3, IdCard, CalendarClock, X, ClipboardList, Activity } from "lucide-react";
+import { Search, Filter, Edit, Trash2, Phone, Calendar, ArrowUpDown, Users, Bell, Cake, MapPin, Send, CalendarPlus, Columns3, IdCard, CalendarClock, X, ClipboardList, Activity } from "lucide-react";
 import { maskCpf } from "@/lib/cpf";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarAlunoDialog } from "./EditarAlunoDialog";
 import { StudentSheet } from "./StudentSheet";
-import { replaceNameVar } from "@/lib/phone";
-import { resolveAutomationMessage } from "@/lib/messageTemplates";
-import { confirm } from "@/components/ui/confirm-dialog";
 
 type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "lastEval" | "status";
 const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
