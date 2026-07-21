@@ -237,7 +237,7 @@ export function TodayInbox() {
               ))}
               {(attention?.failed?.length ?? 0) > 0 && (
                 <Button asChild variant="outline" size="sm" className="w-full">
-                  <Link to="/mensagens-agendadas">Ver mensagens falhas</Link>
+                  <Link to="/caixa-de-saida">Ver mensagens falhas</Link>
                 </Button>
               )}
               {(attention?.overdueCount ?? 0) > 0 && (
