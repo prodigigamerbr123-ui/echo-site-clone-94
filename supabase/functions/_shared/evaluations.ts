@@ -275,7 +275,11 @@ export async function createEvaluationWithMessages(
         evaluation_id: created.id,
       })),
     );
-    if (mErr) throw mErr;
+    if (mErr) {
+      // Rollback manual: desfaz a avaliação criada para evitar duplicatas na retentativa
+      await supabase.from("evaluations").delete().eq("id", created.id);
+      throw mErr;
+    }
   }
 
 
