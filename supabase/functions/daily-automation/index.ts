@@ -142,7 +142,7 @@ serve(async (req: Request) => {
       getParam(settings, "payment_reminder", "daily_limit", DEFAULT_PAYMENT_CAP),
     );
     const overdueCap = Number(
-      getParam(settings, "payment_overdue", "daily_limit", DEFAULT_PAYMENT_CAP),
+      getParam(settings, "payment_overdue", "daily_limit", 50),
     );
 
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
@@ -296,12 +296,34 @@ serve(async (req: Request) => {
     const overdueInserts: any[] = [];
     if (overdueOn) {
       const todaySP = spDateStrToday();
+      const overdueDaysAfter = Number(
+        getParam(settings, "payment_overdue", "days_after_due", 1),
+      );
+      const overdueRepeatEvery = Number(
+        getParam(settings, "payment_overdue", "repeat_every_days", 7),
+      );
+
+      // Última cobrança enviada/agendada por aluno (para respeitar o intervalo)
+      const sinceISO = new Date(
+        Date.now() - overdueRepeatEvery * 86400000,
+      ).toISOString();
+      const { data: recentOverdue } = await supabase
+        .from("scheduled_messages")
+        .select("student_id, scheduled_for")
+        .eq("message_type", "payment_overdue")
+        .gte("scheduled_for", sinceISO);
+      const recentByStudent = new Set(
+        (recentOverdue || []).map((r: any) => r.student_id),
+      );
+
       for (const s of activeStudents) {
         if (overdueInserts.length >= overdueCap) break;
         if (!s.payment_due_date) continue;
         const due = String(s.payment_due_date);
         if (due >= todaySP) continue; // ainda não venceu
         if (hasPending.has(`${s.id}:payment_overdue`)) continue;
+        if (recentByStudent.has(s.id)) continue; // dentro do intervalo de repetição
+
         const daysLate = Math.max(
           1,
           Math.floor(
@@ -309,6 +331,8 @@ serve(async (req: Request) => {
               new Date(due + "T00:00:00Z").getTime()) / 86400000,
           ),
         );
+        if (daysLate < overdueDaysAfter) continue;
+
         const content = await resolveAutomationMessage(
           supabase, settings, "payment_overdue", "payment_overdue",
           PAYMENT_OVERDUE_TEMPLATE(s.name, daysLate),
