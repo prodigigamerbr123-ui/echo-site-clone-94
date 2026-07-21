@@ -555,6 +555,17 @@ export function ListaAlunos() {
                                 {format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}
                               </div>
                             </TableCell>
+                          {visibleColumns.dueDate && (
+                            <TableCell>
+                              {student.payment_due_date ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                                  {format(new Date(student.payment_due_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
                           )}
                           {visibleColumns.payment && (
                             <TableCell>
