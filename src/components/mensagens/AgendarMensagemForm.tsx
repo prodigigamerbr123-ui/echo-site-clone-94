@@ -102,7 +102,9 @@ export function AgendarMensagemForm({ onSaved }: Props) {
         if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
       } else {
         if (!date || !time) throw new Error("Preencha data e horário");
-        const base = new Date(`${date}T${time}`);
+        const [dy, dmo, dd] = date.split("-").map(Number);
+        const [th, tmi] = time.split(":").map(Number);
+        const base = spDate(dy, dmo - 1, dd, th, tmi);
         if (base <= new Date()) throw new Error("Data deve ser futura");
         rows.push({ student_id: studentId, content: finalContent, scheduled_for: base.toISOString(), message_type: "manual", status: "pending" });
         if (recurrence) {
