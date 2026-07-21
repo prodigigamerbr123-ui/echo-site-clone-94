@@ -29,20 +29,8 @@ serve(async (req: Request) => {
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
     const headers = { apikey: EVOLUTION_INSTANCE_TOKEN, 'Content-Type': 'application/json' };
 
-    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    const action = body?.action || 'status';
-
-    if (action === 'logout') {
-      const r = await fetch(`${baseUrl}/instance/disconnect`, {
-        method: 'POST', headers, body: JSON.stringify({}),
-      });
-      const data = await r.json().catch(() => ({}));
-      return new Response(JSON.stringify({ success: r.ok, data }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Get connection status
+    // Somente consulta status. Esta função NÃO deve chamar connect, QR ou disconnect.
+    // O QR Code e qualquer reconexão ficam exclusivamente no painel da Evolution.
     const statusResp = await fetch(`${baseUrl}/instance/status`, { headers });
     const statusText = await statusResp.text();
     console.log(`[instance/status] http=${statusResp.status} body=${statusText.slice(0, 400)}`);
@@ -52,36 +40,8 @@ serve(async (req: Request) => {
     const connected = !!(d?.Connected && d?.LoggedIn);
     const state = connected ? 'open' : (d?.Connected ? 'connecting' : 'close');
 
-    let qrcode: string | null = null;
-    let pairingCode: string | null = null;
-
-    // Só dispara /instance/connect quando NÃO está conectado. Chamar connect
-    // com sessão ativa pode derrubar o WhatsApp que já está logado.
-    if (!connected) {
-      if (action === 'connect') {
-        try {
-          const cr = await fetch(`${baseUrl}/instance/connect`, {
-            method: 'POST', headers, body: JSON.stringify({ immediate: true }),
-          });
-          if (!cr.ok) {
-            const ct = await cr.text().catch(() => '');
-            console.warn(`[instance/connect] http=${cr.status} body=${ct.slice(0, 200)}`);
-          }
-        } catch (connErr: any) {
-          console.error('[instance/connect] falha de rede:', connErr?.message || connErr);
-        }
-      }
-      const qrResp = await fetch(`${baseUrl}/instance/qr`, { headers });
-      const qrText = await qrResp.text();
-      console.log(`[instance/qr] http=${qrResp.status} body=${qrText.slice(0, 200)}`);
-      let qrData: any = {};
-      try { qrData = JSON.parse(qrText); } catch (_) {}
-      qrcode = qrData?.data?.qrcode || qrData?.qrcode || null;
-      pairingCode = qrData?.data?.pairingCode || qrData?.pairingCode || null;
-    }
-
     return new Response(
-      JSON.stringify({ state, qrcode, pairingCode, instance: d?.Name || null }),
+      JSON.stringify({ state, connected, instance: d?.Name || null }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
