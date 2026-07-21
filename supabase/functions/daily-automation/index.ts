@@ -128,6 +128,7 @@ serve(async (req: Request) => {
     const birthdayOn = isEnabled(settings, "birthday");
     const inviteOn = isEnabled(settings, "evaluation_invite");
     const paymentOn = isEnabled(settings, "payment_reminder");
+    const overdueOn = isEnabled(settings, "payment_overdue");
     const daysOverdue = Number(
       getParam(settings, "evaluation_invite", "days_overdue", DEFAULT_DAYS_OVERDUE),
     );
@@ -139,6 +140,9 @@ serve(async (req: Request) => {
     );
     const paymentCap = Number(
       getParam(settings, "payment_reminder", "daily_limit", DEFAULT_PAYMENT_CAP),
+    );
+    const overdueCap = Number(
+      getParam(settings, "payment_overdue", "daily_limit", DEFAULT_PAYMENT_CAP),
     );
 
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
