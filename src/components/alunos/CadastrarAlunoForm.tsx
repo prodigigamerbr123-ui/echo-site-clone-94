@@ -104,7 +104,7 @@ export function CadastrarAlunoForm() {
 
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['students-evaluation'] });
+      queryClient.invalidateQueries({ queryKey: ['students-evaluation-agenda'] });
 
       setSuccessData({ name: data.name });
       setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal", cidade: "", cpf: "", vencimento: "" });
