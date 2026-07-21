@@ -503,6 +503,18 @@ export function ListaAlunos() {
                               </div>
                             </TableCell>
                           )}
+                          {visibleColumns.cpf && (
+                            <TableCell>
+                              {student.cpf ? (
+                                <div className="flex items-center gap-2 text-sm font-mono">
+                                  <IdCard className="h-4 w-4 text-muted-foreground" />
+                                  {maskCpfDisplay(student.cpf)}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
                           {visibleColumns.city && (
                             <TableCell>
                               {student.city ? (
