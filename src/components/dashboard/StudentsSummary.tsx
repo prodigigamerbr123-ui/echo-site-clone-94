@@ -13,6 +13,7 @@ export function StudentsSummary() {
     queryKey: ['students-summary'],
     staleTime: 0,
     refetchInterval: 60_000,
+    queryFn: async () => {
       // Get recent students (last 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
