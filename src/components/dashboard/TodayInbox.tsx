@@ -13,6 +13,7 @@ import {
 } from "@/lib/evaluationMessages";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
 import { confirm } from "@/components/ui/confirm-dialog";
+import { spParts, spDate } from "@/lib/spTime";
 
 
 interface Evaluation {
@@ -105,18 +106,18 @@ export function TodayInbox() {
     const evalDate = new Date(ev.scheduled_at);
     await supabase.from("scheduled_messages").delete()
       .eq("evaluation_id", ev.id).eq("status", "pending");
-    await Promise.all([
-      supabase.from("evaluations").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", ev.id),
-      supabase.from("students").update({
-        had_evaluation: true, last_evaluation_date: format(evalDate, "yyyy-MM-dd"),
-      }).eq("id", ev.student_id),
-    ]);
+    const { error: rpcErr } = await supabase.rpc("complete_evaluation_tx", { _evaluation_id: ev.id });
+    if (rpcErr) {
+      toast({ title: "Erro", description: rpcErr.message, variant: "destructive" });
+      return;
+    }
     const { data: existing } = await supabase.from("scheduled_messages").select("id")
       .eq("student_id", ev.student_id).eq("message_type", "evaluation_followup")
       .eq("status", "pending").limit(1);
     if (!existing?.length) {
-      const fu = new Date(evalDate.getTime() + 7 * 86400000);
-      fu.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+      const base = new Date(evalDate.getTime() + 7 * 86400000);
+      const bp = spParts(base);
+      const fu = spDate(bp.y, bp.mo, bp.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
       const name = ev.students?.name ?? "aluno";
       const content = await resolveAutomationMessage(
         "evaluation_followup",
@@ -134,6 +135,8 @@ export function TodayInbox() {
 
     toast({ title: "Avaliação realizada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+    qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
   const markNoShow = async (ev: Evaluation) => {
@@ -145,8 +148,9 @@ export function TodayInbox() {
     if (!ok) return;
     await supabase.from("scheduled_messages").delete().eq("evaluation_id", ev.id).eq("status", "pending");
     await supabase.from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
-    const t = new Date(); t.setDate(t.getDate() + 1);
-    t.setHours(9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
+    const tomorrowUTC = new Date(Date.now() + 86400000);
+    const tp = spParts(tomorrowUTC);
+    const t = spDate(tp.y, tp.mo, tp.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
     const name = ev.students?.name ?? "aluno";
     const rescheduleContent = await resolveAutomationMessage(
       "no_show_reschedule",
@@ -163,6 +167,8 @@ export function TodayInbox() {
 
     toast({ title: "Falta registrada" });
     qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+    qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
   return (

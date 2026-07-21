@@ -336,7 +336,8 @@ export default function AgendarAvaliacao() {
 
       setStudentId(""); setDate(""); setTime("09:00"); setNotes("");
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
     } catch (e: any) {
       toast({ title: "Erro ao agendar", description: e.message, variant: "destructive" });
     } finally {
@@ -359,7 +360,8 @@ export default function AgendarAvaliacao() {
       .eq("id", ev.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-    qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+    qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     toast({ title: "Avaliação cancelada" });
   };
 
@@ -440,7 +442,7 @@ export default function AgendarAvaliacao() {
       }
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
       toast({ title: "Avaliação remarcada" });
       setRescheduleTarget(null);
     } catch (e: any) {
@@ -506,8 +508,8 @@ export default function AgendarAvaliacao() {
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
-      qc.invalidateQueries({ queryKey: ["students-evaluation"] });
-      qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Avaliação marcada como realizada",
         description: followupScheduled ? "Follow-up agendado." : "Follow-up não agendado (automação desligada ou já existente).",
@@ -566,7 +568,7 @@ export default function AgendarAvaliacao() {
       }
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
       toast({
         title: "Falta registrada",
         description: rescheduled ? "Mensagem de remarcação agendada." : "Remarcação automática desligada.",
