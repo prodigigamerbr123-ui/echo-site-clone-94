@@ -120,7 +120,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
             {student.birth_date && (
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Nascimento</span>
-                <span>{format(new Date(student.birth_date), "dd/MM/yyyy", { locale: ptBR })}</span>
+                <span>{format(new Date(student.birth_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>
               </div>
             )}
             {student.cpf && (
