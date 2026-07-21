@@ -127,12 +127,16 @@ serve(async (req: Request) => {
       // Delay anti-ban antes de cada envio (exceto o primeiro)
       if (i > 0) await sleep(randomDelayMs());
 
+      // Rede de segurança: substitui {nome} caso tenha escapado do frontend
+      const firstName = (student.name || "").trim().split(/\s+/)[0] || "";
+      const finalText = String(msg.content || "").replace(/\{nome\}/gi, firstName);
+
       try {
         const sendResult = await sendEvolutionText({
           baseUrl,
           instanceToken: EVOLUTION_INSTANCE_TOKEN,
           number: phoneCheck.number,
-          text: msg.content,
+          text: finalText,
         });
 
         if (sendResult.ok) {
@@ -146,7 +150,7 @@ serve(async (req: Request) => {
             .eq("id", msg.id);
           await supabase.from("messages").insert({
             student_id: msg.student_id,
-            content: msg.content,
+            content: finalText,
             status: "sent",
           });
           sent++;
