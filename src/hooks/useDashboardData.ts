@@ -127,6 +127,23 @@ export const useDashboardStats = () => {
         return m === todayMonth && d === todayDay;
       }).length || 0;
 
+      // Mensalidade: vencidos (payment_due_date < hoje) e vencendo em 3 dias
+      const todayStr = format(now, 'yyyy-MM-dd');
+      const in3DaysStr = format(subDays(now, -3), 'yyyy-MM-dd');
+
+      const { count: paymentOverdueCount } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .not('payment_due_date', 'is', null)
+        .lt('payment_due_date', todayStr);
+
+      const { count: paymentDueIn3DaysCount } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .not('payment_due_date', 'is', null)
+        .gte('payment_due_date', todayStr)
+        .lte('payment_due_date', in3DaysStr);
+
       return {
         totalStudents: totalStudents || 0,
         activeStudents: activeStudents || 0,
@@ -142,6 +159,8 @@ export const useDashboardStats = () => {
         evaluationsCompletedMonth: evaluationsCompletedMonth || 0,
         studentsWithoutEvaluation: studentsWithoutEvaluation || 0,
         birthdaysToday,
+        paymentOverdueCount: paymentOverdueCount || 0,
+        paymentDueIn3DaysCount: paymentDueIn3DaysCount || 0,
       };
     },
   });
