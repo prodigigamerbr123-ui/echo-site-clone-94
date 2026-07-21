@@ -13,6 +13,7 @@ import { Trash2, Plus, ChevronsUpDown } from "lucide-react";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { replaceNameVar } from "@/lib/phone";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+import { spDate, spParts } from "@/lib/spTime";
 
 interface Student { id: string; name: string; phone: string; }
 interface PredefinedMessage { id: string; title: string; content: string; }
