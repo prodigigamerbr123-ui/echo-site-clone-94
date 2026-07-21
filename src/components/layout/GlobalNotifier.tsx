@@ -74,7 +74,7 @@ export function GlobalNotifier() {
           ) {
             if (cfg.notify_message_rescheduled) {
               toast("Mensagem reagendada", {
-                description: new Date(newRow.scheduled_for).toLocaleString("pt-BR"),
+                description: new Date(newRow.scheduled_for).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
               });
             }
           }
