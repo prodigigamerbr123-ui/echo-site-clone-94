@@ -336,7 +336,8 @@ export default function AgendarAvaliacao() {
 
       setStudentId(""); setDate(""); setTime("09:00"); setNotes("");
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
     } catch (e: any) {
       toast({ title: "Erro ao agendar", description: e.message, variant: "destructive" });
     } finally {
