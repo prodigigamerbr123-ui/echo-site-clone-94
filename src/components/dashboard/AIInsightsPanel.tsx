@@ -43,10 +43,14 @@ export function AIInsightsPanel() {
       if (data?.briefing) {
         setBriefing(data.briefing);
         setGeneratedAt(data.generatedAt);
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({ date: todayKey(), briefing: data.briefing, generatedAt: data.generatedAt } satisfies Cache)
-        );
+        try {
+          localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify({ date: todayKey(), briefing: data.briefing, generatedAt: data.generatedAt } satisfies Cache)
+          );
+        } catch {
+          // localStorage indisponível — apenas ignora o cache
+        }
       } else {
         setError("Resposta vazia da IA.");
       }
