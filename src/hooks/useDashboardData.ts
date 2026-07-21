@@ -116,8 +116,8 @@ export const useDashboardStats = () => {
         .eq('had_evaluation', false);
 
       // Get students with birthdays today - fix the date format comparison
-      const todayMonth = format(now, 'MM');
-      const todayDay = format(now, 'dd');
+      const todayMonth = String(p.mo + 1).padStart(2, "0");
+      const todayDay = String(p.d).padStart(2, "0");
       
       const { data: birthdayStudents } = await supabase
         .from('students')
@@ -134,9 +134,9 @@ export const useDashboardStats = () => {
         return m === todayMonth && d === todayDay;
       }).length || 0;
 
-      // Mensalidade: vencidos (payment_due_date < hoje) e vencendo em 3 dias
-      const todayStr = format(now, 'yyyy-MM-dd');
-      const in3DaysStr = format(subDays(now, -3), 'yyyy-MM-dd');
+      // Mensalidade: vencidos (payment_due_date < hoje) e vencendo em 3 dias (calendário SP)
+      const todayStr = fmtDateISOSP(now);
+      const in3DaysStr = fmtDateISOSP(spDate(p.y, p.mo, p.d + 3, 12, 0));
 
       const { count: paymentOverdueCount } = await supabase
         .from('students')
