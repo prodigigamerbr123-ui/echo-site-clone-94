@@ -81,6 +81,10 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
     }
     toast({ title: `Aluno marcado como ${newStatus === "active" ? "ativo" : "inativo"}` });
     qc.invalidateQueries({ queryKey: ["students"] });
+    qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
+    qc.invalidateQueries({ queryKey: ["students-summary"] });
+    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    qc.invalidateQueries({ queryKey: ["today-actions"] });
     onOpenChange(false);
   };
 
