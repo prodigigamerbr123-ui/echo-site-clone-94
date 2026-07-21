@@ -64,6 +64,9 @@ const PAYMENT_BEFORE_TEMPLATE = (name: string, days: number) =>
 const PAYMENT_DUE_TEMPLATE = (name: string) =>
   `Oi ${name}! Sua mensalidade vence hoje. Bora manter o treino em dia? 🏋️ Qualquer coisa estou à disposição!`;
 
+const PAYMENT_OVERDUE_TEMPLATE = (name: string, days: number) =>
+  `Oi ${name}! Sua mensalidade está ${days} ${days === 1 ? "dia" : "dias"} em atraso. Consegue regularizar hoje? Qualquer coisa é só me chamar!`;
+
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
