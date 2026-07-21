@@ -292,7 +292,39 @@ serve(async (req: Request) => {
       }
     }
 
-    const allInserts = [...birthdayInserts, ...reminderInserts, ...paymentInserts];
+    // ---- 4) Cobrança de mensalidade vencida ----
+    const overdueInserts: any[] = [];
+    if (overdueOn) {
+      const todaySP = spDateStrToday();
+      for (const s of activeStudents) {
+        if (overdueInserts.length >= overdueCap) break;
+        if (!s.payment_due_date) continue;
+        const due = String(s.payment_due_date);
+        if (due >= todaySP) continue; // ainda não venceu
+        if (hasPending.has(`${s.id}:payment_overdue`)) continue;
+        const daysLate = Math.max(
+          1,
+          Math.floor(
+            (new Date(todaySP + "T00:00:00Z").getTime() -
+              new Date(due + "T00:00:00Z").getTime()) / 86400000,
+          ),
+        );
+        const content = await resolveAutomationMessage(
+          supabase, settings, "payment_overdue", "payment_overdue",
+          PAYMENT_OVERDUE_TEMPLATE(s.name, daysLate),
+          { nome: s.name, dias: String(daysLate) } as any,
+        );
+        overdueInserts.push({
+          student_id: s.id,
+          content,
+          scheduled_for: scatterTimeToday().toISOString(),
+          message_type: "payment_overdue",
+          status: "pending",
+        });
+      }
+    }
+
+    const allInserts = [...birthdayInserts, ...reminderInserts, ...paymentInserts, ...overdueInserts];
 
     let inserted = 0;
     if (allInserts.length > 0) {
