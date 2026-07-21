@@ -442,7 +442,7 @@ export default function AgendarAvaliacao() {
       }
 
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["scheduled-messages"] });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
       toast({ title: "Avaliação remarcada" });
       setRescheduleTarget(null);
     } catch (e: any) {
