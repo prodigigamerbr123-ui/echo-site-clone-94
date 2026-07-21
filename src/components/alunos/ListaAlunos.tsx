@@ -76,7 +76,7 @@ export function ListaAlunos() {
   const [sortBy, setSortBy] = useState<"recent" | "name" | "due" | "last_eval">("recent");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
-  const [chargingOverdue, setChargingOverdue] = useState(false);
+  
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(() => {
     if (typeof window === "undefined") return DEFAULT_COLUMNS;
     try {
