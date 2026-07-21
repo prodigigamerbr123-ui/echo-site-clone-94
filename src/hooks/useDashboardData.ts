@@ -178,10 +178,11 @@ export const useTodayActions = () => {
     queryKey: ['today-actions'],
     queryFn: async () => {
       const now = new Date();
+      const p = spParts(now);
       const sevenDaysAgo = subDays(now, 7);
       const twentyOneDaysAgo = subDays(now, 21);
-      const todayMonth = format(now, 'MM');
-      const todayDay = format(now, 'dd');
+      const todayMonth = String(p.mo + 1).padStart(2, "0");
+      const todayDay = String(p.d).padStart(2, "0");
 
       // Get students with birthdays today
       const { data: allStudents } = await supabase
@@ -198,11 +199,17 @@ export const useTodayActions = () => {
         return m === todayMonth && d === todayDay;
       }) || [];
 
+      // Datas SP (yyyy-MM-dd) para janelas de follow-up
+      const sevenAgoStr = fmtDateISOSP(sevenDaysAgo);
+      const sixAgoStr = fmtDateISOSP(subDays(now, 6));
+      const twentyOneAgoStr = fmtDateISOSP(twentyOneDaysAgo);
+      const twentyAgoStr = fmtDateISOSP(subDays(now, 20));
+
       // Get students with evaluations that are overdue (more than 7 days)
       const { data: studentsNeedingEvaluation } = await supabase
         .from('students')
         .select('id, name, phone, last_evaluation_date, had_evaluation')
-        .or(`last_evaluation_date.lt.${format(sevenDaysAgo, 'yyyy-MM-dd')},and(had_evaluation.eq.false)`)
+        .or(`last_evaluation_date.lt.${sevenAgoStr},and(had_evaluation.eq.false)`)
         .limit(5000);
 
 
@@ -210,15 +217,15 @@ export const useTodayActions = () => {
       const { data: studentsNeeding7DayFollowUp } = await supabase
         .from('students')
         .select('id, name, phone, created_at')
-        .gte('created_at', format(sevenDaysAgo, 'yyyy-MM-dd'))
-        .lt('created_at', format(subDays(sevenDaysAgo, -1), 'yyyy-MM-dd'));
+        .gte('created_at', sevenAgoStr)
+        .lt('created_at', sixAgoStr);
 
       // Get students created 21 days ago for second follow-up
       const { data: studentsNeeding21DayFollowUp } = await supabase
         .from('students')
         .select('id, name, phone, created_at')
-        .gte('created_at', format(twentyOneDaysAgo, 'yyyy-MM-dd'))
-        .lt('created_at', format(subDays(twentyOneDaysAgo, -1), 'yyyy-MM-dd'));
+        .gte('created_at', twentyOneAgoStr)
+        .lt('created_at', twentyAgoStr);
 
       const actions = [];
 
