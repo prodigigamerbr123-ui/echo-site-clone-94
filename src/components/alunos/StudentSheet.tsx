@@ -15,7 +15,7 @@ import { Phone, Calendar, Activity, CalendarPlus, Send, MessageSquare, FileText,
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
-import { maskCpfDisplay } from "@/lib/cpf";
+import { maskCpf } from "@/lib/cpf";
 
 interface Student {
   id: string; name: string; phone: string;
