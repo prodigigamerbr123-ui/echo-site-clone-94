@@ -10,8 +10,6 @@ export type TemplateVars = {
   nome?: string;
   data?: string;
   hora?: string;
-  dias?: string;
-  [key: string]: string | undefined;
 };
 
 export function interpolate(text: string, vars: TemplateVars): string {
@@ -23,17 +21,9 @@ export function interpolate(text: string, vars: TemplateVars): string {
     date: vars.data ?? "",
     hora: vars.hora ?? "",
     time: vars.hora ?? "",
-    dias: vars.dias ?? "",
-    days: vars.dias ?? "",
   };
-  return text.replace(/\{(\w+)\}/g, (m, k) => {
-    const key = String(k).toLowerCase();
-    if (key in map) return map[key];
-    const extra = vars[key];
-    return extra !== undefined ? String(extra) : m;
-  });
+  return text.replace(/\{(\w+)\}/g, (m, k) => (map[k.toLowerCase()] ?? m));
 }
-
 
 export function getLinkedTemplateId(
   settings: AutomationSettingsMap | undefined,

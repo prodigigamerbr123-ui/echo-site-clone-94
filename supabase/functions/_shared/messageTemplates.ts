@@ -40,8 +40,7 @@ export function getLinkedTemplateId(
   return id && typeof id === "string" ? id : null;
 }
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const contentCache = new Map<string, { value: string | null; expiresAt: number }>();
+const contentCache = new Map<string, string | null>();
 
 export async function resolveAutomationMessage(
   supabase: any,
@@ -53,21 +52,16 @@ export async function resolveAutomationMessage(
 ): Promise<string> {
   const id = getLinkedTemplateId(settings, automationKey, messageType);
   if (!id) return fallback;
-  const now = Date.now();
-  const cached = contentCache.get(id);
-  let content: string | null;
-  if (cached && cached.expiresAt > now) {
-    content = cached.value;
-  } else {
+  let content = contentCache.get(id) ?? null;
+  if (!contentCache.has(id)) {
     const { data } = await supabase
       .from("predefined_messages")
       .select("content")
       .eq("id", id)
       .maybeSingle();
     content = data?.content ?? null;
-    contentCache.set(id, { value: content, expiresAt: now + CACHE_TTL_MS });
+    contentCache.set(id, content);
   }
   if (!content) return fallback;
   return interpolate(content, vars);
 }
-
