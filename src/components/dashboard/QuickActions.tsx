@@ -22,105 +22,48 @@ type Action = {
   className: string;
 };
 
+const ACTION_STYLE =
+  "bg-card border border-border text-foreground hover:border-primary/40 hover:bg-accent hover:-translate-y-0.5 hover:shadow-card";
+
 const groups: { title: string; description: string; actions: Action[] }[] = [
   {
     title: "Alunos",
     description: "Gerenciar sua base de alunos",
     actions: [
-      {
-        to: "/cadastrar-aluno",
-        icon: UserPlus,
-        label: "Cadastrar Aluno",
-        className:
-          "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/alunos?tab=lista",
-        icon: Users,
-        label: "Ver Alunos",
-        className:
-          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
-      },
+      { to: "/cadastrar-aluno", icon: UserPlus, label: "Cadastrar Aluno", className: ACTION_STYLE },
+      { to: "/alunos?tab=lista", icon: Users, label: "Ver Alunos", className: ACTION_STYLE },
     ],
   },
   {
     title: "Mensagens",
     description: "Enviar e programar comunicações",
     actions: [
-      {
-        to: "/mensagens",
-        icon: Send,
-        label: "Enviar mensagem",
-        className:
-          "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_4px_20px_-2px_hsl(160_70%_40%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/mensagens?tab=agendar",
-        icon: CalendarClock,
-        label: "Agendar mensagem",
-        className:
-          "bg-card border border-border hover:border-emerald-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/mensagens", icon: Send, label: "Enviar mensagem", className: ACTION_STYLE },
+      { to: "/mensagens?tab=agendar", icon: CalendarClock, label: "Agendar mensagem", className: ACTION_STYLE },
     ],
   },
   {
     title: "Conteúdo & Histórico",
     description: "Templates e mensagens enviadas",
     actions: [
-      {
-        to: "/mensagens-predefinidas",
-        icon: MessageSquare,
-        label: "Pré-definidas",
-        className:
-          "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_4px_20px_-2px_hsl(217_80%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/caixa-de-saida",
-        icon: History,
-        label: "Histórico",
-        className:
-          "bg-card border border-border hover:border-sky-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/mensagens-predefinidas", icon: MessageSquare, label: "Pré-definidas", className: ACTION_STYLE },
+      { to: "/caixa-de-saida", icon: History, label: "Histórico", className: ACTION_STYLE },
     ],
   },
   {
     title: "Avaliação Física",
     description: "Agendar e revisar avaliações",
     actions: [
-      {
-        to: "/agendar-avaliacao",
-        icon: CalendarPlus,
-        label: "Agendar",
-        className:
-          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-2px_hsl(250_70%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/avaliacao-fisica",
-        icon: ClipboardList,
-        label: "Histórico",
-        className:
-          "bg-card border border-border hover:border-violet-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/agendar-avaliacao", icon: CalendarPlus, label: "Agendar", className: ACTION_STYLE },
+      { to: "/avaliacao-fisica", icon: ClipboardList, label: "Histórico", className: ACTION_STYLE },
     ],
   },
   {
     title: "Ferramentas",
     description: "IA e conexão do WhatsApp",
     actions: [
-      {
-        to: "/assistente-ia",
-        icon: Bot,
-        label: "Assistente IA",
-        className:
-          "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-[0_4px_20px_-2px_hsl(322_75%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/whatsapp",
-        icon: MessageCircle,
-        label: "WhatsApp",
-        className:
-          "bg-card border border-border hover:border-fuchsia-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/assistente-ia", icon: Bot, label: "Assistente IA", className: ACTION_STYLE },
+      { to: "/whatsapp", icon: MessageCircle, label: "WhatsApp", className: ACTION_STYLE },
     ],
   },
 ];
