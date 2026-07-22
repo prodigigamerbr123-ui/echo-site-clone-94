@@ -25,8 +25,8 @@ export async function requireUser(req: Request): Promise<Response | null> {
   );
 
   const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getClaims(token);
-  if (error || !data?.claims) {
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -48,10 +48,7 @@ export function requireCronSecret(req: Request): Response | null {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  const provided =
-    req.headers.get("x-cron-secret") ||
-    new URL(req.url).searchParams.get("cron_secret") ||
-    "";
+  const provided = req.headers.get("x-cron-secret") || "";
   if (provided !== expected) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
