@@ -91,6 +91,10 @@ export function GlobalNotifier() {
           if (oldRow.status === newRow.status) return;
 
           if (newRow.status === "sent") {
+            if (cfg.notify_sent_each) {
+              const studentName = await fetchStudentName(newRow.student_id);
+              toast.success("Mensagem enviada", { description: studentName || undefined });
+            }
             queueSent();
             return;
           }
