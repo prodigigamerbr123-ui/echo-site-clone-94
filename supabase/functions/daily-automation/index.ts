@@ -2,10 +2,12 @@
 // - Lembretes de avaliação vencida (>90 dias) ou pendente (>14 dias após cadastro)
 // - Aniversários
 // - Lembretes de vencimento da mensalidade (antes e no dia)
-// - Distribui horários entre 09:00 e 12:00 para não disparar em massa
+// - Distribui horários entre 12:00 e 15:00 (horário de Brasília) para não disparar em massa
 // - Sorteia entre variações de texto por tipo
 // - Limita a 60 novos agendamentos por execução (avaliação); pagamento tem cap próprio
 // - Só considera alunos com status 'active'
+// - Deduplicação: não agenda o mesmo (aluno, tipo) se já houver mensagem pending/processing/sent
+//   para o mesmo dia (fuso SP). Reforçado por índice único parcial no banco.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
