@@ -64,8 +64,8 @@ export function AISuggestions() {
       priority: "low",
       icon: Heart,
       action: "Envie uma mensagem de lembrete de hidratação para todos os alunos",
-      accent: "bg-gradient-to-br from-cyan-500 to-blue-600",
-      border: "border-l-cyan-500",
+      accent: "bg-whatsapp text-whatsapp-foreground",
+      border: "border-l-whatsapp",
     },
     {
       id: "training-tip",
@@ -75,8 +75,8 @@ export function AISuggestions() {
       priority: "low",
       icon: Dumbbell,
       action: "Crie uma dica de treino do dia para enviar aos alunos",
-      accent: "bg-gradient-to-br from-orange-500 to-red-600",
-      border: "border-l-orange-500",
+      accent: "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground",
+      border: "border-l-primary",
     },
     {
       id: "feedback",
@@ -86,8 +86,8 @@ export function AISuggestions() {
       priority: "low",
       icon: ClipboardList,
       action: "Envie uma mensagem pedindo feedback sobre os treinos da semana",
-      accent: "bg-gradient-to-br from-indigo-500 to-purple-600",
-      border: "border-l-indigo-500",
+      accent: "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground",
+      border: "border-l-primary",
     },
     {
       id: "checkin",
@@ -97,8 +97,8 @@ export function AISuggestions() {
       priority: "low",
       icon: MessageCircle,
       action: "Envie um check-in semanal para todos os alunos ativos",
-      accent: "bg-gradient-to-br from-emerald-500 to-teal-600",
-      border: "border-l-emerald-500",
+      accent: "bg-whatsapp text-whatsapp-foreground",
+      border: "border-l-whatsapp",
     },
   ];
 
@@ -114,8 +114,8 @@ export function AISuggestions() {
         priority: "high",
         icon: Calendar,
         action: `Envie mensagens de parabéns para os ${stats.birthdaysToday} aniversariante(s) de hoje`,
-        accent: "bg-gradient-to-br from-purple-500 to-pink-600",
-        border: "border-l-purple-500",
+        accent: "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground",
+        border: "border-l-primary",
       });
     }
 
@@ -131,8 +131,8 @@ export function AISuggestions() {
         priority: "medium",
         icon: Users,
         action: `Envie mensagens de acompanhamento para ${needsFollow.length} aluno(s) novo(s)`,
-        accent: "bg-gradient-to-br from-blue-500 to-cyan-600",
-        border: "border-l-blue-500",
+        accent: "bg-whatsapp text-whatsapp-foreground",
+        border: "border-l-whatsapp",
       });
     }
 
@@ -146,8 +146,8 @@ export function AISuggestions() {
         priority: "high",
         icon: TrendingUp,
         action: `Envie lembretes de avaliação física para ${needsEvaluation.length} aluno(s)`,
-        accent: "bg-gradient-to-br from-[hsl(var(--warning))] to-orange-600",
-        border: "border-l-[hsl(var(--warning))]",
+        accent: "bg-warning text-warning-foreground",
+        border: "border-l-warning",
       });
     }
 
@@ -160,8 +160,8 @@ export function AISuggestions() {
         priority: "low",
         icon: MessageCircle,
         action: "Envie uma mensagem motivacional para todos os alunos",
-        accent: "bg-gradient-to-br from-[hsl(var(--success))] to-emerald-600",
-        border: "border-l-[hsl(var(--success))]",
+        accent: "bg-success text-success-foreground",
+        border: "border-l-success",
       });
     }
 
@@ -172,10 +172,10 @@ export function AISuggestions() {
         description: "Crie templates para acelerar envios futuros.",
         example: 'Ex.: "Crie um template de boas-vindas para novos alunos."',
         priority: "low",
-        icon: MessageCircle,
+        icon: MessageSquare,
         action: "Crie uma nova mensagem pré-definida de boas-vindas",
-        accent: "bg-gradient-to-br from-slate-500 to-slate-700",
-        border: "border-l-slate-500",
+        accent: "bg-muted-foreground/70 text-background",
+        border: "border-l-muted-foreground",
       });
     }
 
