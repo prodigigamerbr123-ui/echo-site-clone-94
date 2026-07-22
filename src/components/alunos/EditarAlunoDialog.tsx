@@ -199,7 +199,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             />
             {formData.telefone.trim() && (
               phoneCheck.ok ? (
-                <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
+                <p className="text-xs text-success flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
               ) : (
                 <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> {phoneCheck.reason}</p>
               )
@@ -250,7 +250,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             />
             {formData.cpf.trim() && (
               isValidCpf(formData.cpf) ? (
-                <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> CPF válido</p>
+                <p className="text-xs text-success flex items-center gap-1"><Check className="h-3 w-3" /> CPF válido</p>
               ) : (
                 <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> CPF inválido</p>
               )

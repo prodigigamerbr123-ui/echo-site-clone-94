@@ -68,13 +68,13 @@ export function AIInsightsPanel() {
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden border-primary/20 shadow-elegant relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-cyan-500/5 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
         <CardHeader className="relative">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="absolute inset-0 rounded-xl bg-primary/30 blur-lg animate-pulse" />
-                <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary to-purple-600 text-white shadow-primary">
+                <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary">
                   <Bot className="h-5 w-5" />
                 </div>
               </div>

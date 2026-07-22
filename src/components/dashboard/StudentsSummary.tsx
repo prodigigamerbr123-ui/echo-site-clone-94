@@ -56,11 +56,11 @@ export function StudentsSummary() {
   const getMessageTypeBadge = (messageType: string) => {
     switch (messageType) {
       case 'daqui_7_dias':
-        return <Badge className="bg-green-500 text-white">Daqui 7 dias</Badge>;
+        return <Badge className="bg-success text-success-foreground">Daqui 7 dias</Badge>;
       case 'daqui_21_dias':
-        return <Badge className="bg-orange-500 text-white">Daqui 21 dias</Badge>;
+        return <Badge className="bg-warning text-warning-foreground">Daqui 21 dias</Badge>;
       case 'daqui_45_dias':
-        return <Badge className="bg-blue-500 text-white">Daqui 45 dias</Badge>;
+        return <Badge className="bg-primary text-primary-foreground">Daqui 45 dias</Badge>;
       case 'avaliacao_fisica':
         return <Badge variant="destructive">Avaliação Física</Badge>;
       default:
