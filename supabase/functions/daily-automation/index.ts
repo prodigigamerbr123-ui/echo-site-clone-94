@@ -305,7 +305,6 @@ serve(async (req: Request) => {
     // ---- 4) Cobrança de mensalidade vencida ----
     const overdueInserts: any[] = [];
     if (overdueOn) {
-      const todaySP = spDateStrToday();
       const overdueDaysAfter = Number(
         getParam(settings, "payment_overdue", "days_after_due", 1),
       );
