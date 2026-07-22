@@ -2,10 +2,12 @@
 // - Lembretes de avaliação vencida (>90 dias) ou pendente (>14 dias após cadastro)
 // - Aniversários
 // - Lembretes de vencimento da mensalidade (antes e no dia)
-// - Distribui horários entre 09:00 e 12:00 para não disparar em massa
+// - Distribui horários entre 12:00 e 15:00 (horário de Brasília) para não disparar em massa
 // - Sorteia entre variações de texto por tipo
 // - Limita a 60 novos agendamentos por execução (avaliação); pagamento tem cap próprio
 // - Só considera alunos com status 'active'
+// - Deduplicação: não agenda o mesmo (aluno, tipo) se já houver mensagem pending/processing/sent
+//   para o mesmo dia (fuso SP). Reforçado por índice único parcial no banco.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -165,11 +167,17 @@ serve(async (req: Request) => {
       from += pageSize;
     }
 
-    // Já existe algo pendente para (aluno, tipo)?
+    // Já existe algo agendado/processando/enviado HOJE (fuso SP) para (aluno, tipo)?
+    // Evita duplicata se a função rodar mais de uma vez no mesmo dia.
+    const todaySP = spDateStrToday();
+    const dayStartISO = new Date(`${todaySP}T00:00:00-03:00`).toISOString();
+    const dayEndISO = new Date(`${todaySP}T23:59:59.999-03:00`).toISOString();
     const { data: pendings } = await supabase
       .from("scheduled_messages")
       .select("student_id, message_type")
-      .eq("status", "pending")
+      .in("status", ["pending", "processing", "sent"])
+      .gte("scheduled_for", dayStartISO)
+      .lte("scheduled_for", dayEndISO)
       .in("message_type", [
         "evaluation_reminder",
         "birthday",
@@ -252,7 +260,6 @@ serve(async (req: Request) => {
     let paymentBeforeCount = 0;
     let paymentDueCount = 0;
     if (paymentOn) {
-      const todaySP = spDateStrToday();
       const beforeTarget = addDaysISO(todaySP, paymentDaysBefore);
 
       for (const s of activeStudents) {
@@ -298,7 +305,6 @@ serve(async (req: Request) => {
     // ---- 4) Cobrança de mensalidade vencida ----
     const overdueInserts: any[] = [];
     if (overdueOn) {
-      const todaySP = spDateStrToday();
       const overdueDaysAfter = Number(
         getParam(settings, "payment_overdue", "days_after_due", 1),
       );
@@ -353,17 +359,25 @@ serve(async (req: Request) => {
 
     const allInserts = [...birthdayInserts, ...reminderInserts, ...paymentInserts, ...overdueInserts];
 
+    // Insere um a um para poder ignorar duplicatas do índice único parcial
+    // scheduled_messages_no_dup_per_day (mesmo aluno + tipo + dia SP).
     let inserted = 0;
-    if (allInserts.length > 0) {
-      const { error, count } = await supabase
-        .from("scheduled_messages")
-        .insert(allInserts, { count: "exact" });
-      if (error) throw error;
-      inserted = count ?? allInserts.length;
+    let skippedDuplicates = 0;
+    for (const row of allInserts) {
+      const { error } = await supabase.from("scheduled_messages").insert(row);
+      if (error) {
+        if ((error as any).code === "23505") {
+          skippedDuplicates++;
+          continue;
+        }
+        throw error;
+      }
+      inserted++;
     }
 
     const summary = {
       inserted,
+      skippedDuplicates,
       birthdays: birthdayInserts.length,
       reminders: reminderInserts.length,
       payment_before: paymentBeforeCount,
