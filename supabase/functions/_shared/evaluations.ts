@@ -110,9 +110,13 @@ export function buildEvaluationMessages(
   const eve = spDate(eveParts.y, eveParts.mo, eveParts.d, 18, 0);
   const eveInFuture = eve.getTime() > now.getTime();
 
-  // 3) Dia -3h
-  const dayOf = new Date(scheduledAt.getTime() - 3 * 60 * 60 * 1000);
-  const dayOfInFuture = dayOf.getTime() > now.getTime();
+  // 3) Dia -3h (calculado em horário SP para não vazar para o dia anterior)
+  const sp = spParts(scheduledAt);
+  const dayOf = sp.h >= 3
+    ? spDate(sp.y, sp.mo, sp.d, sp.h - 3, sp.mi)
+    : null;
+  const dayOfInFuture = dayOf !== null && dayOf.getTime() > now.getTime();
+
 
   const collision = dayOf.getTime() - eve.getTime() < 12 * 60 * 60 * 1000;
 
