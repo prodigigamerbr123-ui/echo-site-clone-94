@@ -6,6 +6,7 @@ import {
   Sparkles,
   Users,
   MessageCircle,
+  MessageSquare,
   Calendar,
   TrendingUp,
   AlertCircle,
@@ -237,7 +238,7 @@ export function AISuggestions() {
       },
       medium: {
         label: "Médio",
-        className: "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30",
+        className: "bg-warning/10 text-warning border-warning/30",
       },
       low: {
         label: "Sugerido",
@@ -255,10 +256,10 @@ export function AISuggestions() {
 
   return (
     <Card className="overflow-hidden border-primary/10 shadow-card">
-      <CardHeader className="bg-gradient-to-r from-primary/5 via-purple-500/5 to-transparent">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white shadow-primary">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
