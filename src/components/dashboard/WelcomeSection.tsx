@@ -22,45 +22,45 @@ export function WelcomeSection() {
             
             {/* Quick Actions Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Button asChild size="sm" className="h-auto flex-col gap-2 p-4">
+              <Button asChild size="sm" className="h-full min-h-20 min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal">
                 <Link to="/alunos">
-                  <UserPlus className="h-5 w-5" />
-                  <span className="text-xs">Cadastrar Aluno</span>
+                  <UserPlus className="h-5 w-5 shrink-0" />
+                  <span className="block max-w-full overflow-hidden break-words text-center text-xs leading-tight">Cadastrar Aluno</span>
                 </Link>
               </Button>
               
-              <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
+              <Button asChild size="sm" variant="outline" className="h-full min-h-20 min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal">
                 <Link to="/alunos?tab=lista">
-                  <Users className="h-5 w-5" />
-                  <span className="text-xs">Ver Alunos</span>
+                  <Users className="h-5 w-5 shrink-0" />
+                  <span className="block max-w-full overflow-hidden break-words text-center text-xs leading-tight">Ver Alunos</span>
                 </Link>
               </Button>
               
-              <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
+              <Button asChild size="sm" variant="outline" className="h-full min-h-20 min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal">
                 <Link to="/mensagens">
-                  <Send className="h-5 w-5" />
-                  <span className="text-xs">Enviar Mensagem</span>
+                  <Send className="h-5 w-5 shrink-0" />
+                  <span className="block max-w-full overflow-hidden break-words text-center text-xs leading-tight">Enviar Mensagem</span>
                 </Link>
               </Button>
               
-              <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link to="/mensagens">
-                  <Clock className="h-5 w-5" />
-                  <span className="text-xs">Agendar Mensagem</span>
+              <Button asChild size="sm" variant="outline" className="h-full min-h-20 min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal">
+                <Link to="/mensagens?tab=agendar">
+                  <Clock className="h-5 w-5 shrink-0" />
+                  <span className="block max-w-full overflow-hidden break-words text-center text-xs leading-tight">Agendar Mensagem</span>
                 </Link>
               </Button>
               
-              <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
+              <Button asChild size="sm" variant="outline" className="h-full min-h-20 min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal">
                 <Link to="/mensagens-predefinidas">
-                  <MessageSquare className="h-5 w-5" />
-                  <span className="text-xs">Mensagens Pré-definidas</span>
+                  <MessageSquare className="h-5 w-5 shrink-0" />
+                  <span className="block max-w-full overflow-hidden break-words text-center text-xs leading-tight">Mensagens Pré-definidas</span>
                 </Link>
               </Button>
               
-              <Button asChild size="sm" variant="outline" className="h-auto flex-col gap-2 p-4">
+              <Button asChild size="sm" variant="outline" className="h-full min-h-20 min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal">
                 <Link to="/caixa-de-saida">
-                  <Calendar className="h-5 w-5" />
-                  <span className="text-xs">Histórico de Mensagens</span>
+                  <Calendar className="h-5 w-5 shrink-0" />
+                  <span className="block max-w-full overflow-hidden break-words text-center text-xs leading-tight">Histórico de Mensagens</span>
                 </Link>
               </Button>
             </div>
