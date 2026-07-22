@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, MessageCircle, Loader2 } from "lucide-react";
+import { Phone, MessageCircle, Loader2, Cake, ClipboardList, Dumbbell, Sparkles } from "lucide-react";
 import { useTodayActions } from "@/hooks/useDashboardData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,13 +21,29 @@ export function TodayActions() {
   const getActionBadge = (type: string) => {
     switch (type) {
       case "birthday":
-        return <Badge className="bg-primary">🎂 Aniversário</Badge>;
+        return (
+          <Badge className="bg-primary text-primary-foreground gap-1">
+            <Cake className="h-3 w-3" /> Aniversário
+          </Badge>
+        );
       case "evaluation":
-        return <Badge variant="destructive">📋 Avaliação</Badge>;
+        return (
+          <Badge variant="destructive" className="gap-1">
+            <ClipboardList className="h-3 w-3" /> Avaliação
+          </Badge>
+        );
       case "daqui_7_dias":
-        return <Badge className="bg-green-500 text-white">💪 Daqui 7 dias</Badge>;
+        return (
+          <Badge className="bg-success text-success-foreground gap-1">
+            <Dumbbell className="h-3 w-3" /> Daqui 7 dias
+          </Badge>
+        );
       case "daqui_21_dias":
-        return <Badge className="bg-orange-500 text-white">🏋️‍♂️ Daqui 21 dias</Badge>;
+        return (
+          <Badge className="bg-warning text-warning-foreground gap-1">
+            <Sparkles className="h-3 w-3" /> Daqui 21 dias
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">Ação</Badge>;
     }

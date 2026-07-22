@@ -74,24 +74,24 @@ export function WhatsAppStatus() {
     <Card
       className={`overflow-hidden shadow-card transition-all ${
         isConnected
-          ? "border-[hsl(var(--success))]/30"
+          ? "border-whatsapp/30"
           : "border-destructive/30 shadow-[0_0_30px_-10px_hsl(var(--destructive)/0.4)]"
       }`}
     >
       <CardHeader
         className={`${
           isConnected
-            ? "bg-gradient-to-r from-[hsl(var(--success))]/10 to-transparent"
+            ? "bg-gradient-to-r from-whatsapp/10 to-transparent"
             : "bg-gradient-to-r from-destructive/10 to-transparent"
         }`}
       >
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <div
-              className={`p-2 rounded-lg shadow-md text-white ${
+              className={`p-2 rounded-lg shadow-md ${
                 isConnected
-                  ? "bg-gradient-to-br from-[hsl(var(--success))] to-emerald-600"
-                  : "bg-gradient-to-br from-destructive to-red-700"
+                  ? "bg-whatsapp text-whatsapp-foreground"
+                  : "bg-destructive text-destructive-foreground"
               }`}
             >
               <Smartphone className="h-5 w-5" />
@@ -108,12 +108,12 @@ export function WhatsAppStatus() {
             </div>
           </div>
           {isConnected ? (
-            <Badge className="bg-[hsl(var(--success))]/15 text-[hsl(var(--success))] border-[hsl(var(--success))]/30 hover:bg-[hsl(var(--success))]/15">
+            <Badge className="bg-whatsapp/15 text-whatsapp border-whatsapp/30 hover:bg-whatsapp/15">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Conectado
             </Badge>
           ) : isConnecting ? (
-            <Badge className="bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))] border-[hsl(var(--warning))]/30 hover:bg-[hsl(var(--warning))]/15">
+            <Badge className="bg-warning/15 text-warning border-warning/30 hover:bg-warning/15">
               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               Conectando
             </Badge>
