@@ -30,7 +30,7 @@ interface Evaluation {
 
 const statusBadge = (s: string) => {
   switch (s) {
-    case "completed": return <Badge className="bg-success/15 text-success border-success/30 gap-1"><CheckCircle2 className="h-3 w-3" />Realizada</Badge>;
+    case "completed": return <Badge className="bg-green-500/15 text-green-600 border-green-500/30 gap-1"><CheckCircle2 className="h-3 w-3" />Realizada</Badge>;
     case "no_show": return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Faltou</Badge>;
     case "cancelled": return <Badge variant="secondary" className="gap-1"><Ban className="h-3 w-3" />Cancelada</Badge>;
     case "scheduled": return <Badge className="gap-1">Agendada</Badge>;
@@ -106,7 +106,7 @@ export default function AvaliacaoFisica() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Card className="border-l-4 border-l-success"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Realizadas</p><p className="text-2xl font-bold text-success">{stats.completed}</p></CardContent></Card>
+        <Card className="border-l-4 border-l-green-500"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Realizadas</p><p className="text-2xl font-bold text-green-600">{stats.completed}</p></CardContent></Card>
         <Card className="border-l-4 border-l-destructive"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Faltas</p><p className="text-2xl font-bold text-destructive">{stats.noShow}</p></CardContent></Card>
         <Card className="border-l-4 border-l-muted"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Canceladas</p><p className="text-2xl font-bold text-muted-foreground">{stats.cancelled}</p></CardContent></Card>
       </div>

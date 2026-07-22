@@ -239,7 +239,7 @@ export function TodayInbox() {
               <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border p-2">
                 <p className="text-sm font-medium truncate">{s.name}</p>
                 {s.msgStatus === "sent" ? (
-                  <Badge className="text-xs bg-whatsapp/15 text-whatsapp border-whatsapp/30">Mensagem enviada</Badge>
+                  <Badge className="text-xs bg-green-500/15 text-green-600 border-green-500/30">Mensagem enviada</Badge>
                 ) : s.msgStatus === "pending" ? (
                   <Badge variant="secondary" className="text-xs">Agendada</Badge>
                 ) : s.msgStatus === "failed" ? (
@@ -256,7 +256,7 @@ export function TodayInbox() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-warning" /> Precisa de atenção
+            <AlertTriangle className="h-4 w-4 text-amber-500" /> Precisa de atenção
           </CardTitle>
           <CardDescription className="text-xs">Falhas 24h e alunos vencidos</CardDescription>
         </CardHeader>
@@ -277,9 +277,9 @@ export function TodayInbox() {
                 </Button>
               )}
               {(attention?.overdueCount ?? 0) > 0 && (
-                <div className="rounded-lg border border-warning/30 bg-warning/5 p-2 flex items-center justify-between gap-2">
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 flex items-center justify-between gap-2">
                   <p className="text-sm">
-                    <strong className="text-warning">{attention?.overdueCount}</strong> aluno(s) vencidos
+                    <strong className="text-amber-700">{attention?.overdueCount}</strong> aluno(s) vencidos
                   </p>
                   <Button asChild size="sm" variant="ghost" className="h-7">
                     <Link to="/agendar-avaliacao">Agendar</Link>

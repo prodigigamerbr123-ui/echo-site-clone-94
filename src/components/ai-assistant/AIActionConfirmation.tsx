@@ -19,12 +19,12 @@ interface Props {
 
 export function AIActionConfirmation({ action, onConfirm, onReject, isRunning, done }: Props) {
   return (
-    <Card className="border-warning/40 bg-warning/10">
+    <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="text-xs font-semibold text-warning uppercase tracking-wide">
+            <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
               Confirmação necessária
             </p>
             <p className="text-sm mt-1 text-foreground whitespace-pre-wrap">
@@ -33,7 +33,7 @@ export function AIActionConfirmation({ action, onConfirm, onReject, isRunning, d
           </div>
         </div>
         {done === 'confirmed' && (
-          <p className="text-xs text-success flex items-center gap-1">
+          <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1">
             <CheckCircle className="h-3 w-3" /> Executado.
           </p>
         )}

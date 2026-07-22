@@ -25,7 +25,7 @@ interface MessagesListProps {
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'sent':
-      return <Badge className="bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90">Enviado</Badge>;
+      return <Badge variant="default" className="bg-green-500">Enviado</Badge>;
     case 'failed':
       return <Badge variant="destructive">Falhou</Badge>;
     case 'pending':

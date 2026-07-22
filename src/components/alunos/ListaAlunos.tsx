@@ -64,9 +64,9 @@ function paymentStatus(due: string | null) {
   const t0 = Date.UTC(ty, tm - 1, td);
   const d0 = Date.UTC(dy, dm - 1, dd);
   const diffDays = Math.floor((d0 - t0) / 86400000);
-  if (diffDays < 0) return { label: "Vencido", cls: "bg-destructive/15 text-destructive border-destructive/30" };
-  if (diffDays <= 3) return { label: `Vence em ${diffDays}d`, cls: "bg-warning/15 text-warning border-warning/30" };
-  return { label: "Em dia", cls: "bg-success/15 text-success border-success/30" };
+  if (diffDays < 0) return { label: "Vencido", cls: "bg-red-500/15 text-red-600 border-red-500/30" };
+  if (diffDays <= 3) return { label: `Vence em ${diffDays}d`, cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" };
+  return { label: "Em dia", cls: "bg-green-500/15 text-green-600 border-green-500/30" };
 }
 
 export function ListaAlunos() {
@@ -274,8 +274,8 @@ export function ListaAlunos() {
 
   const renderStatusBadge = (active: boolean) =>
     active ? (
-      <Badge className="bg-success/15 text-success hover:bg-success/20 border-success/30">
-        <span className="h-1.5 w-1.5 rounded-full bg-success mr-1.5" />
+      <Badge className="bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
+        <span className="h-1.5 w-1.5 rounded-full bg-green-500 mr-1.5" />
         Ativo
       </Badge>
     ) : (
@@ -349,7 +349,7 @@ export function ListaAlunos() {
               <Badge variant="secondary" className="gap-1">
                 <Users className="h-3 w-3" /> {total} total
               </Badge>
-              <Badge className="gap-1 bg-success/15 text-success hover:bg-success/20 border-success/30">
+              <Badge className="gap-1 bg-green-500/15 text-green-600 hover:bg-green-500/20 border-green-500/30">
                 {activeCount} ativos
               </Badge>
               <Badge variant="secondary" className="gap-1 text-muted-foreground">
@@ -440,7 +440,7 @@ export function ListaAlunos() {
                 key: "due_soon",
                 label: "Vence em 3d",
                 count: dueSoonCount,
-                cls: "border-warning/40 text-warning hover:bg-warning/10",
+                cls: "border-amber-500/40 text-amber-600 hover:bg-amber-500/10",
                 active: paymentFilter === "due_soon" && statusFilter === "active",
                 onClick: () => {
                   const on = paymentFilter === "due_soon" && statusFilter === "active";
@@ -452,7 +452,7 @@ export function ListaAlunos() {
                 key: "birthday",
                 label: "Aniversariantes do mês",
                 count: birthdayCount,
-                cls: "border-primary/40 text-primary hover:bg-primary/10",
+                cls: "border-pink-500/40 text-pink-600 hover:bg-pink-500/10",
                 active: flagFilter === "birthday_month",
                 onClick: () => setFlagFilter(flagFilter === "birthday_month" ? "none" : "birthday_month"),
               },
@@ -460,7 +460,7 @@ export function ListaAlunos() {
                 key: "no_eval",
                 label: "Sem avaliação",
                 count: noEvalCount,
-                cls: "border-primary/40 text-primary hover:bg-primary/10",
+                cls: "border-blue-500/40 text-blue-600 hover:bg-blue-500/10",
                 active: flagFilter === "no_evaluation",
                 onClick: () => setFlagFilter(flagFilter === "no_evaluation" ? "none" : "no_evaluation"),
               },
@@ -468,7 +468,7 @@ export function ListaAlunos() {
                 key: "pending",
                 label: "Com mensagens pendentes",
                 count: pendingCount,
-                cls: "border-warning/40 text-warning hover:bg-warning/10",
+                cls: "border-purple-500/40 text-purple-600 hover:bg-purple-500/10",
                 active: flagFilter === "pending_messages",
                 onClick: () => setFlagFilter(flagFilter === "pending_messages" ? "none" : "pending_messages"),
               },

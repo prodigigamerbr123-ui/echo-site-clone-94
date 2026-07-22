@@ -105,7 +105,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Status</span>
               <div className="flex items-center gap-2">
-                <span className={student.status === "active" ? "text-success font-medium" : "text-muted-foreground"}>
+                <span className={student.status === "active" ? "text-green-600 font-medium" : "text-muted-foreground"}>
                   {student.status === "active" ? "Ativo" : "Inativo"}
                 </span>
                 <Switch checked={student.status === "active"} onCheckedChange={toggleStatus} />

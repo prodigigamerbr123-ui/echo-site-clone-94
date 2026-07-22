@@ -126,8 +126,8 @@ export function CadastrarAlunoForm() {
     return (
       <Card className="w-full shadow-card">
         <CardContent className="pt-10 pb-8 text-center space-y-6">
-          <div className="mx-auto w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
-            <CheckCircle className="h-9 w-9 text-success" />
+          <div className="mx-auto w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
+            <CheckCircle className="h-9 w-9 text-green-500" />
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Aluno cadastrado com sucesso!</h2>
@@ -197,7 +197,7 @@ export function CadastrarAlunoForm() {
               />
               {formData.telefone.trim() ? (
                 phoneCheck.ok ? (
-                  <p className="text-xs text-success flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
+                  <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> {phoneCheck.formatted}</p>
                 ) : (
                   <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> {phoneCheck.reason}</p>
                 )
@@ -254,7 +254,7 @@ export function CadastrarAlunoForm() {
               />
               {formData.cpf.trim() ? (
                 isValidCpf(formData.cpf) ? (
-                  <p className="text-xs text-success flex items-center gap-1"><Check className="h-3 w-3" /> CPF válido</p>
+                  <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> CPF válido</p>
                 ) : (
                   <p className="text-xs text-destructive flex items-center gap-1"><X className="h-3 w-3" /> CPF inválido</p>
                 )

@@ -90,7 +90,7 @@ export function SystemHealthBanner() {
   }
 
   return (
-    <div className="w-full bg-warning text-warning-foreground px-4 py-2 flex items-center gap-3 text-sm animate-in fade-in slide-in-from-top-2">
+    <div className="w-full bg-amber-500 text-white px-4 py-2 flex items-center gap-3 text-sm animate-in fade-in slide-in-from-top-2">
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span className="flex-1">
         <strong>{failedCount}</strong> mensagem(ns) falharam nas últimas 24h.
