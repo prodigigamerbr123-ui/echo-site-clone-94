@@ -67,10 +67,11 @@ export async function updateNotificationSettings(
   return merged;
 }
 
-export function useNotificationSettings() {
+export function useNotificationSettings(enabled = true) {
   return useQuery({
     queryKey: NOTIFICATION_SETTINGS_QUERY_KEY,
     queryFn: fetchNotificationSettings,
+    enabled,
     staleTime: 30_000,
   });
 }
