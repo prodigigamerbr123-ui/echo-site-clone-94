@@ -8,21 +8,33 @@ import {
 } from "@/lib/appSettings";
 import { useAuth } from "@/hooks/useAuth";
 
+type ScheduledMessageEvent = {
+  id?: string;
+  status?: string;
+  student_id?: string | null;
+  updated_at?: string | null;
+  sent_at?: string | null;
+  failure_reason?: string | null;
+};
+
 export function GlobalNotifier() {
   const { session } = useAuth();
   const { data: settings } = useNotificationSettings();
   const settingsRef = useRef<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
+  const lastMessageCheckRef = useRef<string | null>(null);
+  const handledMessageEventsRef = useRef<Set<string>>(new Set());
   const sentBucketRef = useRef<{ count: number; timer: ReturnType<typeof setTimeout> | null }>({
     count: 0,
     timer: null,
   });
+  const settingsLoaded = Boolean(settings);
 
   useEffect(() => {
     if (settings) settingsRef.current = settings;
   }, [settings]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || !settingsLoaded) return;
     const flushSent = () => {
       const bucket = sentBucketRef.current;
       if (bucket.count > 0) {
@@ -57,6 +69,83 @@ export function GlobalNotifier() {
       return data?.name || "";
     };
 
+    const markMessageEventHandled = (row: ScheduledMessageEvent) => {
+      if (!row.id || !row.status) return false;
+      const stamp = row.updated_at || row.sent_at || "";
+      const key = `${row.id}:${row.status}:${stamp}`;
+      const handled = handledMessageEventsRef.current;
+      if (handled.has(key)) return false;
+      handled.add(key);
+      if (handled.size > 500) {
+        for (const oldKey of Array.from(handled).slice(0, 250)) handled.delete(oldKey);
+      }
+      if (row.updated_at && (!lastMessageCheckRef.current || row.updated_at > lastMessageCheckRef.current)) {
+        lastMessageCheckRef.current = row.updated_at;
+      }
+      return true;
+    };
+
+    const notifyMessageStatus = async (row: ScheduledMessageEvent) => {
+      if (!markMessageEventHandled(row)) return;
+      const cfg = settingsRef.current;
+
+      if (row.status === "sent") {
+        if (cfg.notify_sent_each) {
+          const studentName = await fetchStudentName(row.student_id);
+          toast.success("Mensagem enviada", { description: studentName || undefined });
+        }
+        queueSent();
+        return;
+      }
+
+      if (row.status === "failed" && cfg.notify_failed) {
+        const studentName = await fetchStudentName(row.student_id);
+        toast.error("Mensagem falhou", {
+          description: [studentName, row.failure_reason].filter(Boolean).join(" — "),
+        });
+      }
+    };
+
+    const initializeMessagePolling = async () => {
+      const { data } = await supabase
+        .from("scheduled_messages")
+        .select("id, updated_at, status")
+        .in("status", ["sent", "failed"])
+        .order("updated_at", { ascending: false })
+        .limit(20);
+
+      const newest = data?.[0]?.updated_at || new Date().toISOString();
+      lastMessageCheckRef.current = newest;
+      for (const row of data || []) {
+        if (row.id && row.status && row.updated_at) {
+          handledMessageEventsRef.current.add(`${row.id}:${row.status}:${row.updated_at}`);
+        }
+      }
+    };
+
+    const pollMessageStatuses = async () => {
+      const cursor = lastMessageCheckRef.current;
+      if (!cursor) return;
+
+      const { data, error } = await supabase
+        .from("scheduled_messages")
+        .select("id, status, student_id, updated_at, sent_at, failure_reason")
+        .in("status", ["sent", "failed"])
+        .gt("updated_at", cursor)
+        .order("updated_at", { ascending: true })
+        .limit(50);
+
+      if (error) {
+        console.warn("[GlobalNotifier] Falha ao checar mensagens:", error.message);
+        return;
+      }
+
+      for (const row of data || []) await notifyMessageStatus(row);
+    };
+
+    initializeMessagePolling();
+    const pollingTimer = window.setInterval(pollMessageStatuses, 8_000);
+
     const channel = supabase
       .channel("global-notifier")
       .on(
@@ -90,20 +179,8 @@ export function GlobalNotifier() {
 
           if (oldRow.status === newRow.status) return;
 
-          if (newRow.status === "sent") {
-            if (cfg.notify_sent_each) {
-              const studentName = await fetchStudentName(newRow.student_id);
-              toast.success("Mensagem enviada", { description: studentName || undefined });
-            }
-            queueSent();
-            return;
-          }
-
-          if (newRow.status === "failed" && cfg.notify_failed) {
-            const studentName = await fetchStudentName(newRow.student_id);
-            toast.error("Mensagem falhou", {
-              description: [studentName, newRow.failure_reason].filter(Boolean).join(" — "),
-            });
+          if (newRow.status === "sent" || newRow.status === "failed") {
+            await notifyMessageStatus(newRow);
             return;
           }
 
@@ -209,9 +286,10 @@ export function GlobalNotifier() {
         clearTimeout(bucket.timer);
         bucket.timer = null;
       }
+      window.clearInterval(pollingTimer);
       supabase.removeChannel(channel);
     };
-  }, [session]);
+  }, [session, settingsLoaded]);
 
   return null;
 }
