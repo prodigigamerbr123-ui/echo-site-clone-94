@@ -63,6 +63,12 @@ const GROUPS: NotifGroup[] = [
         recommended: true,
       },
       {
+        key: "notify_sent_each",
+        title: "Notificar cada mensagem enviada",
+        desc: "Toca um aviso individual para cada mensagem entregue com sucesso.",
+        icon: BellRing,
+      },
+      {
         key: "notify_sent_summary",
         title: "Resumo de mensagens enviadas",
         desc: "Agrupa as mensagens enviadas em um único aviso a cada intervalo.",
