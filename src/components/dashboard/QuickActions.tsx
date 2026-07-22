@@ -6,6 +6,7 @@ import {
   MessageSquare,
   
   Send,
+  CalendarClock,
   History,
   CalendarPlus,
   ClipboardList,
