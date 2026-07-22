@@ -142,11 +142,11 @@ export function QuickActions() {
                     asChild
                     size="sm"
                     variant="ghost"
-                    className={`h-auto flex-col gap-2 p-4 transition-all ${action.className}`}
+                    className={`h-full min-h-20 w-full min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal transition-all ${action.className}`}
                   >
                     <Link to={action.to}>
-                      <action.icon className="h-5 w-5" />
-                      <span className="text-xs font-medium text-center leading-tight">
+                      <action.icon className="h-5 w-5 shrink-0" />
+                      <span className="block max-w-full overflow-hidden break-words text-center text-xs font-medium leading-tight">
                         {action.label}
                       </span>
                     </Link>
