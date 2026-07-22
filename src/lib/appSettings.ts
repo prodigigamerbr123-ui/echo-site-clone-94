@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 export type NotificationSettings = {
   // Mensagens
   notify_failed: boolean;
+  notify_sent_each: boolean;
   notify_sent_summary: boolean;
   sent_summary_minutes: number;
   notify_message_rescheduled: boolean;
