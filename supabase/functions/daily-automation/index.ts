@@ -359,13 +359,20 @@ serve(async (req: Request) => {
 
     const allInserts = [...birthdayInserts, ...reminderInserts, ...paymentInserts, ...overdueInserts];
 
+    // Insere um a um para poder ignorar duplicatas do índice único parcial
+    // scheduled_messages_no_dup_per_day (mesmo aluno + tipo + dia SP).
     let inserted = 0;
-    if (allInserts.length > 0) {
-      const { error, count } = await supabase
-        .from("scheduled_messages")
-        .insert(allInserts, { count: "exact" });
-      if (error) throw error;
-      inserted = count ?? allInserts.length;
+    let skippedDuplicates = 0;
+    for (const row of allInserts) {
+      const { error } = await supabase.from("scheduled_messages").insert(row);
+      if (error) {
+        if ((error as any).code === "23505") {
+          skippedDuplicates++;
+          continue;
+        }
+        throw error;
+      }
+      inserted++;
     }
 
     const summary = {
