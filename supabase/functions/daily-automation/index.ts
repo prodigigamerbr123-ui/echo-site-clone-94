@@ -377,6 +377,7 @@ serve(async (req: Request) => {
 
     const summary = {
       inserted,
+      skippedDuplicates,
       birthdays: birthdayInserts.length,
       reminders: reminderInserts.length,
       payment_before: paymentBeforeCount,
