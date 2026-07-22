@@ -118,7 +118,7 @@ export function buildEvaluationMessages(
   const dayOfInFuture = dayOf !== null && dayOf.getTime() > now.getTime();
 
 
-  const collision = dayOf.getTime() - eve.getTime() < 12 * 60 * 60 * 1000;
+  const collision = dayOf !== null && dayOf.getTime() - eve.getTime() < 12 * 60 * 60 * 1000;
 
   if (eveInFuture && !collision) {
     msgs.push({
@@ -127,7 +127,7 @@ export function buildEvaluationMessages(
       content: pick(REMINDER_1D_TEMPLATES)(studentName, scheduledAt),
     });
   }
-  if (dayOfInFuture) {
+  if (dayOfInFuture && dayOf) {
     msgs.push({
       scheduled_for: dayOf.toISOString(),
       message_type: "evaluation_reminder_day",
