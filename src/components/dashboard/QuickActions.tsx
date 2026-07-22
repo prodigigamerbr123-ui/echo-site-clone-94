@@ -18,7 +18,18 @@ type Action = {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  className: string;
+  tone: "primary" | "outline" | "whatsapp" | "whatsapp-outline";
+};
+
+const toneClass: Record<Action["tone"], string> = {
+  primary:
+    "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5",
+  outline:
+    "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
+  whatsapp:
+    "bg-whatsapp text-whatsapp-foreground shadow-[0_4px_20px_-2px_hsl(var(--whatsapp)/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
+  "whatsapp-outline":
+    "bg-card border border-border hover:border-whatsapp/50 hover:bg-whatsapp/10 text-foreground",
 };
 
 const groups: { title: string; description: string; actions: Action[] }[] = [
@@ -26,100 +37,40 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
     title: "Alunos",
     description: "Gerenciar sua base de alunos",
     actions: [
-      {
-        to: "/cadastrar-aluno",
-        icon: UserPlus,
-        label: "Cadastrar Aluno",
-        className:
-          "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/alunos?tab=lista",
-        icon: Users,
-        label: "Ver Alunos",
-        className:
-          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
-      },
+      { to: "/cadastrar-aluno", icon: UserPlus, label: "Cadastrar Aluno", tone: "primary" },
+      { to: "/alunos?tab=lista", icon: Users, label: "Ver Alunos", tone: "outline" },
     ],
   },
   {
     title: "Mensagens",
     description: "Enviar e programar comunicações",
     actions: [
-      {
-        to: "/mensagens",
-        icon: Send,
-        label: "Enviar mensagem",
-        className:
-          "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_4px_20px_-2px_hsl(160_70%_40%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/mensagens?tab=agendar",
-        icon: CalendarClock,
-        label: "Agendar mensagem",
-        className:
-          "bg-card border border-border hover:border-emerald-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/mensagens", icon: Send, label: "Enviar mensagem", tone: "whatsapp" },
+      { to: "/mensagens?tab=agendar", icon: CalendarClock, label: "Agendar mensagem", tone: "whatsapp-outline" },
     ],
   },
   {
     title: "Conteúdo & Histórico",
     description: "Templates e mensagens enviadas",
     actions: [
-      {
-        to: "/mensagens-predefinidas",
-        icon: MessageSquare,
-        label: "Pré-definidas",
-        className:
-          "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_4px_20px_-2px_hsl(217_80%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/caixa-de-saida",
-        icon: History,
-        label: "Histórico",
-        className:
-          "bg-card border border-border hover:border-sky-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/mensagens-predefinidas", icon: MessageSquare, label: "Pré-definidas", tone: "primary" },
+      { to: "/caixa-de-saida", icon: History, label: "Histórico", tone: "outline" },
     ],
   },
   {
     title: "Avaliação Física",
     description: "Agendar e revisar avaliações",
     actions: [
-      {
-        to: "/agendar-avaliacao",
-        icon: CalendarPlus,
-        label: "Agendar",
-        className:
-          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-2px_hsl(250_70%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/avaliacao-fisica",
-        icon: ClipboardList,
-        label: "Histórico",
-        className:
-          "bg-card border border-border hover:border-violet-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/agendar-avaliacao", icon: CalendarPlus, label: "Agendar", tone: "primary" },
+      { to: "/avaliacao-fisica", icon: ClipboardList, label: "Histórico", tone: "outline" },
     ],
   },
   {
     title: "Ferramentas",
     description: "IA e conexão do WhatsApp",
     actions: [
-      {
-        to: "/assistente-ia",
-        icon: Bot,
-        label: "Assistente IA",
-        className:
-          "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-[0_4px_20px_-2px_hsl(322_75%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/whatsapp",
-        icon: MessageCircle,
-        label: "WhatsApp",
-        className:
-          "bg-card border border-border hover:border-fuchsia-500/40 hover:bg-accent text-foreground",
-      },
+      { to: "/assistente-ia", icon: Bot, label: "Assistente IA", tone: "primary" },
+      { to: "/whatsapp", icon: MessageCircle, label: "WhatsApp", tone: "whatsapp-outline" },
     ],
   },
 ];
@@ -142,7 +93,7 @@ export function QuickActions() {
                     asChild
                     size="sm"
                     variant="ghost"
-                    className={`h-full min-h-20 w-full min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal transition-all ${action.className}`}
+                    className={`h-full min-h-20 w-full min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal transition-all ${toneClass[action.tone]}`}
                   >
                     <Link to={action.to}>
                       <action.icon className="h-5 w-5 shrink-0" />
