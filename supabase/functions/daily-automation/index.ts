@@ -167,11 +167,17 @@ serve(async (req: Request) => {
       from += pageSize;
     }
 
-    // Já existe algo pendente para (aluno, tipo)?
+    // Já existe algo agendado/processando/enviado HOJE (fuso SP) para (aluno, tipo)?
+    // Evita duplicata se a função rodar mais de uma vez no mesmo dia.
+    const todaySP = spDateStrToday();
+    const dayStartISO = new Date(`${todaySP}T00:00:00-03:00`).toISOString();
+    const dayEndISO = new Date(`${todaySP}T23:59:59.999-03:00`).toISOString();
     const { data: pendings } = await supabase
       .from("scheduled_messages")
       .select("student_id, message_type")
-      .eq("status", "pending")
+      .in("status", ["pending", "processing", "sent"])
+      .gte("scheduled_for", dayStartISO)
+      .lte("scheduled_for", dayEndISO)
       .in("message_type", [
         "evaluation_reminder",
         "birthday",
