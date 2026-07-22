@@ -79,22 +79,24 @@ export function QuickActions() {
                 <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
                 <p className="text-xs text-muted-foreground">{group.description}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-4 pt-2">
                 {group.actions.map((action) => (
-                  <Button
+                  <Link
                     key={action.to}
-                    asChild
-                    size="sm"
-                    variant="ghost"
-                    className={`h-auto min-w-0 flex-col gap-2 whitespace-normal p-3 transition-all ${action.className}`}
+                    to={action.to}
+                    aria-label={action.label}
+                    className="group relative mx-auto flex aspect-square w-24 items-center justify-center"
                   >
-                    <Link to={action.to}>
+                    <div
+                      className={`absolute inset-0 rotate-45 rounded-xl transition-all group-hover:-translate-y-0.5 ${action.className}`}
+                    />
+                    <div className="relative z-10 flex flex-col items-center justify-center gap-1 px-2 text-center">
                       <action.icon className="h-5 w-5 shrink-0" />
-                      <span className="w-full text-xs font-medium text-center leading-tight break-words">
+                      <span className="text-[11px] font-medium leading-tight break-words">
                         {action.label}
                       </span>
-                    </Link>
-                  </Button>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>
