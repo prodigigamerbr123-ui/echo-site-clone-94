@@ -260,7 +260,6 @@ serve(async (req: Request) => {
     let paymentBeforeCount = 0;
     let paymentDueCount = 0;
     if (paymentOn) {
-      const todaySP = spDateStrToday();
       const beforeTarget = addDaysISO(todaySP, paymentDaysBefore);
 
       for (const s of activeStudents) {
