@@ -19,7 +19,7 @@ type ScheduledMessageEvent = {
 
 export function GlobalNotifier() {
   const { session } = useAuth();
-  const { data: settings } = useNotificationSettings();
+  const { data: settings } = useNotificationSettings(Boolean(session));
   const settingsRef = useRef<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const lastMessageCheckRef = useRef<string | null>(null);
   const handledMessageEventsRef = useRef<Set<string>>(new Set());
