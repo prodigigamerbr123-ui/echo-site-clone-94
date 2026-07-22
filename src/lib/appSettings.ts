@@ -25,6 +25,7 @@ export type NotificationSettings = {
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   notify_failed: true,
+  notify_sent_each: false,
   notify_sent_summary: true,
   sent_summary_minutes: 10,
   notify_message_rescheduled: false,
