@@ -215,14 +215,54 @@ serve(async (req: Request) => {
     let reminderInserts: any[] = [];
     let reminderCandidates: any[] = [];
     if (inviteOn) {
+      const minIntervalDays = Number(
+        getParam(settings, "evaluation_invite", "min_interval_days", 14),
+      );
+      const maxAttempts = Number(
+        getParam(settings, "evaluation_invite", "max_attempts", 3),
+      );
+
+      // Histórico de convites já disparados: para respeitar intervalo e máx. tentativas.
+      // Considera envios desde a última avaliação (ou desde sempre, se nunca fez).
+      const { data: pastReminders } = await supabase
+        .from("scheduled_messages")
+        .select("student_id, scheduled_for, created_at")
+        .eq("message_type", "evaluation_reminder")
+        .in("status", ["pending", "sent"]);
+      const historyByStudent = new Map<string, { last: number; count: number; sinceRef: number }>();
+      for (const r of pastReminders ?? []) {
+        const t = new Date(r.scheduled_for ?? r.created_at).getTime();
+        const cur = historyByStudent.get(r.student_id) ?? { last: 0, count: 0, sinceRef: 0 };
+        cur.last = Math.max(cur.last, t);
+        historyByStudent.set(r.student_id, cur);
+      }
+
+      const nowMs = Date.now();
       reminderCandidates = activeStudents
         .filter((s) => {
           if (hasPending.has(`${s.id}:evaluation_reminder`)) return false;
           if (studentsWithFutureEval.has(s.id)) return false;
           if (s.last_evaluation_date) {
-            return daysSince(s.last_evaluation_date) > daysOverdue;
+            if (daysSince(s.last_evaluation_date) <= daysOverdue) return false;
+          } else {
+            if (s.had_evaluation || daysSince(s.created_at) <= 14) return false;
           }
-          return !s.had_evaluation && daysSince(s.created_at) > 14;
+          // Só conta tentativas feitas DEPOIS da última avaliação (ou desde sempre, se nunca fez).
+          const resetRef = s.last_evaluation_date
+            ? new Date(s.last_evaluation_date).getTime()
+            : 0;
+          const attempts = (pastReminders ?? []).filter(
+            (r: any) =>
+              r.student_id === s.id &&
+              new Date(r.scheduled_for ?? r.created_at).getTime() >= resetRef,
+          ).length;
+          if (attempts >= maxAttempts) return false;
+          const h = historyByStudent.get(s.id);
+          if (h && h.last > 0) {
+            const daysSinceLast = (nowMs - h.last) / 86400000;
+            if (daysSinceLast < minIntervalDays) return false;
+          }
+          return true;
         })
         .sort((a, b) => {
           const aRef = a.last_evaluation_date || a.created_at;
