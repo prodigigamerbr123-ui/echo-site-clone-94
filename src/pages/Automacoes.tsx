@@ -46,7 +46,7 @@ const AUTOMATIONS: AutomationDef[] = [
     placeholders: ["{nome}"],
     params: [
       { name: "days_overdue", label: "Dias sem avaliação", fallback: 30, suffix: "dias" },
-      { name: "daily_limit", label: "Limite diário", fallback: 10, suffix: "msgs" },
+      
       { name: "min_interval_days", label: "Intervalo mín. entre envios (mesmo aluno)", fallback: 14, suffix: "dias" },
       { name: "max_attempts", label: "Máx. de tentativas por aluno", fallback: 3, suffix: "envios" },
     ],
