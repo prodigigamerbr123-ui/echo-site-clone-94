@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -25,6 +25,7 @@ import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { GlobalNotifier } from "@/components/layout/GlobalNotifier";
 
 const queryClient = new QueryClient();
+const Router = import.meta.env.VITE_DEPLOY_TARGET === "github-pages" ? HashRouter : BrowserRouter;
 
 const protectedPage = (Page: React.ComponentType) => (
   <ProtectedRoute>
@@ -41,7 +42,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <ConfirmDialogHost />
-        <BrowserRouter>
+        <Router>
           <AuthProvider>
             <GlobalNotifier />
             <Routes>
@@ -66,7 +67,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
-        </BrowserRouter>
+        </Router>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>

@@ -4,8 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { ReactNode } from "react";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
+  const previewMode = import.meta.env.VITE_PREVIEW_MODE === "true";
   const { session, loading } = useAuth();
   const location = useLocation();
+
+  if (previewMode) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
