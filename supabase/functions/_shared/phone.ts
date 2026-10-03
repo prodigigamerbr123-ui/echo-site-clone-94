@@ -8,7 +8,7 @@ export interface FormatPhoneResult {
 }
 
 /**
- * Normalize a Brazilian phone number to Evolution API format (E.164 without "+").
+ * Normalize a Brazilian phone number to provider format (E.164 without "+").
  * Ensures the country code 55 is present and validates the final digit count.
  *
  * Valid results have 12 digits (55 + 2 DDD + 8 legacy) or 13 digits (55 + 2 DDD + 9 mobile).

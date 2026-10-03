@@ -1,5 +1,5 @@
 import { corsHeaders, requireCronSecret } from "../_shared/auth.ts";
-import { sendEvolutionText } from "../_shared/evolution.ts";
+import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 import { formatPhone } from "../_shared/phone.ts";
 
 Deno.serve(async (req) => {
@@ -10,9 +10,7 @@ Deno.serve(async (req) => {
     const { phone, text } = await req.json();
     const pc = formatPhone(phone);
     if (!pc.ok) return new Response(JSON.stringify({ error: pc.reason }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const baseUrl = Deno.env.get("EVOLUTION_API_URL")!;
-    const token = Deno.env.get("EVOLUTION_INSTANCE_TOKEN")!;
-    const r = await sendEvolutionText({ baseUrl, instanceToken: token, number: pc.number, text });
+    const r = await sendWhatsAppText({ number: pc.number, text });
     return new Response(JSON.stringify(r), { status: r.ok ? 200 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e?.message || e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

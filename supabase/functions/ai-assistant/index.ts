@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
+import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 import {
   createEvaluationWithMessages,
   completeEvaluation,
@@ -14,7 +15,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_SECRET_KEY = getSupabaseSecretKey();
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 
 // Ferramentas que MODIFICAM dados. Sempre exigem confirmação do usuário.
@@ -439,7 +440,7 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
   }
 }
 
-const SYSTEM_PROMPT = `Você é o assistente do "Academia Workout" — SaaS de gestão que envia mensagens automáticas por WhatsApp (Evolution API).
+const SYSTEM_PROMPT = `Você é o assistente do "Academia Workout" — SaaS de gestão que envia mensagens automáticas por WhatsApp.
 
 TABELAS PRINCIPAIS:
 - students: alunos (name, phone, birth_date, had_evaluation, last_evaluation_date, status).
@@ -479,7 +480,7 @@ serve(async (req) => {
     const body = await req.json();
     const clientMessages = body.messages || [];
     const confirmedAction = body.confirmedAction as { tool: string; args: any } | undefined;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
 
     // Contexto temporal atual (timezone de Brasília) — injetado a cada request
     const tz = "America/Sao_Paulo";

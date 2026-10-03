@@ -1,1 +1,9 @@
-project_id = "guomwsidnwapizkprkmo"
+project_id = "echo-site-clone-94"
+[functions.process-scheduled-messages]
+verify_jwt = false
+
+[functions.daily-automation]
+verify_jwt = false
+
+[functions.send-oneshot]
+verify_jwt = false

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
+import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_SECRET_KEY = getSupabaseSecretKey();
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 
 function fmtBR(date: Date) {
@@ -25,7 +26,7 @@ Deno.serve(async (req) => {
   if (authFail) return authFail;
 
   try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
     const now = new Date();
 
     // Compute Brasília day boundaries via Intl parts (evita bug de DST/toLocaleString)

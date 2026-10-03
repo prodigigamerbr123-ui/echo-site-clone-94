@@ -11,6 +11,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireCronSecret } from "../_shared/auth.ts";
 import { resolveAutomationMessage } from "../_shared/messageTemplates.ts";
+import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,7 +128,7 @@ serve(async (req: Request) => {
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      getSupabaseSecretKey(),
     );
 
     const settings = await loadSettings(supabase);

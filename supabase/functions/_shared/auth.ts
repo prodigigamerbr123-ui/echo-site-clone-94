@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getSupabasePublishableKey } from "./supabaseEnv.ts";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +22,7 @@ export async function requireUser(req: Request): Promise<Response | null> {
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
+    getSupabasePublishableKey(),
   );
 
   const token = authHeader.replace("Bearer ", "");

@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { formatPhone } from "../_shared/phone.ts";
-import { sendEvolutionText } from "../_shared/evolution.ts";
+import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 import { requireUser } from "../_shared/auth.ts";
+import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,17 +25,6 @@ serve(async (req: Request) => {
 
 
   try {
-    const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
-    const EVOLUTION_INSTANCE_TOKEN = Deno.env.get('EVOLUTION_INSTANCE_TOKEN');
-
-    if (!EVOLUTION_API_URL || !EVOLUTION_INSTANCE_TOKEN) {
-      return new Response(
-        JSON.stringify({ error: 'Evolution API não configurada' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
     const { students, message }: SendMessageRequest = await req.json();
 
     if (!students?.length) {
@@ -75,9 +65,7 @@ serve(async (req: Request) => {
       }
 
       try {
-        const sendResult = await sendEvolutionText({
-          baseUrl,
-          instanceToken: EVOLUTION_INSTANCE_TOKEN,
+        const sendResult = await sendWhatsAppText({
           number: phoneCheck.number,
           text: message,
         });
@@ -107,7 +95,7 @@ serve(async (req: Request) => {
     if (messagesToSave.length > 0) {
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        getSupabaseSecretKey()
       );
       const { error: dbError } = await supabase.from('messages').insert(messagesToSave);
       if (dbError) console.error('DB insert error:', dbError);
