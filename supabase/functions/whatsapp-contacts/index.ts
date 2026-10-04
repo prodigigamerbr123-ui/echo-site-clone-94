@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { listWhatsAppContacts } from "../_shared/whatsapp.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,16 +14,10 @@ serve(async (req: Request) => {
   const authFail = await requireUser(req);
   if (authFail) return authFail;
 
-  try {
-    const result = await listWhatsAppContacts();
-    return new Response(
-      JSON.stringify({ provider: result.provider, contacts: result.contacts, total: result.contacts.length }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error: unknown) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro ao listar contatos' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  // TODO: Evolution GO ainda não expõe endpoint de listagem de contatos compatível.
+  // Retornamos lista vazia para não quebrar a UI enquanto o endpoint correto é definido.
+  return new Response(
+    JSON.stringify({ contacts: [], total: 0 }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 });

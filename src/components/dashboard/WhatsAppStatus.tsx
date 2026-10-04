@@ -19,7 +19,6 @@ interface StatusResponse {
   state: State;
   connected?: boolean;
   instance?: string;
-  provider?: "evolution" | "openwa";
   error?: string;
 }
 
@@ -104,7 +103,7 @@ export function WhatsAppStatus() {
                   ? "Mensagens podem ser enviadas normalmente."
                   : isConnecting
                   ? "Aguardando confirmação do dispositivo..."
-                  : "Conecte o WhatsApp diretamente no painel do provedor configurado."}
+                  : "Conecte o WhatsApp diretamente no painel da Evolution."}
               </CardDescription>
             </div>
           </div>
@@ -136,8 +135,8 @@ export function WhatsAppStatus() {
             <div className="flex-1 text-sm">
               <p className="font-medium text-destructive">Ação necessária</p>
               <p className="text-muted-foreground text-xs">
-                O site apenas consulta o status. Abra o painel do provedor de WhatsApp para escanear
-                o QR Code e depois volte aqui para atualizar o status.
+                O site apenas consulta o status. Abra o painel da Evolution para escanear o QR Code
+                e depois volte aqui para atualizar o status.
               </p>
             </div>
           </div>
@@ -151,7 +150,7 @@ export function WhatsAppStatus() {
 
         {!isConnected && !loading && (
           <p className="text-sm text-muted-foreground text-center py-4">
-            QR Code disponível somente no painel do provedor para evitar reinicializações da sessão pelo site.
+            QR Code disponível somente na Evolution para evitar reinicializações da instância pelo site.
           </p>
         )}
 
