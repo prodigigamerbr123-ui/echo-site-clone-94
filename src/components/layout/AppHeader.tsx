@@ -3,7 +3,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Bot, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import workoutLogo from "@/assets/workout-combined-v2.png.asset.json";
+import workoutLogo from "@/assets/workout-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 
 export function AppHeader() {
@@ -21,7 +21,7 @@ export function AppHeader() {
         <div className="flex items-center gap-2">
           <SidebarTrigger />
           <img
-            src={workoutLogo.url}
+            src={workoutLogo}
             alt="Workout Academia"
             className="h-10 w-auto object-contain"
           />

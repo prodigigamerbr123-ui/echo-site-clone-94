@@ -27,9 +27,9 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Build preview
+      - name: Build GitHub Pages
         env:
-          VITE_PREVIEW_MODE: "true"
+          VITE_PREVIEW_MODE: "false"
           VITE_DEPLOY_TARGET: "github-pages"
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://preview.invalid' }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'preview-public-key' }}
