@@ -33,7 +33,7 @@ jobs:
           VITE_DEPLOY_TARGET: "github-pages"
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://preview.invalid' }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'preview-public-key' }}
-        run: npm run build -- --base=/echo-site-clone-94/
+        run: npm run build -- --base="${{ vars.PAGES_BASE_PATH || '/echo-site-clone-94/' }}"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -41,3 +41,4 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
