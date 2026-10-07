@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Clock, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { spDate, fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
 import MessageFilters from "@/components/agendarmensagem/MessageFilters";
-import MessagesList, { getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
+import MessagesList, { filterScheduledMessages, getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
 
 interface ScheduledMessage {
   id: string;
@@ -55,21 +55,33 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
 
-  useEffect(() => { fetchAll(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [statusFilter]);
-
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: m }, { data: s }] = await Promise.all([
+    const [messagesResult, studentsResult] = await Promise.all([
       supabase.from("scheduled_messages")
         .select("*, students(name, phone)")
         .eq("status", statusFilter)
         .order("scheduled_for", { ascending: true }),
       supabase.from("students").select("id, name, phone").order("name").limit(5000),
     ]);
-    setMessages(m || []);
-    setStudents(s || []);
+
+    const loadError = messagesResult.error || studentsResult.error;
+    if (loadError) {
+      toast({
+        title: "Erro ao carregar mensagens",
+        description: loadError.message,
+        variant: "destructive",
+      });
+    }
+
+    setMessages(messagesResult.data || []);
+    setStudents(studentsResult.data || []);
     setLoading(false);
-  };
+  }, [statusFilter, toast]);
+
+  useEffect(() => {
+    void fetchAll();
+  }, [fetchAll]);
 
   const openEdit = (m: ScheduledMessage) => {
     setEditingMessage(m);
@@ -122,13 +134,13 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
 
   const handleSelectAll = (sel: boolean) => {
     if (sel) {
-      const filtered = messages.filter(m => {
-        const s = m.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.students?.phone.includes(searchTerm);
-        const u = selectedStudents.length === 0 || selectedStudents.includes(m.student_id);
-        return s && u;
-      });
+      const filtered = filterScheduledMessages(
+        messages,
+        searchTerm,
+        dateFilter,
+        customDateRange,
+        selectedStudents,
+      );
       setSelectedMessages(filtered.map(m => m.id));
     } else setSelectedMessages([]);
   };
@@ -200,7 +212,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Data</Label>
-                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={fmtDateISOSP(new Date())} />
               </div>
               <div>
                 <Label>Hora</Label>

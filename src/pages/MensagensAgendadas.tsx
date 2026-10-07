@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { spDate, fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
 import MessageFilters from "@/components/agendarmensagem/MessageFilters";
-import MessagesList, { getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
+import MessagesList, { filterScheduledMessages, getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
 
 
 interface ScheduledMessage {
@@ -125,13 +125,13 @@ export default function MensagensAgendadas() {
 
   const handleSelectAll = (sel: boolean) => {
     if (sel) {
-      const filtered = messages.filter(m => {
-        const s = m.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.students?.phone.includes(searchTerm);
-        const u = selectedStudents.length === 0 || selectedStudents.includes(m.student_id);
-        return s && u;
-      });
+      const filtered = filterScheduledMessages(
+        messages,
+        searchTerm,
+        dateFilter,
+        customDateRange,
+        selectedStudents,
+      );
       setSelectedMessages(filtered.map(m => m.id));
     } else setSelectedMessages([]);
   };
@@ -214,7 +214,7 @@ export default function MensagensAgendadas() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Data</Label>
-                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={fmtDateISOSP(new Date())} />
               </div>
               <div>
                 <Label>Hora</Label>

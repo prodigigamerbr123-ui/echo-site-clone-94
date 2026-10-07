@@ -13,7 +13,7 @@ import { Trash2, Plus, ChevronsUpDown } from "lucide-react";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { replaceNameVar } from "@/lib/phone";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
-import { spDate, spParts } from "@/lib/spTime";
+import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
 
 interface Student { id: string; name: string; phone: string; }
 interface PredefinedMessage { id: string; title: string; content: string; }
@@ -273,7 +273,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="am-date">Data</Label>
-              <Input id="am-date" type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+              <Input id="am-date" type="date" value={date} onChange={e => setDate(e.target.value)} min={fmtDateISOSP(new Date())} />
             </div>
             <div>
               <Label htmlFor="am-time">Horário</Label>

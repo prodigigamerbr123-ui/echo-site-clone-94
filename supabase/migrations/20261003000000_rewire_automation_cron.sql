@@ -45,6 +45,10 @@ BEGIN
   SELECT cron.unschedule('process-scheduled-messages-every-minute')
   WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'process-scheduled-messages-every-minute');
 
+  SELECT cron.unschedule('daily-automation')
+  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'daily-automation');
+
+  -- Nome usado por uma versão intermediária desta migration.
   SELECT cron.unschedule('daily-automation-daily')
   WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'daily-automation-daily');
 
@@ -67,8 +71,9 @@ BEGIN
   );
 
   PERFORM cron.schedule(
-    'daily-automation-daily',
-    '0 7 * * *',
+    'daily-automation',
+    -- Banco em UTC: 11:00 UTC = 08:00 America/Sao_Paulo.
+    '0 11 * * *',
     daily_sql
   );
 END;
@@ -76,11 +81,3 @@ $$;
 
 REVOKE ALL ON FUNCTION public.configure_automation_cron() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.configure_automation_cron() TO service_role;
-
--- Remove any jobs left by older migrations. They will be recreated after
--- the new project's Vault secrets are configured.
-SELECT cron.unschedule('process-scheduled-messages-every-minute')
-WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'process-scheduled-messages-every-minute');
-
-SELECT cron.unschedule('daily-automation-daily')
-WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'daily-automation-daily');

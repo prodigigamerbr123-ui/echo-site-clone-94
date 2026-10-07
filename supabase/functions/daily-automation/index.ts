@@ -92,6 +92,15 @@ function addDaysISO(dateISO: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+function spDayBoundsUtc(dateISO: string): { start: string; end: string } {
+  const [y, m, d] = dateISO.split("-").map(Number);
+  const startMs = Date.UTC(y, m - 1, d) - SP_OFFSET_MS;
+  return {
+    start: new Date(startMs).toISOString(),
+    end: new Date(startMs + 86400000).toISOString(),
+  };
+}
+
 // Retorna uma data hoje entre 12:00 e 15:00 (horário de Brasília, UTC-3 sem DST)
 function scatterTimeToday(): Date {
   const nowSp = new Date(Date.now() + SP_OFFSET_MS);
@@ -182,12 +191,35 @@ serve(async (req: Request) => {
       (pendings || []).map((p: any) => `${p.student_id}:${p.message_type}`),
     );
 
+    // Idempotência diária: uma segunda execução no mesmo dia não deve
+    // reagendar aniversário/cobrança/convite que já foi criado, mesmo se
+    // ele já estiver sent/failed. O índice único do banco continua sendo a
+    // última barreira contra duas execuções concorrentes.
+    const todayBounds = spDayBoundsUtc(spDateStrToday());
+    const { data: scheduledToday, error: scheduledTodayError } = await supabase
+      .from("scheduled_messages")
+      .select("student_id, message_type")
+      .gte("scheduled_for", todayBounds.start)
+      .lt("scheduled_for", todayBounds.end)
+      .in("message_type", [
+        "evaluation_reminder",
+        "birthday",
+        "payment_reminder_before",
+        "payment_reminder_due",
+        "payment_overdue",
+      ]);
+    if (scheduledTodayError) throw scheduledTodayError;
+    const hasScheduledToday = new Set(
+      (scheduledToday || []).map((p: any) => `${p.student_id}:${p.message_type}`),
+    );
+
     // ---- 1) Aniversariantes de hoje ----
     const birthdayInserts: any[] = [];
     if (birthdayOn) {
       for (const s of activeStudents) {
         if (!isBirthdayToday(s.birth_date)) continue;
         if (hasPending.has(`${s.id}:birthday`)) continue;
+        if (hasScheduledToday.has(`${s.id}:birthday`)) continue;
         const content = await resolveAutomationMessage(
           supabase, settings, "birthday", "birthday",
           pick(BIRTHDAY_TEMPLATES)(s.name), { nome: s.name },
@@ -213,7 +245,7 @@ serve(async (req: Request) => {
     );
 
     // ---- 2) Lembretes de avaliação vencida ----
-    let reminderInserts: any[] = [];
+    const reminderInserts: any[] = [];
     let reminderCandidates: any[] = [];
     if (inviteOn) {
       const minIntervalDays = Number(
@@ -242,6 +274,7 @@ serve(async (req: Request) => {
       reminderCandidates = activeStudents
         .filter((s) => {
           if (hasPending.has(`${s.id}:evaluation_reminder`)) return false;
+          if (hasScheduledToday.has(`${s.id}:evaluation_reminder`)) return false;
           if (studentsWithFutureEval.has(s.id)) return false;
           if (s.last_evaluation_date) {
             if (daysSince(s.last_evaluation_date) <= daysOverdue) return false;
@@ -302,6 +335,7 @@ serve(async (req: Request) => {
         const due = String(s.payment_due_date);
 
         if (due === beforeTarget && !hasPending.has(`${s.id}:payment_reminder_before`)) {
+          if (hasScheduledToday.has(`${s.id}:payment_reminder_before`)) continue;
           const content = await resolveAutomationMessage(
             supabase, settings, "payment_reminder", "payment_reminder_before",
             PAYMENT_BEFORE_TEMPLATE(s.name, paymentDaysBefore),
@@ -319,6 +353,7 @@ serve(async (req: Request) => {
         }
 
         if (due === todaySP && !hasPending.has(`${s.id}:payment_reminder_due`)) {
+          if (hasScheduledToday.has(`${s.id}:payment_reminder_due`)) continue;
           const content = await resolveAutomationMessage(
             supabase, settings, "payment_reminder", "payment_reminder_due",
             PAYMENT_DUE_TEMPLATE(s.name),
@@ -366,6 +401,7 @@ serve(async (req: Request) => {
         const due = String(s.payment_due_date);
         if (due >= todaySP) continue; // ainda não venceu
         if (hasPending.has(`${s.id}:payment_overdue`)) continue;
+        if (hasScheduledToday.has(`${s.id}:payment_overdue`)) continue;
         if (recentByStudent.has(s.id)) continue; // dentro do intervalo de repetição
 
         const daysLate = Math.max(
@@ -399,8 +435,25 @@ serve(async (req: Request) => {
       const { error, count } = await supabase
         .from("scheduled_messages")
         .insert(allInserts, { count: "exact" });
-      if (error) throw error;
-      inserted = count ?? allInserts.length;
+      if (!error) {
+        inserted = count ?? allInserts.length;
+      } else if (error.code === "23505") {
+        // Corrida rara: duas execuções podem passar pela leitura acima ao
+        // mesmo tempo. O INSERT em lote é atômico; se o índice único detectar
+        // conflito, repetimos individualmente e ignoramos apenas duplicatas.
+        for (const row of allInserts) {
+          const { error: rowError } = await supabase
+            .from("scheduled_messages")
+            .insert(row);
+          if (!rowError) {
+            inserted++;
+            continue;
+          }
+          if (rowError.code !== "23505") throw rowError;
+        }
+      } else {
+        throw error;
+      }
     }
 
     const summary = {

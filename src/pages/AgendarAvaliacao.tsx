@@ -34,7 +34,7 @@ import {
   getAutomationParam,
 } from "@/lib/automationSettings";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
-import { spDate, spParts } from "@/lib/spTime";
+import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
 
 
 import {
@@ -592,7 +592,7 @@ export default function AgendarAvaliacao() {
     }
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = fmtDateISOSP(new Date());
 
   return (
     <div className="space-y-6">

@@ -19,7 +19,7 @@ import {
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { hasNameVar, replaceNameVar } from "@/lib/phone";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
-import { spDate, spParts } from "@/lib/spTime";
+import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
 
 interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
 interface PredefinedMessage { id: string; title: string; content: string; }
@@ -411,7 +411,7 @@ export default function Mensagens() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label htmlFor="cm-date">Data</Label>
-                        <Input id="cm-date" type="date" value={customDate} onChange={e => setCustomDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+                        <Input id="cm-date" type="date" value={customDate} onChange={e => setCustomDate(e.target.value)} min={fmtDateISOSP(new Date())} />
                       </div>
                       <div>
                         <Label htmlFor="cm-time">Horário</Label>

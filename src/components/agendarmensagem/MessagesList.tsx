@@ -43,6 +43,11 @@ const AUTO_TYPES = new Set<string>([
   "birthday",
   "evaluation_followup",
   "evaluation_reschedule",
+  "welcome",
+  "reengagement",
+  "payment_reminder_before",
+  "payment_reminder_due",
+  "payment_overdue",
 ]);
 
 const isAutoType = (t: string) => AUTO_TYPES.has(t);
@@ -61,6 +66,11 @@ const getMessageTypeLabel = (type: string) => {
     "evaluation_reschedule": "Remarcar avaliação",
     "evaluation_reminder": "Avaliação vencida",
     "birthday": "Aniversário",
+    "welcome": "Boas-vindas",
+    "reengagement": "Reengajamento",
+    "payment_reminder_before": "Aviso de vencimento",
+    "payment_reminder_due": "Vencimento hoje",
+    "payment_overdue": "Mensalidade vencida",
   };
   return labels[type] || type;
 };
@@ -75,7 +85,7 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-function applyFilters(
+export function filterScheduledMessages(
   messages: ScheduledMessage[],
   searchTerm: string,
   dateFilter: string,
@@ -113,14 +123,14 @@ function applyFilters(
 export const getFilteredMessagesCount = (
   messages: ScheduledMessage[], searchTerm: string, dateFilter: string,
   customDateRange: { from?: Date; to?: Date }, selectedStudents: string[],
-) => applyFilters(messages, searchTerm, dateFilter, customDateRange, selectedStudents).length;
+) => filterScheduledMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents).length;
 
 export default function MessagesList({
   messages, searchTerm, dateFilter, customDateRange, selectedStudents,
   selectedMessages, onMessageSelect, onSelectAll, onDeleteSelected, onEdit, onDelete, onRetry,
 }: Props) {
   const [showAll, setShowAll] = useState(false);
-  const filtered = applyFilters(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
+  const filtered = filterScheduledMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
   const display = showAll ? filtered : filtered.slice(0, 10);
   const allSel = filtered.length > 0 && filtered.every(m => selectedMessages.includes(m.id));
 
