@@ -11,7 +11,6 @@ import {
   RefreshCw,
   Smartphone,
   AlertTriangle,
-  ExternalLink,
   Wrench,
 } from "lucide-react";
 
@@ -28,6 +27,12 @@ interface StatusResponse {
 export function WhatsAppStatus() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<StatusResponse | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const qrBusy = useRef(false);
+  const connectAttempted = useRef(false);
   const { toast } = useToast();
 
   const fetchStatus = useCallback(
@@ -39,10 +44,10 @@ export function WhatsAppStatus() {
         });
         if (error) throw error;
         setData(resp as StatusResponse);
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast({
           title: "Erro ao consultar WhatsApp",
-          description: err?.message || "Tente novamente",
+          description: err instanceof Error ? err.message : "Tente novamente",
           variant: "destructive",
         });
       } finally {
@@ -57,14 +62,14 @@ export function WhatsAppStatus() {
 
   useEffect(() => {
     fetchStatus();
-    // Intervalo fixo curto; pula fetch quando já está conectado (evita recriar timer a cada oscilação)
+    // Verifica mais rapidamente enquanto aguarda escaneamento do QR.
     let tick = 0;
     const interval = setInterval(() => {
       tick++;
-      // Se conectado, só refetch a cada 6 ciclos (~60s); senão a cada ciclo (~10s)
-      if (stateRef.current === "open" && tick % 6 !== 0) return;
+      // Se conectado, consulta a cada 60s; caso contrário, a cada 6s.
+      if (stateRef.current === "open" && tick % 10 !== 0) return;
       fetchStatus();
-    }, 10000);
+    }, 6000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -72,6 +77,76 @@ export function WhatsAppStatus() {
   const isConnected = data?.state === "open";
   const isConnecting = data?.state === "connecting";
   const isDisconnected = !isConnected && !isConnecting;
+  const currentState = data?.state;
+
+  const fetchQr = useCallback(async (startIfMissing: boolean) => {
+    if (qrBusy.current) return;
+    qrBusy.current = true;
+    setQrLoading(true);
+    try {
+      const { data: response, error } = await supabase.functions.invoke("whatsapp-status", {
+        body: { action: "qr" },
+      });
+      if (error) throw error;
+      const image = (response as { qrCode?: string | null } | null)?.qrCode;
+      if (image) {
+        setQrCode(image);
+        setQrError(null);
+      } else if (startIfMissing && !connectAttempted.current) {
+        // Inicia uma única vez, após comprovar que não há QR disponível.
+        // Atualizações periódicas consultam somente o QR, sem reiniciar o WhatsApp.
+        connectAttempted.current = true;
+        const { error: connectError } = await supabase.functions.invoke("whatsapp-status", {
+          body: { action: "connect" },
+        });
+        if (connectError) throw connectError;
+        setQrError(null);
+      } else if (!image) {
+        setQrCode(null);
+      }
+    } catch (err: unknown) {
+      setQrError(err instanceof Error ? err.message : "Falha ao carregar QR Code.");
+    } finally {
+      qrBusy.current = false;
+      setQrLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isConnected) {
+      setQrCode(null);
+      setQrError(null);
+      connectAttempted.current = false;
+      return;
+    }
+    if (!currentState || !["close", "connecting"].includes(currentState)) return;
+    void fetchQr(currentState === "close");
+    const timer = setInterval(() => { void fetchQr(false); }, 8000);
+    return () => clearInterval(timer);
+  }, [currentState, isConnected, fetchQr]);
+
+  const disconnect = async () => {
+    setDisconnecting(true);
+    try {
+      const { error } = await supabase.functions.invoke("whatsapp-status", {
+        body: { action: "logout" },
+      });
+      if (error) throw error;
+      setQrCode(null);
+      connectAttempted.current = false;
+      setData((current) => current ? { ...current, state: "close", connected: false } : current);
+      toast({ title: "WhatsApp desconectado", description: "Aguardando novo QR Code." });
+      await fetchStatus();
+    } catch (err: unknown) {
+      toast({
+        title: "Não foi possível desconectar",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   return (
     <Card
@@ -106,7 +181,7 @@ export function WhatsAppStatus() {
                   ? "Mensagens podem ser enviadas normalmente."
                   : isConnecting
                   ? "Aguardando confirmação do dispositivo..."
-                  : "Conecte o WhatsApp diretamente no painel da Evolution."}
+                  : "Escaneie o QR Code abaixo para conectar o WhatsApp."}
               </CardDescription>
             </div>
           </div>
@@ -138,8 +213,8 @@ export function WhatsAppStatus() {
             <div className="flex-1 text-sm">
               <p className="font-medium text-destructive">Ação necessária</p>
               <p className="text-muted-foreground text-xs">
-                O site apenas consulta o status. Abra o painel da Evolution para escanear o QR Code
-                e depois volte aqui para atualizar o status.
+                No celular, abra WhatsApp → Aparelhos conectados → Conectar aparelho.
+                Escaneie o código abaixo. O status será atualizado automaticamente.
               </p>
             </div>
           </div>
@@ -151,10 +226,37 @@ export function WhatsAppStatus() {
           </div>
         )}
 
-        {!isConnected && !loading && (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            QR Code disponível somente na Evolution para evitar reinicializações da instância pelo site.
-          </p>
+        {!isConnected && data && ["close", "connecting"].includes(data.state) && (
+          <div className="flex flex-col items-center gap-3 rounded-lg border bg-background p-4" aria-live="polite">
+            {qrCode ? (
+              <img
+                src={qrCode}
+                alt="QR Code para vincular WhatsApp da academia"
+                className="h-64 w-64 rounded-md object-contain"
+              />
+            ) : (
+              <div className="flex h-64 w-64 flex-col items-center justify-center gap-3 rounded-md bg-muted/30 text-center text-sm text-muted-foreground">
+                {qrLoading && <Loader2 className="h-6 w-6 animate-spin" />}
+                <p>{qrLoading ? "Preparando QR Code..." : "Aguardando QR Code da Evolution..."}</p>
+              </div>
+            )}
+            <p className="text-center text-xs text-muted-foreground">
+              O QR Code é atualizado automaticamente enquanto o WhatsApp estiver desconectado.
+            </p>
+            {qrError && <p role="alert" className="text-center text-sm text-destructive">{qrError}</p>}
+          </div>
+        )}
+
+        {isConnected && (
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={() => void disconnect()}
+            disabled={disconnecting}
+          >
+            {disconnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Desconectar WhatsApp
+          </Button>
         )}
 
         <div className="rounded-lg border bg-muted/20">
@@ -188,21 +290,8 @@ export function WhatsAppStatus() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Use o painel da Evolution para QR Code, reconexão e diagnóstico quando houver algum problema na integração.
+                O QR Code e o encerramento da sessão são gerenciados aqui pelo serviço Evolution Go.
               </p>
-
-              {data?.dashboardUrl ? (
-                <Button asChild variant="outline" className="w-full justify-between">
-                  <a href={data.dashboardUrl} target="_blank" rel="noopener noreferrer">
-                    Abrir Evolution Manager
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  O endereço do painel ficará disponível assim que o backend responder ao status.
-                </p>
-              )}
             </div>
           </details>
         </div>

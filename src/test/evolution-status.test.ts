@@ -8,8 +8,9 @@ describe("Evolution connection status", () => {
     [{ data: { Connected: true, LoggedIn: true } }, "open"],
     [{ data: { connected: true, loggedIn: true } }, "open"],
     [{ Connected: true, LoggedIn: false }, "connecting"],
+    [{ connected: false, loggedIn: true }, "connecting"],
     [{ connected: false, loggedIn: false }, "close"],
-    [{ Connected: false, connected: true, LoggedIn: true }, "close"],
+    [{ Connected: false, connected: true, LoggedIn: true }, "connecting"],
   ])("interprets provider status %j as %s", (body, state) => {
     expect(parseEvolutionStatus(body).state).toBe(state);
     expect(parseEvolutionStatus(body).connected).toBe(state === "open");

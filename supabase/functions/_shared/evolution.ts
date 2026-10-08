@@ -29,7 +29,9 @@ export function parseEvolutionStatus(data: any) {
   const connected = (d?.Connected ?? d?.connected) === true;
   const loggedIn = (d?.LoggedIn ?? d?.loggedIn) === true;
   return {
-    state: connected && loggedIn ? "open" : connected ? "connecting" : "close",
+    // Uma sessão ainda autenticada, mas temporariamente offline, deve aguardar
+    // reconexão em vez de gerar um QR e iniciar outra sessão.
+    state: connected && loggedIn ? "open" : connected || loggedIn ? "connecting" : "close",
     connected: connected && loggedIn,
     instance: d?.Name ?? d?.name ?? null,
   };
