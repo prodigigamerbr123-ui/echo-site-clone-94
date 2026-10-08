@@ -28,7 +28,7 @@ serve(async (req: Request) => {
     }
 
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
-    const headers = { apikey: EVOLUTION_INSTANCE_TOKEN, 'Content-Type': 'application/json' };
+    const headers = { apikey: EVOLUTION_INSTANCE_TOKEN, 'Content-Type': 'application/json', 'User-Agent': 'WorkoutSaaS/1.0' };
 
     // Somente consulta status. Esta função NÃO deve chamar connect, QR ou disconnect.
     // O QR Code e qualquer reconexão ficam exclusivamente no painel da Evolution.

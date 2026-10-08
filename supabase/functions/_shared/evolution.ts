@@ -38,7 +38,7 @@ export function parseEvolutionStatus(data: any) {
 export async function getEvolutionState(baseUrl: string, instanceToken: string): Promise<string> {
   try {
     const resp = await fetch(`${baseUrl}/instance/status`, {
-      headers: { apikey: instanceToken, "Content-Type": "application/json" },
+      headers: { apikey: instanceToken, "Content-Type": "application/json", "User-Agent": "WorkoutSaaS/1.0" },
       signal: AbortSignal.timeout(10000),
     });
     if (!resp.ok) return "unknown";
@@ -64,7 +64,7 @@ export async function sendEvolutionText(params: {
 
   const resp = await fetch(`${params.baseUrl}/send/text`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: params.instanceToken },
+    headers: { "Content-Type": "application/json", apikey: params.instanceToken, "User-Agent": "WorkoutSaaS/1.0" },
     body: JSON.stringify({
       number: params.number,
       text: params.text,
