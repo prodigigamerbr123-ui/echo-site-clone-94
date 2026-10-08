@@ -40,7 +40,7 @@ serve(async (req: Request) => {
     const statusData = JSON.parse(statusText);
 
     return new Response(
-      JSON.stringify({ ...parseEvolutionStatus(statusData), dashboardUrl: baseUrl }),
+      JSON.stringify({ ...parseEvolutionStatus(statusData), dashboardUrl: `${baseUrl}/manager/login` }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

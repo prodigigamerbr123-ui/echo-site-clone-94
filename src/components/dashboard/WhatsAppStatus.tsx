@@ -194,7 +194,7 @@ export function WhatsAppStatus() {
               {data?.dashboardUrl ? (
                 <Button asChild variant="outline" className="w-full justify-between">
                   <a href={data.dashboardUrl} target="_blank" rel="noopener noreferrer">
-                    Abrir painel da Evolution API
+                    Abrir Evolution Manager
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </Button>
