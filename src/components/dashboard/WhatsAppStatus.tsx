@@ -11,6 +11,8 @@ import {
   RefreshCw,
   Smartphone,
   AlertTriangle,
+  ExternalLink,
+  Wrench,
 } from "lucide-react";
 
 type State = "open" | "close" | "connecting" | "unknown" | string;
@@ -20,6 +22,7 @@ interface StatusResponse {
   connected?: boolean;
   instance?: string;
   error?: string;
+  dashboardUrl?: string;
 }
 
 export function WhatsAppStatus() {
@@ -153,6 +156,56 @@ export function WhatsAppStatus() {
             QR Code disponível somente na Evolution para evitar reinicializações da instância pelo site.
           </p>
         )}
+
+        <div className="rounded-lg border bg-muted/20">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3 text-sm font-medium">
+              <span className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+                Diagnóstico / Avançado
+              </span>
+              <span className="text-xs font-normal text-muted-foreground group-open:hidden">Mostrar</span>
+              <span className="hidden text-xs font-normal text-muted-foreground group-open:inline">Ocultar</span>
+            </summary>
+            <div className="space-y-3 border-t p-3">
+              <div className="grid gap-2 text-sm sm:grid-cols-2">
+                <div className="rounded-md bg-background p-3">
+                  <p className="text-xs text-muted-foreground">Evolution API</p>
+                  <p className="mt-1 font-medium">
+                    {loading
+                      ? "Verificando..."
+                      : isConnected
+                        ? "Online e conectada"
+                        : isConnecting
+                          ? "Conectando"
+                          : "WhatsApp desconectado"}
+                  </p>
+                </div>
+                <div className="rounded-md bg-background p-3">
+                  <p className="text-xs text-muted-foreground">Instância</p>
+                  <p className="mt-1 font-medium">{data?.instance || "workout"}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Use o painel da Evolution para QR Code, reconexão e diagnóstico quando houver algum problema na integração.
+              </p>
+
+              {data?.dashboardUrl ? (
+                <Button asChild variant="outline" className="w-full justify-between">
+                  <a href={data.dashboardUrl} target="_blank" rel="noopener noreferrer">
+                    Abrir painel da Evolution API
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  O endereço do painel ficará disponível assim que o backend responder ao status.
+                </p>
+              )}
+            </div>
+          </details>
+        </div>
 
         <div className="flex gap-2 pt-2">
           <Button
