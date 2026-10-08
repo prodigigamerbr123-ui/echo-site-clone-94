@@ -24,17 +24,28 @@ function extractError(data: any): string | null {
   return null;
 }
 
+export function parseEvolutionStatus(data: any) {
+  const d = data?.data ?? data;
+  const connected = (d?.Connected ?? d?.connected) === true;
+  const loggedIn = (d?.LoggedIn ?? d?.loggedIn) === true;
+  return {
+    state: connected && loggedIn ? "open" : connected ? "connecting" : "close",
+    connected: connected && loggedIn,
+    instance: d?.Name ?? d?.name ?? null,
+  };
+}
+
 export async function getEvolutionState(baseUrl: string, instanceToken: string): Promise<string> {
   try {
     const resp = await fetch(`${baseUrl}/instance/status`, {
       headers: { apikey: instanceToken, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(10000),
     });
+    if (!resp.ok) return "unknown";
     const text = await resp.text();
     const data = safeJson(text);
-    const d = data?.data || data;
-    if (d?.Connected && d?.LoggedIn) return "open";
-    if (d?.Connected) return "connecting";
-    return "close";
+    if (!data) return "unknown";
+    return parseEvolutionStatus(data).state;
   } catch (_) {
     return "unknown";
   }

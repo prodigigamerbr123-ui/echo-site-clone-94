@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { requireUser } from "../_shared/auth.ts";
+import { parseEvolutionStatus } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,17 +32,15 @@ serve(async (req: Request) => {
 
     // Somente consulta status. Esta função NÃO deve chamar connect, QR ou disconnect.
     // O QR Code e qualquer reconexão ficam exclusivamente no painel da Evolution.
-    const statusResp = await fetch(`${baseUrl}/instance/status`, { headers });
+    const statusResp = await fetch(`${baseUrl}/instance/status`, { headers, signal: AbortSignal.timeout(10000) });
     const statusText = await statusResp.text();
-    console.log(`[instance/status] http=${statusResp.status} body=${statusText.slice(0, 400)}`);
-    let statusData: any = {};
-    try { statusData = JSON.parse(statusText); } catch (_) {}
-    const d = statusData?.data || statusData;
-    const connected = !!(d?.Connected && d?.LoggedIn);
-    const state = connected ? 'open' : (d?.Connected ? 'connecting' : 'close');
+    if (!statusResp.ok) {
+      throw new Error(`Não foi possível consultar a Evolution (HTTP ${statusResp.status})`);
+    }
+    const statusData = JSON.parse(statusText);
 
     return new Response(
-      JSON.stringify({ state, connected, instance: d?.Name || null }),
+      JSON.stringify(parseEvolutionStatus(statusData)),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
