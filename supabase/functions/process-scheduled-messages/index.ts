@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { formatPhone } from "../_shared/phone.ts";
-import { sendOpenWaText } from "../_shared/openwa.ts";
+import { sendEvolutionText } from "../_shared/evolution.ts";
 import { requireCronSecret } from "../_shared/auth.ts";
 import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 
@@ -29,11 +29,11 @@ serve(async (req: Request) => {
   if (cronFail) return cronFail;
 
   try {
-    const OPENWA_API_URL = Deno.env.get("OPENWA_API_URL");
-    const OPENWA_API_KEY = Deno.env.get("OPENWA_API_KEY");
+    const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
+    const EVOLUTION_INSTANCE_TOKEN = Deno.env.get("EVOLUTION_INSTANCE_TOKEN");
 
-    if (!OPENWA_API_URL) {
-      return new Response(JSON.stringify({ error: "OpenWA API não configurada" }), {
+    if (!EVOLUTION_API_URL || !EVOLUTION_INSTANCE_TOKEN) {
+      return new Response(JSON.stringify({ error: "Evolution API não configurada" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -64,7 +64,7 @@ serve(async (req: Request) => {
       });
     }
 
-    const baseUrl = OPENWA_API_URL.replace(/\/$/, "");
+    const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
     let sent = 0;
     let failed = 0;
     let retried = 0;
@@ -134,9 +134,9 @@ serve(async (req: Request) => {
       const finalText = String(msg.content || "").replace(/\{nome\}/gi, firstName);
 
       try {
-        const sendResult = await sendOpenWaText({
+        const sendResult = await sendEvolutionText({
           baseUrl,
-          apiKey: OPENWA_API_KEY,
+          instanceToken: EVOLUTION_INSTANCE_TOKEN,
           number: phoneCheck.number,
           text: finalText,
         });
@@ -154,13 +154,13 @@ serve(async (req: Request) => {
             .select("id")
             .maybeSingle();
 
-          // OpenWA confirmou o envio. Se o banco falhar neste ponto, NÃO
+          // Evolution confirmou o envio. Se o banco falhar neste ponto, NÃO
           // reenfileiramos automaticamente: o destinatário pode já ter
           // recebido a mensagem. O reset de mensagens travadas transforma
           // esse caso em "failed" para revisão manual, evitando duplicatas.
           if (markSentError || !markedSent) {
             console.error(
-              `[delivery-uncertain] OpenWA confirmou ${msg.id}, mas não foi possível marcar como sent`,
+              `[delivery-uncertain] Evolution confirmou ${msg.id}, mas não foi possível marcar como sent`,
               markSentError,
             );
             uncertain++;
@@ -209,7 +209,7 @@ serve(async (req: Request) => {
           else failed++;
         }
       } catch (err: any) {
-        // Exceção de rede é ambígua: o OpenWA pode ter aceitado a mensagem e
+        // Exceção de rede é ambígua: a Evolution pode ter aceitado a mensagem e
         // a resposta ter se perdido. Marcar como falha para revisão é mais
         // seguro do que reenviar automaticamente e duplicar a cobrança/aviso.
         console.error(`Envio incerto para ${msg.id}:`, err);

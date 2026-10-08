@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { formatPhone } from "../_shared/phone.ts";
-import { sendOpenWaText } from "../_shared/openwa.ts";
+import { sendEvolutionText } from "../_shared/evolution.ts";
 import { requireUser } from "../_shared/auth.ts";
 import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 
@@ -25,17 +25,17 @@ serve(async (req: Request) => {
 
 
   try {
-    const OPENWA_API_URL = Deno.env.get('OPENWA_API_URL');
-    const OPENWA_API_KEY = Deno.env.get('OPENWA_API_KEY');
+    const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
+    const EVOLUTION_INSTANCE_TOKEN = Deno.env.get('EVOLUTION_INSTANCE_TOKEN');
 
-    if (!OPENWA_API_URL) {
+    if (!EVOLUTION_API_URL || !EVOLUTION_INSTANCE_TOKEN) {
       return new Response(
-        JSON.stringify({ error: 'OpenWA API não configurada' }),
+        JSON.stringify({ error: 'Evolution API não configurada' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const baseUrl = OPENWA_API_URL.replace(/\/$/, '');
+    const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
     const { students, message }: SendMessageRequest = await req.json();
 
     if (!students?.length) {
@@ -76,9 +76,9 @@ serve(async (req: Request) => {
       }
 
       try {
-        const sendResult = await sendOpenWaText({
+        const sendResult = await sendEvolutionText({
           baseUrl,
-          apiKey: OPENWA_API_KEY,
+          instanceToken: EVOLUTION_INSTANCE_TOKEN,
           number: phoneCheck.number,
           text: message,
         });
