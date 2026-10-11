@@ -1,3 +1,4 @@
+import { saveEvaluationWithMessages, finishEvaluationWithMessages } from "@/lib/evaluationActions";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -21,19 +22,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { confirm as askConfirm } from "@/components/ui/confirm-dialog";
-import {
-  buildEvaluationMessages,
-  buildFollowup,
-  buildReschedule,
-  applyLinkedEvaluationTemplates,
-  AUTO_EVAL_MESSAGE_TYPES,
-} from "@/lib/evaluationMessages";
-import {
-  fetchAutomationSettings,
-  isAutomationEnabled,
-  getAutomationParam,
-} from "@/lib/automationSettings";
-import { resolveAutomationMessage } from "@/lib/messageTemplates";
 import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
 
 
@@ -79,15 +67,6 @@ const isOverdue = (dateStr: string | null) => {
   if (!dateStr) return false;
   return (Date.now() - new Date(dateStr).getTime()) / 86400000 > 90;
 };
-
-// deleta mensagens automáticas ainda pendentes de uma avaliação
-async function deletePendingEvalMessages(evaluationId: string) {
-  await supabase
-    .from("scheduled_messages")
-    .delete()
-    .eq("evaluation_id", evaluationId)
-    .eq("status", "pending");
-}
 
 export default function AgendarAvaliacao() {
   usePageTitle("Agendar Avaliação");
@@ -248,6 +227,7 @@ export default function AgendarAvaliacao() {
       return null;
     }
 
+    let allowConflict = false;
     // (b) outro aluno no mesmo horário exato → PEDE confirmação
     const target = new Date(whenIso).getTime();
     const sameSlot = others.find(
@@ -261,6 +241,7 @@ export default function AgendarAvaliacao() {
         confirmLabel: "Agendar mesmo assim",
       });
       if (!ok) return null;
+      allowConflict = true;
     } else {
       // Conflito próximo (30 min) — mantém o aviso original, sem bloquear
       const near = others.find((e) => {
@@ -276,43 +257,12 @@ export default function AgendarAvaliacao() {
           confirmLabel: "Agendar mesmo assim",
         });
         if (!ok) return null;
+        allowConflict = true;
       }
     }
 
-    const { data: created, error } = await supabase
-      .from("evaluations")
-      .insert({
-        student_id: student.id,
-        scheduled_at: whenIso,
-        status: "scheduled",
-        notes: notesText || null,
-      })
-      .select("id")
-      .single();
-    if (error) throw error;
-
-    // 3 mensagens automáticas (apenas se toggle ligado)
-    let messagesCreated = 0;
-    const settings = await fetchAutomationSettings();
-    if (isAutomationEnabled(settings, "evaluation_reminders")) {
-      const auto = buildEvaluationMessages(student.name, new Date(whenIso));
-      await applyLinkedEvaluationTemplates(auto, student.name, new Date(whenIso));
-      if (auto.length > 0) {
-        await supabase.from("scheduled_messages").insert(
-          auto.map((m) => ({
-            student_id: student.id,
-            content: m.content,
-            scheduled_for: m.scheduled_for,
-            message_type: m.message_type,
-            status: "pending",
-            evaluation_id: created!.id,
-          })),
-        );
-        messagesCreated = auto.length;
-      }
-    }
-
-    return messagesCreated;
+    const result = await saveEvaluationWithMessages(student.id, student.name, new Date(whenIso), notesText || null, ignoreEvaluationId, allowConflict);
+    return result.messages_created;
   }
 
   const handleCreate = async () => {
@@ -320,7 +270,7 @@ export default function AgendarAvaliacao() {
     if (!date) return toast({ title: "Escolha uma data", variant: "destructive" });
     const [cy, cmo, cd] = date.split("-").map(Number);
     const [ch, cmi] = (time || "09:00").split(":").map(Number);
-    const when = spDate(cy, (cmo || 1) - 1, cd || 1, ch || 9, cmi || 0);
+    const when = spDate(cy, (cmo || 1) - 1, cd || 1, ch, cmi);
     if (when <= new Date()) {
       return toast({ title: "Data inválida", description: "Deve ser no futuro.", variant: "destructive" });
     }
@@ -351,22 +301,22 @@ export default function AgendarAvaliacao() {
   const handleCancel = async (ev: Evaluation) => {
     const ok = await askConfirm({
       title: `Cancelar avaliação${ev.students?.name ? " de " + ev.students.name : ""}?`,
-      description: "As mensagens automáticas ainda pendentes serão apagadas.",
+      description: "Os lembretes ainda não enviados serão cancelados. Envios já iniciados podem chegar ao aluno.",
       confirmLabel: "Cancelar avaliação",
       destructive: true,
     });
     if (!ok) return;
-    await deletePendingEvalMessages(ev.id);
-    const { error } = await supabase
-      .from("evaluations")
-      .update({ status: "cancelled" })
-      .eq("id", ev.id);
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+    setSaving(true);
+    try {
+      const result = await finishEvaluationWithMessages(ev.id, ev.students?.name ?? "aluno", "cancel");
+      qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["evaluations-history"] });
-    qc.invalidateQueries({ queryKey: ["today-evaluations"] });
-    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-    toast({ title: "Avaliação cancelada" });
+      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast({ title: "Avaliação cancelada", description: result.in_flight ? "Há envio já iniciado; ele pode chegar ao aluno. Confira no WhatsApp." : "Lembretes ainda não enviados foram cancelados." });
+    } catch (e) {
+      toast({ title: "Erro ao cancelar", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
   const openReschedule = (ev: Evaluation) => {
@@ -382,77 +332,21 @@ export default function AgendarAvaliacao() {
     if (!rDate) return toast({ title: "Escolha data", variant: "destructive" });
     const [ry, rmo, rdd] = rDate.split("-").map(Number);
     const [rh, rmi] = (rTime || "09:00").split(":").map(Number);
-    const when = spDate(ry, (rmo || 1) - 1, rdd || 1, rh || 9, rmi || 0);
+    const when = spDate(ry, (rmo || 1) - 1, rdd || 1, rh, rmi);
     if (when <= new Date()) {
       return toast({ title: "Data inválida", variant: "destructive" });
     }
     setSaving(true);
     try {
-      // Trava fresca no banco também no reagendamento — evita colidir com uma
-      // avaliação criada em outro dispositivo depois que o dialog foi aberto.
-      const startOfTodayIso = startOfDay(new Date()).toISOString();
-      const { data: futureEvals, error: qErr } = await supabase
-        .from("evaluations")
-        .select("id, student_id, scheduled_at, students(name)")
-        .eq("status", "scheduled")
-        .gte("scheduled_at", startOfTodayIso);
-      if (qErr) throw qErr;
-      const others = (futureEvals ?? []).filter((e) => e.id !== rescheduleTarget.id);
-
-      const dup = others.find((e) => e.student_id === rescheduleTarget.student_id);
-      if (dup) {
-        const w = format(new Date(dup.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
-        toast({
-          title: "Aluno já possui avaliação agendada",
-          description: `Este aluno já tem outra avaliação em ${w}. Cancele-a antes de remarcar.`,
-          variant: "destructive",
-        });
-        return;
-      }
-      const target = when.getTime();
-      const sameSlot = others.find(
-        (e) => new Date(e.scheduled_at).getTime() === target,
-      );
-      if (sameSlot) {
-        const other = (sameSlot as any).students?.name ?? "outro aluno";
-        const ok = await askConfirm({
-          title: "Horário já ocupado",
-          description: `Já existe avaliação de ${other} exatamente neste horário. Remarcar assim mesmo?`,
-          confirmLabel: "Remarcar mesmo assim",
-        });
-        if (!ok) return;
-      }
-
-      await deletePendingEvalMessages(rescheduleTarget.id);
-      const { error } = await supabase
-        .from("evaluations")
-        .update({ scheduled_at: when.toISOString(), status: "scheduled" })
-        .eq("id", rescheduleTarget.id);
-      if (error) throw error;
-
-      const settings = await fetchAutomationSettings();
-      if (isAutomationEnabled(settings, "evaluation_reminders")) {
-        const auto = buildEvaluationMessages(rescheduleTarget.students?.name ?? "aluno", when);
-        await applyLinkedEvaluationTemplates(auto, rescheduleTarget.students?.name ?? "aluno", when);
-        if (auto.length > 0) {
-          await supabase.from("scheduled_messages").insert(
-            auto.map((m) => ({
-              student_id: rescheduleTarget.student_id,
-              content: m.content,
-              scheduled_for: m.scheduled_for,
-              message_type: m.message_type,
-              status: "pending",
-              evaluation_id: rescheduleTarget.id,
-            })),
-          );
-        }
-      }
-
+      const student = students?.find((s) => s.id === rescheduleTarget.student_id);
+      if (!student) throw new Error("Aluno não encontrado");
+      const created = await scheduleFor(student, when.toISOString(), rescheduleTarget.notes ?? "", rescheduleTarget.id);
+      if (created === null) return;
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["evaluations-history"] });
       qc.invalidateQueries({ queryKey: ["today-evaluations"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast({ title: "Avaliação remarcada" });
+      toast({ title: "Avaliação remarcada", description: "Lembretes substituídos. Um envio já iniciado pode chegar ao aluno; confira no WhatsApp." });
       setRescheduleTarget(null);
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
@@ -464,57 +358,8 @@ export default function AgendarAvaliacao() {
   const handleDone = async (ev: Evaluation) => {
     setSaving(true);
     try {
-      await deletePendingEvalMessages(ev.id);
-      const evalDate = new Date(ev.scheduled_at);
-      // Atômico: marca completed e atualiza had_evaluation/last_evaluation_date
-      // em uma única transação no banco.
-      const { error: rpcErr } = await supabase.rpc("complete_evaluation_tx", {
-        _evaluation_id: ev.id,
-      });
-      if (rpcErr) throw rpcErr;
-
-      // Follow-up (apenas se toggle ligado)
-      const settings = await fetchAutomationSettings();
-      let followupScheduled = false;
-      if (isAutomationEnabled(settings, "evaluation_followup")) {
-        const { data: existingFu } = await supabase
-          .from("scheduled_messages")
-          .select("id")
-          .eq("student_id", ev.student_id)
-          .eq("message_type", "evaluation_followup")
-          .eq("status", "pending")
-          .limit(1);
-
-        if (!existingFu || existingFu.length === 0) {
-          const daysAfter = Number(getAutomationParam(settings, "evaluation_followup", "days_after", 7));
-          const followupBase = new Date(evalDate.getTime() + daysAfter * 86400000);
-          const fp = spParts(followupBase);
-          const followup = spDate(
-            fp.y, fp.mo, fp.d,
-            9 + Math.floor(Math.random() * 3),
-            Math.floor(Math.random() * 60),
-          );
-          const name = ev.students?.name ?? "aluno";
-          const content = await resolveAutomationMessage(
-            "evaluation_followup",
-            "evaluation_followup",
-            buildFollowup(name),
-            { nome: name },
-            settings,
-          );
-          await supabase.from("scheduled_messages").insert({
-            student_id: ev.student_id,
-            content,
-            scheduled_for: followup.toISOString(),
-            message_type: "evaluation_followup",
-            status: "pending",
-            evaluation_id: ev.id,
-          });
-          followupScheduled = true;
-        }
-
-      }
-
+      const result = await finishEvaluationWithMessages(ev.id, ev.students?.name ?? "aluno", "completed");
+      const followupScheduled = result.messages_created > 0;
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["evaluations-history"] });
       qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
@@ -541,42 +386,8 @@ export default function AgendarAvaliacao() {
     if (!ok) return;
     setSaving(true);
     try {
-      await deletePendingEvalMessages(ev.id);
-      const { error } = await supabase
-        .from("evaluations").update({ status: "no_show" }).eq("id", ev.id);
-      if (error) throw error;
-
-      // Remarcar msg amanhã 09-12h (apenas se toggle ligado)
-      const settings = await fetchAutomationSettings();
-      let rescheduled = false;
-      if (isAutomationEnabled(settings, "no_show_reschedule")) {
-        // Amanhã 09-12h SP (não depende do fuso do navegador)
-        const tomorrowUTC = new Date(Date.now() + 86400000);
-        const tp = spParts(tomorrowUTC);
-        const tomorrow = spDate(
-          tp.y, tp.mo, tp.d,
-          9 + Math.floor(Math.random() * 3),
-          Math.floor(Math.random() * 60),
-        );
-        const name = ev.students?.name ?? "aluno";
-        const content = await resolveAutomationMessage(
-          "no_show_reschedule",
-          "evaluation_reschedule",
-          buildReschedule(name),
-          { nome: name },
-          settings,
-        );
-        await supabase.from("scheduled_messages").insert({
-          student_id: ev.student_id,
-          content,
-          scheduled_for: tomorrow.toISOString(),
-          message_type: "evaluation_reschedule",
-          status: "pending",
-          evaluation_id: ev.id,
-        });
-        rescheduled = true;
-      }
-
+      const result = await finishEvaluationWithMessages(ev.id, ev.students?.name ?? "aluno", "no_show");
+      const rescheduled = result.messages_created > 0;
       qc.invalidateQueries({ queryKey: ["evaluations-list"] });
       qc.invalidateQueries({ queryKey: ["evaluations-history"] });
       qc.invalidateQueries({ queryKey: ["today-evaluations"] });
@@ -899,6 +710,3 @@ export default function AgendarAvaliacao() {
     </div>
   );
 }
-
-// Silence unused-import warning for AUTO_EVAL_MESSAGE_TYPES (kept exported for reuse)
-void AUTO_EVAL_MESSAGE_TYPES;

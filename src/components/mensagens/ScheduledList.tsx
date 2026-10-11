@@ -28,12 +28,14 @@ interface ScheduledMessage {
   failure_reason?: string | null;
   retry_count?: number | null;
   evaluation_id?: string | null;
+  recurrence_parent_id?: string | null;
+  dispatch_started_at?: string | null;
   students?: { name: string; phone: string };
 }
 interface Student { id: string; name: string; phone: string; }
 
 interface Props {
-  statusFilter: "pending" | "failed";
+  statusFilter: "pending" | "failed" | "processing" | "cancelled";
   emptyLabel?: string;
 }
 
@@ -53,7 +55,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
   const [editContent, setEditContent] = useState("");
   const [editStudent, setEditStudent] = useState("");
   const [saving, setSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string; wholeSeries?: boolean } | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -84,6 +86,14 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
   }, [fetchAll]);
 
   const openEdit = (m: ScheduledMessage) => {
+    if (m.evaluation_id) {
+      toast({ title: "Edite pela agenda", description: "Os lembretes vinculados são atualizados junto com a avaliação." });
+      return;
+    }
+    if (m.dispatch_started_at || m.status === "processing" || m.status === "cancelled") {
+      toast({ title: "Mensagem não pode ser editada", description: "O envio já começou ou foi cancelado." });
+      return;
+    }
     setEditingMessage(m);
     setEditStudent(m.student_id);
     setEditContent(m.content);
@@ -97,14 +107,15 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
     const [y, mo, day] = editDate.split("-").map(Number);
     const [hh, mi] = (editTime || "00:00").split(":").map(Number);
     const dt = spDate(y, (mo || 1) - 1, day || 1, hh || 0, mi || 0);
-    if (dt <= new Date()) return toast({ title: "A data deve ser futura", variant: "destructive" });
+    if (!Number.isFinite(dt.getTime()) || dt <= new Date() || !editContent.trim() || !editStudent) return toast({ title: "A data deve ser futura", variant: "destructive" });
     setSaving(true);
-    const { error } = await supabase.from("scheduled_messages").update({
+    const { data: updated, error } = await supabase.from("scheduled_messages").update({
       student_id: editStudent, content: editContent.trim(),
       scheduled_for: dt.toISOString(), status: "pending",
-    }).eq("id", editingMessage.id);
+    }).eq("id", editingMessage.id).eq("status", editingMessage.status).is("dispatch_started_at", null).select("id").maybeSingle();
     setSaving(false);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    if (!updated) return toast({ title: "A mensagem mudou", description: "Atualize a lista antes de editar.", variant: "destructive" });
     toast({ title: "Atualizada" });
     setEditingMessage(null);
     fetchAll();
@@ -112,22 +123,28 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    const { error } = await supabase.from("scheduled_messages").delete().in("id", deleteTarget.ids);
-    if (error) return toast({ title: "Erro", variant: "destructive" });
-    toast({ title: `${deleteTarget.ids.length} excluída(s)` });
+    const { data, error } = await supabase.rpc("cancel_scheduled_messages_tx", { _ids: deleteTarget.ids, _whole_series: deleteTarget.wholeSeries ?? false });
+    if (error) return toast({ title: "Erro ao cancelar", description: error.message, variant: "destructive" });
+    const result = data as { cancelled: number; in_flight: number };
+    toast({ title: `${result.cancelled} cancelada(s)`, description: result.in_flight ? "Há envio já iniciado; ele pode chegar ao aluno. Confira no WhatsApp." : "O histórico foi preservado." });
     setSelectedMessages(prev => prev.filter(id => !deleteTarget.ids.includes(id)));
     setDeleteTarget(null);
     fetchAll();
   };
 
   const handleRetry = async (id: string) => {
-    const { error } = await supabase.from("scheduled_messages").update({
+    if (messages.find((m) => m.id === id)?.dispatch_started_at) {
+      toast({ title: "Confira no WhatsApp", description: "A entrega é incerta. Depois de conferir, componha um novo envio manual se necessário.", variant: "destructive" });
+      return;
+    }
+    const { data: retried, error } = await supabase.from("scheduled_messages").update({
       status: "pending",
       scheduled_for: new Date(Date.now() + 60 * 1000).toISOString(),
       retry_count: 0,
       failure_reason: null,
-    }).eq("id", id);
+    }).eq("id", id).eq("status", "failed").is("dispatch_started_at", null).select("id").maybeSingle();
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    if (!retried) return toast({ title: "A mensagem mudou", description: "Atualize a lista antes de reenviar.", variant: "destructive" });
     toast({ title: "Reenfileirada — próxima tentativa em 1 min" });
     fetchAll();
   };
@@ -187,6 +204,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
               onEdit={openEdit}
               onDelete={(id) => setDeleteTarget({ ids: [id], label: "esta mensagem" })}
               onRetry={handleRetry}
+              onCancelSeries={(id) => setDeleteTarget({ ids: [id], label: "toda a série", wholeSeries: true })}
             />
           )}
         </CardContent>
@@ -229,15 +247,15 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {deleteTarget?.label}?</AlertDialogTitle>
+            <AlertDialogTitle>Cancelar {deleteTarget?.label}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. As mensagens serão removidas da fila de envio.
+              As mensagens ainda não enviadas serão canceladas. Envios já iniciados podem chegar ao aluno. O histórico será preservado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              Cancelar envios
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

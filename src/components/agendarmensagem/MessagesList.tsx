@@ -19,6 +19,8 @@ interface ScheduledMessage {
   failure_reason?: string | null;
   retry_count?: number | null;
   evaluation_id?: string | null;
+  recurrence_parent_id?: string | null;
+  dispatch_started_at?: string | null;
   students?: { name: string; phone: string; };
 }
 
@@ -35,6 +37,7 @@ interface Props {
   onEdit: (m: ScheduledMessage) => void;
   onDelete: (id: string) => void;
   onRetry?: (id: string) => void;
+  onCancelSeries?: (id: string) => void;
 }
 
 const AUTO_TYPES = new Set<string>([
@@ -80,6 +83,7 @@ const getStatusBadge = (status: string) => {
     case "pending": return <Badge variant="secondary">Pendente</Badge>;
     case "sent": return <Badge>Enviada</Badge>;
     case "failed": return <Badge variant="destructive">Falhou</Badge>;
+    case "cancelled": return <Badge variant="outline">Cancelada</Badge>;
     case "processing": return <Badge variant="outline">Enviando...</Badge>;
     default: return <Badge variant="outline">{status}</Badge>;
   }
@@ -127,7 +131,7 @@ export const getFilteredMessagesCount = (
 
 export default function MessagesList({
   messages, searchTerm, dateFilter, customDateRange, selectedStudents,
-  selectedMessages, onMessageSelect, onSelectAll, onDeleteSelected, onEdit, onDelete, onRetry,
+  selectedMessages, onMessageSelect, onSelectAll, onDeleteSelected, onEdit, onDelete, onRetry, onCancelSeries,
 }: Props) {
   const [showAll, setShowAll] = useState(false);
   const filtered = filterScheduledMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
@@ -153,7 +157,7 @@ export default function MessagesList({
           </span>
           {selectedMessages.length > 0 && (
             <Button onClick={onDeleteSelected} variant="destructive" size="sm">
-              <Trash2 className="h-3 w-3 mr-1" /> Excluir selecionadas
+              <Trash2 className="h-3 w-3 mr-1" /> Cancelar selecionadas
             </Button>
           )}
         </div>
@@ -206,9 +210,9 @@ export default function MessagesList({
                           variant="outline"
                           className="h-8"
                           onClick={() => onRetry(m.id)}
-                          aria-label="Reenviar mensagem"
+                          aria-label={m.dispatch_started_at ? "Revisar entrega incerta" : "Reenviar mensagem"}
                         >
-                          <RotateCcw className="h-3 w-3 mr-1" /> Tentar de novo
+                          <RotateCcw className="h-3 w-3 mr-1" /> {m.dispatch_started_at ? "Revisar entrega" : "Tentar de novo"}
                         </Button>
                       )}
                     </div>
@@ -219,19 +223,24 @@ export default function MessagesList({
                     variant="ghost"
                     size="icon"
                     className="h-10 w-10"
+                    disabled={m.status !== "pending" && m.status !== "failed" || !!m.dispatch_started_at || !!m.evaluation_id}
                     onClick={() => onEdit(m)}
                     aria-label="Editar mensagem agendada"
                     title="Editar mensagem agendada"
                   >
                     <Edit2 className="h-4 w-4" />
                   </Button>
+                  {m.recurrence_parent_id && onCancelSeries && m.status !== "sent" && m.status !== "cancelled" && (
+                    <Button variant="outline" size="sm" onClick={() => onCancelSeries(m.id)}>Cancelar série</Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-10 w-10 text-destructive"
+                    disabled={m.status === "cancelled" || !!m.dispatch_started_at}
                     onClick={() => onDelete(m.id)}
-                    aria-label="Excluir mensagem agendada"
-                    title="Excluir mensagem agendada"
+                    aria-label="Cancelar mensagem agendada"
+                    title="Cancelar mensagem agendada"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

@@ -246,163 +246,50 @@ export async function createEvaluationWithMessages(
     .from("students").select("id, name").eq("id", studentId).single();
   if (sErr || !student) throw new Error("Aluno não encontrado");
 
-  const { data: created, error } = await supabase
-    .from("evaluations")
-    .insert({
-      student_id: studentId,
-      scheduled_at: scheduledAt.toISOString(),
-      status: "scheduled",
-      notes: notes || null,
-    })
-    .select("id")
-    .single();
+  const settings = await loadAutomationSettings(supabase);
+  const auto = settingEnabled(settings, "evaluation_reminders") ? buildEvaluationMessages(student.name, scheduledAt) : [];
+  const vars = { nome: student.name, data: fmtDateSP(scheduledAt), hora: fmtTimeSP(scheduledAt) };
+  for (const m of auto) {
+    m.content = await resolveAutomationMessage(supabase, settings, "evaluation_reminders", m.message_type, m.content, vars);
+  }
+  const { data, error } = await supabase.rpc("mutate_evaluation_tx", {
+    _action: "create", _evaluation_id: crypto.randomUUID(), _student_id: studentId,
+    _scheduled_at: scheduledAt.toISOString(), _notes: notes, _messages: auto,
+  });
   if (error) throw error;
-
-  const settings = await loadAutomationSettings(supabase);
-  const remindersOn = settingEnabled(settings, "evaluation_reminders");
-
-  const auto = remindersOn ? buildEvaluationMessages(student.name, scheduledAt) : [];
-  if (auto.length > 0) {
-    const vars = {
-      nome: student.name,
-      data: fmtDateSP(scheduledAt),
-      hora: fmtTimeSP(scheduledAt),
-    };
-    for (const m of auto) {
-      m.content = await resolveAutomationMessage(
-        supabase, settings, "evaluation_reminders", m.message_type, m.content, vars,
-      );
-    }
-    const { error: mErr } = await supabase.from("scheduled_messages").insert(
-      auto.map((m) => ({
-        student_id: studentId,
-        content: m.content,
-        scheduled_for: m.scheduled_for,
-        message_type: m.message_type,
-        status: "pending",
-        evaluation_id: created.id,
-      })),
-    );
-    if (mErr) {
-      // Rollback manual: desfaz a avaliação criada para evitar duplicatas na retentativa
-      await supabase.from("evaluations").delete().eq("id", created.id);
-      throw mErr;
-    }
-  }
-
-
-  return { evaluation_id: created.id, messages_created: auto.length };
+  return { evaluation_id: data.evaluation_id, messages_created: data.messages_created };
 }
 
-async function deletePendingEvalMessages(supabase: any, evaluationId: string) {
-  await supabase
-    .from("scheduled_messages")
-    .delete()
-    .eq("evaluation_id", evaluationId)
-    .eq("status", "pending");
-}
-
-export async function completeEvaluation(
-  supabase: any,
-  evaluationId: string,
-): Promise<{ followup_scheduled: boolean }> {
-  const { data: ev, error } = await supabase
-    .from("evaluations")
-    .select("id, student_id, scheduled_at, students(name)")
-    .eq("id", evaluationId).single();
+async function finishEvaluationOutcome(supabase: any, evaluationId: string, outcome: "completed" | "no_show") {
+  const { data: ev, error } = await supabase.from("evaluations")
+    .select("id, student_id, students(name)").eq("id", evaluationId).single();
   if (error || !ev) throw new Error("Avaliação não encontrada");
-
-  await deletePendingEvalMessages(supabase, evaluationId);
-
-  const evalDate = new Date(ev.scheduled_at);
-  // Atualização atômica de evaluations + students num único statement no banco.
-  const { error: rpcErr } = await supabase.rpc("complete_evaluation_tx", {
-    _evaluation_id: evaluationId,
-  });
-  if (rpcErr) throw rpcErr;
-
   const settings = await loadAutomationSettings(supabase);
-  if (!settingEnabled(settings, "evaluation_followup")) {
-    return { followup_scheduled: false };
-  }
-  const daysAfter = Number(settingParam(settings, "evaluation_followup", "days_after", 7));
-
-  // Follow-up — evitar duplicidade
-  const { data: existingFu } = await supabase
-    .from("scheduled_messages")
-    .select("id")
-    .eq("student_id", ev.student_id)
-    .eq("message_type", "evaluation_followup")
-    .eq("status", "pending")
-    .limit(1);
-
-  if (!existingFu || existingFu.length === 0) {
-    const followup = new Date(evalDate.getTime() + daysAfter * 86400000);
-    const fp = spParts(followup);
-    const followupSp = spDate(
-      fp.y, fp.mo, fp.d,
-      9 + Math.floor(Math.random() * 3),
-      Math.floor(Math.random() * 60),
-    );
+  const key = outcome === "completed" ? "evaluation_followup" : "no_show_reschedule";
+  const messages = [];
+  if (settingEnabled(settings, key)) {
+    const days = outcome === "completed" ? Number(settingParam(settings, key, "days_after", 7)) : 1;
+    if (!Number.isInteger(days) || days < 1 || days > 365) throw new Error("Intervalo de acompanhamento inválido");
+    const p = spParts(new Date(Date.now() + days * 86400000));
+    const when = spDate(p.y, p.mo, p.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
     const name = ev.students?.name ?? "aluno";
-    const content = await resolveAutomationMessage(
-      supabase, settings, "evaluation_followup", "evaluation_followup",
-      pick(FOLLOWUP_TEMPLATES)(name), { nome: name },
-    );
-    await supabase.from("scheduled_messages").insert({
-      student_id: ev.student_id,
-      content,
-      scheduled_for: followupSp.toISOString(),
-      message_type: "evaluation_followup",
-      status: "pending",
-      evaluation_id: evaluationId,
-    });
-    return { followup_scheduled: true };
+    const type = outcome === "completed" ? "evaluation_followup" : "evaluation_reschedule";
+    const fallback = outcome === "completed" ? pick(FOLLOWUP_TEMPLATES)(name) : pick(RESCHEDULE_TEMPLATES)(name);
+    const content = await resolveAutomationMessage(supabase, settings, key, type, fallback, { nome: name });
+    messages.push({ content, scheduled_for: when.toISOString(), message_type: type });
   }
-
-  return { followup_scheduled: false };
+  const { data, error: actionError } = await supabase.rpc("mutate_evaluation_tx", {
+    _action: outcome, _evaluation_id: evaluationId, _messages: messages,
+  });
+  if (actionError) throw actionError;
+  return data;
 }
 
-export async function noShowEvaluation(
-  supabase: any,
-  evaluationId: string,
-): Promise<void> {
-  const { data: ev, error } = await supabase
-    .from("evaluations")
-    .select("id, student_id, students(name)")
-    .eq("id", evaluationId).single();
-  if (error || !ev) throw new Error("Avaliação não encontrada");
+export async function completeEvaluation(supabase: any, evaluationId: string): Promise<{ followup_scheduled: boolean }> {
+  const result = await finishEvaluationOutcome(supabase, evaluationId, "completed");
+  return { followup_scheduled: result.messages_created > 0 };
+}
 
-  await deletePendingEvalMessages(supabase, evaluationId);
-
-  const { error: uErr } = await supabase
-    .from("evaluations").update({ status: "no_show" }).eq("id", evaluationId);
-  if (uErr) throw uErr;
-
-  const settings = await loadAutomationSettings(supabase);
-  if (!settingEnabled(settings, "no_show_reschedule")) return;
-
-  // Mensagem de remarcação amanhã 09-12h SP
-  const now = new Date();
-  const tomorrowUTC = new Date(now.getTime() + 86400000);
-  const tp = spParts(tomorrowUTC);
-  const tomorrowSp = spDate(
-    tp.y, tp.mo, tp.d,
-    9 + Math.floor(Math.random() * 3),
-    Math.floor(Math.random() * 60),
-  );
-  const name = ev.students?.name ?? "aluno";
-  const content = await resolveAutomationMessage(
-    supabase, settings, "no_show_reschedule", "evaluation_reschedule",
-    pick(RESCHEDULE_TEMPLATES)(name), { nome: name },
-  );
-  await supabase.from("scheduled_messages").insert({
-    student_id: ev.student_id,
-    content,
-    scheduled_for: tomorrowSp.toISOString(),
-    message_type: "evaluation_reschedule",
-    status: "pending",
-    evaluation_id: evaluationId,
-
-  });
+export async function noShowEvaluation(supabase: any, evaluationId: string): Promise<void> {
+  await finishEvaluationOutcome(supabase, evaluationId, "no_show");
 }

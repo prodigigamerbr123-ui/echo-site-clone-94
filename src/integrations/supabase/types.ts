@@ -149,6 +149,8 @@ export type Database = {
       }
       messages: {
         Row: {
+          scheduled_message_id: string | null
+          provider_message_id: string | null
           content: string
           id: string
           sent_at: string
@@ -156,6 +158,8 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          scheduled_message_id?: string | null
+          provider_message_id?: string | null
           content: string
           id?: string
           sent_at?: string
@@ -163,6 +167,8 @@ export type Database = {
           student_id: string
         }
         Update: {
+          scheduled_message_id?: string | null
+          provider_message_id?: string | null
           content?: string
           id?: string
           sent_at?: string
@@ -202,6 +208,10 @@ export type Database = {
       }
       scheduled_messages: {
         Row: {
+          expires_at: string | null
+          source_scheduled_at: string | null
+          source_payment_due_date: string | null
+          dispatch_started_at: string | null
           content: string
           created_at: string
           evaluation_id: string | null
@@ -219,6 +229,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          expires_at?: string | null
+          source_scheduled_at?: string | null
+          source_payment_due_date?: string | null
+          dispatch_started_at?: string | null
           content: string
           created_at?: string
           evaluation_id?: string | null
@@ -236,6 +250,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          expires_at?: string | null
+          source_scheduled_at?: string | null
+          source_payment_due_date?: string | null
+          dispatch_started_at?: string | null
           content?: string
           created_at?: string
           evaluation_id?: string | null
@@ -325,6 +343,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      mutate_evaluation_tx: {
+        Args: { _action: string; _evaluation_id: string; _student_id?: string; _scheduled_at?: string; _notes?: string; _messages?: Json; _allow_conflict?: boolean }
+        Returns: Json
+      }
+      cancel_scheduled_messages_tx: { Args: { _ids: string[]; _whole_series?: boolean }; Returns: Json }
+      acquire_whatsapp_delivery_lease: { Args: { _token: string }; Returns: boolean }
+      release_whatsapp_delivery_lease: { Args: { _token: string }; Returns: undefined }
+      prepare_scheduled_message_dispatch: { Args: { _id: string; _expected_updated_at: string; _lease_token: string }; Returns: Json }
+      finish_scheduled_message_dispatch: { Args: { _id: string; _content: string; _provider_message_id: string }; Returns: undefined }
       claim_due_scheduled_messages: {
         Args: { _limit: number }
         Returns: {

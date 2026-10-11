@@ -426,9 +426,9 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
     }
 
     case "delete_scheduled_message": {
-      const { error } = await supabase.from("scheduled_messages").delete().eq("id", args.id);
+      const { data, error } = await supabase.rpc("cancel_scheduled_messages_tx", { _ids: [args.id] });
       if (error) throw error;
-      return { success: true };
+      return { success: data.cancelled > 0, ...data };
     }
     case "create_predefined_message": {
       const { data, error } = await supabase.from("predefined_messages").insert({ title: args.title, content: args.content }).select().single();

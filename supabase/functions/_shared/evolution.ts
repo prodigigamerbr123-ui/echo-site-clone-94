@@ -1,5 +1,6 @@
 export interface EvolutionSendResult {
   ok: boolean;
+  uncertain?: boolean;
   httpStatus?: number;
   messageId?: string | null;
   reason?: string;
@@ -72,6 +73,7 @@ export async function sendEvolutionText(params: {
       text: params.text,
       delay: 1200,
     }),
+    signal: AbortSignal.timeout(15000),
   });
 
   const bodyText = await resp.text();
@@ -80,13 +82,14 @@ export async function sendEvolutionText(params: {
   const apiError = extractError(data);
 
   console.log(
-    `[evolution-send] http=${resp.status} messageId=${messageId || "none"} body=${bodyText.slice(0, 500)}`,
+    `[evolution-send] http=${resp.status} messageId=${messageId || "none"} `,
   );
 
   if (!resp.ok) {
     return {
       ok: false,
       httpStatus: resp.status,
+      uncertain: resp.status >= 500,
       reason: apiError || `Evolution retornou HTTP ${resp.status}`,
       bodyText,
     };
@@ -96,6 +99,7 @@ export async function sendEvolutionText(params: {
     return {
       ok: false,
       httpStatus: resp.status,
+      uncertain: true,
       reason: apiError || "Evolution respondeu sem ID de mensagem; não confirmei o envio",
       bodyText,
     };

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getEvolutionState, parseEvolutionStatus, sendEvolutionText } from "../../supabase/functions/_shared/evolution";
 
@@ -33,5 +34,26 @@ describe("Evolution connection status", () => {
   it("returns unknown for an unavailable provider", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
     expect(await getEvolutionState("https://example.test", "test-token")).toBe("unknown");
+  });
+
+  it.each([
+    [200, JSON.stringify({ success: true }), true],
+    [503, JSON.stringify({ error: "unavailable" }), true],
+    [400, JSON.stringify({ error: "invalid number" }), false],
+  ])("distinguishes uncertain delivery from rejection for HTTP %s", async (status, body, uncertain) => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ Connected: true, LoggedIn: true })))
+      .mockResolvedValueOnce(new Response(body, { status })));
+    const result = await sendEvolutionText({ baseUrl: "https://example.test", instanceToken: "fake", number: "5543999999999", text: "Mensagem fictícia" });
+    expect(result.ok).toBe(false);
+    expect(result.uncertain).toBe(uncertain);
+  });
+
+  it("accepts only a provider response with a message identifier", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ Connected: true, LoggedIn: true })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { Info: { ID: "fake-provider-id" } } }))));
+    const result = await sendEvolutionText({ baseUrl: "https://example.test", instanceToken: "fake", number: "5543999999999", text: "Mensagem fictícia" });
+    expect(result).toMatchObject({ ok: true, messageId: "fake-provider-id" });
   });
 });

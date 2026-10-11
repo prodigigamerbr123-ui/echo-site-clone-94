@@ -1,3 +1,4 @@
+import { buildMessageSeries } from "@/lib/recurrence";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,20 +107,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
         const [th, tmi] = time.split(":").map(Number);
         const base = spDate(dy, dmo - 1, dd, th, tmi);
         if (base <= new Date()) throw new Error("Data deve ser futura");
-        rows.push({ student_id: studentId, content: finalContent, scheduled_for: base.toISOString(), message_type: "manual", status: "pending" });
-        if (recurrence) {
-          for (const it of intervals) {
-            if (it.days <= 0 || it.count <= 0) continue;
-            for (let i = 1; i <= it.count; i++) {
-              const d = new Date(base.getTime() + i * it.days * 86400000);
-              rows.push({
-                student_id: studentId, content: finalContent,
-                scheduled_for: d.toISOString(), message_type: "recurring", status: "pending",
-                recurrence_interval_days: it.days, recurrence_count: it.count,
-              });
-            }
-          }
-        }
+        rows.push(...buildMessageSeries(studentId, finalContent, base, recurrence ? intervals : []));
       }
       const { error } = await supabase.from("scheduled_messages").insert(rows);
       if (error) throw error;

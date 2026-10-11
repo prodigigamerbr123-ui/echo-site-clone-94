@@ -149,7 +149,7 @@ serve(async (req) => {
     console.error('Error in ai-database-actions function:', error);
     return new Response(JSON.stringify({
       error: 'Erro interno do servidor',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -191,6 +191,7 @@ function getSuccessMessage(action: string, data?: any): string {
       return 'Dados obtidos com sucesso!';
     case 'send_whatsapp_message':
       const summary = data?.summary;
+      if (summary?.queued !== undefined) return `${summary.queued} mensagem(ns) na fila de envio.`;
       if (summary) {
         return `Mensagens enviadas! ${summary.sent} enviadas com sucesso, ${summary.failed} falharam.`;
       }

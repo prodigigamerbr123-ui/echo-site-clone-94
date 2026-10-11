@@ -19,10 +19,12 @@ export default function CaixaDeSaida() {
       </div>
 
       <Tabs defaultValue="agendadas" className="w-full">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start gap-1">
           <TabsTrigger value="agendadas">Agendadas</TabsTrigger>
           <TabsTrigger value="enviadas">Enviadas</TabsTrigger>
           <TabsTrigger value="falhas">Falhas</TabsTrigger>
+          <TabsTrigger value="processando">Em envio</TabsTrigger>
+          <TabsTrigger value="canceladas">Canceladas</TabsTrigger>
         </TabsList>
         <TabsContent value="agendadas" className="mt-4">
           <ScheduledList statusFilter="pending" emptyLabel="Nenhuma mensagem agendada." />
@@ -32,6 +34,12 @@ export default function CaixaDeSaida() {
         </TabsContent>
         <TabsContent value="falhas" className="mt-4">
           <ScheduledList statusFilter="failed" emptyLabel="Nenhuma mensagem com falha." />
+        </TabsContent>
+        <TabsContent value="processando" className="mt-4">
+          <ScheduledList statusFilter="processing" emptyLabel="Nenhuma mensagem em envio." />
+        </TabsContent>
+        <TabsContent value="canceladas" className="mt-4">
+          <ScheduledList statusFilter="cancelled" emptyLabel="Nenhuma mensagem cancelada." />
         </TabsContent>
       </Tabs>
     </div>
