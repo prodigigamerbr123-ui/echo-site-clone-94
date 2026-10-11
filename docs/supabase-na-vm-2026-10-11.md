@@ -22,8 +22,10 @@ origem e reaplicadas: criar objetos como `supabase_admin` herda permissões padr
 diferentes de `postgres`. Permissões de tabelas, sequências e RLS também foram
 reconciliadas. Os RPCs de envio permanecem exclusivos de `service_role`.
 
-Antes da cópia final, os crons antigos foram pausados e as gravações em tabelas
-públicas bloqueadas por `workout_migration_read_only` no projeto cloud. Isso evita
+Na conferência final, os crons antigos foram pausados e as gravações em tabelas
+públicas bloqueadas por `workout_migration_read_only` no projeto cloud. O conteúdo
+de todas as tabelas da aplicação foi comparado novamente após esse bloqueio e
+continuou igual nas duas bases. Isso evita
 que uma página antiga continue alterando a cópia antiga. O cloud fica preservado
 para consulta e recuperação; sua cópia não deve executar envios simultâneos.
 
@@ -38,6 +40,20 @@ pois o worker na VM não tem acesso à pasta `src` do frontend.
 As funções são instaladas em `volumes/functions`. A IA aceita `GEMINI_API_KEY`
 e `GEMINI_MODEL`, usando a API oficial do Google. Sem Gemini configurado, o código
 continua aceitando `LOVABLE_API_KEY` no ambiente anterior.
+
+## Resultado da conferência
+
+- Site publicado e login existente aceito pelo backend da VM.
+- 3 alunos, 2 avaliações, 18 mensagens, 57 registros de fila e 23 templates.
+- Dados das nove tabelas de negócio iguais por contagem e digest de conteúdo.
+- Realtime habilitado para alunos, avaliações e fila, como no cloud.
+- WhatsApp conectado. Worker cron respondeu HTTP 200 sem criar novos envios.
+- Crons 13/14 do cloud inativos; crons 1/2 da VM ativos.
+- RLS e permissões públicas reconciliadas com a origem; Studio externo HTTP 404.
+- Chave Gemini aceita pela API de listagem de modelos do Google.
+- Banco da VM em aproximadamente 12 MB após a restauração, sem o espaço
+  acumulado no banco antigo. Isso não comprova a causa do consumo antigo.
+- Build concluído. Permanecem avisos anteriores de tamanho do bundle/Browserslist.
 
 ## Operação
 
