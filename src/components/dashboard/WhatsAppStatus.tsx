@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle2,
@@ -23,6 +24,21 @@ interface StatusResponse {
   dashboardUrl?: string;
 }
 
+async function connectionError(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const response = await error.context.json();
+      if (typeof response?.error === "string") {
+        if (/HTTP (401|403)/.test(response.error)) {
+          return "O provedor recusou a credencial da integração. Confira o token da instância no painel da Evolution GO. A fila aguardará até a conexão ser restabelecida.";
+        }
+        return response.error.slice(0, 500);
+      }
+    } catch { /* Use the fallback when the response is not JSON. */ }
+  }
+  return error instanceof Error ? error.message : "Não foi possível consultar a conexão. Tente novamente.";
+}
+
 export function WhatsAppStatus() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<StatusResponse | null>(null);
@@ -32,28 +48,30 @@ export function WhatsAppStatus() {
   const [disconnecting, setDisconnecting] = useState(false);
   const qrBusy = useRef(false);
   const connectAttempted = useRef(false);
+  const statusBusy = useRef(false);
   const { toast } = useToast();
 
   const fetchStatus = useCallback(
     async () => {
+      if (statusBusy.current) return;
+      statusBusy.current = true;
       setLoading(true);
       try {
         const { data: resp, error } = await supabase.functions.invoke("whatsapp-status", {
           body: { action: "status" },
         });
         if (error) throw error;
+        if (!resp || typeof resp.state !== "string") throw new Error("O provedor retornou um status inválido.");
         setData(resp as StatusResponse);
       } catch (err: unknown) {
-        toast({
-          title: "Erro ao consultar WhatsApp",
-          description: err instanceof Error ? err.message : "Tente novamente",
-          variant: "destructive",
-        });
+        setData({ state: "unknown", error: await connectionError(err) });
+        setQrCode(null);
       } finally {
+        statusBusy.current = false;
         setLoading(false);
       }
     },
-    [toast]
+    []
   );
 
   const stateRef = useRef<string | undefined>(data?.state);
@@ -66,7 +84,7 @@ export function WhatsAppStatus() {
     const interval = setInterval(() => {
       tick++;
       // Se conectado, consulta a cada 60s; caso contrário, a cada 6s.
-      if (stateRef.current === "open" && tick % 10 !== 0) return;
+      if (!["close", "connecting"].includes(stateRef.current ?? "") && tick % 10 !== 0) return;
       fetchStatus();
     }, 6000);
     return () => clearInterval(interval);
@@ -75,7 +93,7 @@ export function WhatsAppStatus() {
 
   const isConnected = data?.state === "open";
   const isConnecting = data?.state === "connecting";
-  const isDisconnected = !isConnected && !isConnecting;
+  const isDisconnected = data?.state === "close";
   const currentState = data?.state;
 
   const fetchQr = useCallback(async (startIfMissing: boolean) => {
@@ -180,7 +198,11 @@ export function WhatsAppStatus() {
                   ? "Mensagens podem ser enviadas normalmente."
                   : isConnecting
                   ? "Aguardando confirmação do dispositivo..."
-                  : "Escaneie o QR Code abaixo para conectar o WhatsApp."}
+                  : isDisconnected
+                  ? "Escaneie o QR Code abaixo para conectar o WhatsApp."
+                  : loading && !data
+                  ? "Consultando a conexão..."
+                  : "Não foi possível confirmar a conexão com o provedor."}
               </CardDescription>
             </div>
           </div>
@@ -200,12 +222,21 @@ export function WhatsAppStatus() {
               className="animate-pulse-glow-destructive"
             >
               <XCircle className="h-3 w-3 mr-1" />
-              Desconectado
+              {isDisconnected ? "Desconectado" : loading && !data ? "Verificando" : "Conexão indisponível"}
             </Badge>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4 pt-6">
+        {data?.error && (
+          <div role="alert" className="flex items-start gap-3 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-destructive">Não foi possível consultar o WhatsApp</p>
+              <p className="text-muted-foreground mt-1">{data.error}</p>
+            </div>
+          </div>
+        )}
         {isDisconnected && (
           <div className="flex items-start gap-3 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
             <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
