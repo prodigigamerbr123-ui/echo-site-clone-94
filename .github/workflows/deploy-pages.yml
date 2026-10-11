@@ -1,4 +1,4 @@
-name: Deploy preview to GitHub Pages
+name: Deploy Workout to GitHub Pages
 
 on:
   push:
@@ -31,9 +31,11 @@ jobs:
         env:
           VITE_PREVIEW_MODE: "false"
           VITE_DEPLOY_TARGET: "github-pages"
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://preview.invalid' }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'preview-public-key' }}
-        run: npm run build -- --base="${{ vars.PAGES_BASE_PATH || '/echo-site-clone-94/' }}"
+        run: |
+          set -a
+          source .github/workout-backend.env
+          set +a
+          npm run build -- --base="${{ vars.PAGES_BASE_PATH || '/echo-site-clone-94/' }}"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

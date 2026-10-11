@@ -1,3 +1,4 @@
+import { getAIProvider } from "../_shared/aiProvider.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
 import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
@@ -9,7 +10,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SECRET_KEY = getSupabaseSecretKey();
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const aiProvider = getAIProvider("google/gemini-2.5-flash");
 
 function fmtBR(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -99,14 +100,14 @@ Seja conciso (máx ~180 palavras). Use bullets. Se não houver nada em uma seç�
 
     const userPrompt = `Contexto atual do sistema (JSON):\n${JSON.stringify(context, null, 2)}\n\nGere o briefing diário.`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch(aiProvider.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${aiProvider.apiKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: aiProvider.model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

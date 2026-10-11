@@ -1,3 +1,4 @@
+import { getAIProvider } from "../_shared/aiProvider.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
@@ -16,7 +17,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SECRET_KEY = getSupabaseSecretKey();
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const aiProvider = getAIProvider("google/gemini-3-flash-preview");
 
 // Ferramentas que MODIFICAM dados. Sempre exigem confirmação do usuário.
 const WRITE_TOOLS = new Set([
@@ -474,8 +475,8 @@ serve(async (req) => {
   if (authFail) return authFail;
 
   try {
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY não configurado" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!aiProvider.apiKey) {
+      return new Response(JSON.stringify({ error: "Provedor de IA não configurado" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const body = await req.json();
     const clientMessages = body.messages || [];
@@ -502,11 +503,11 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       // Pede ao modelo uma resposta curta com base no resultado
-      const summarizeResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const summarizeResp = await fetch(aiProvider.url, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${aiProvider.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: aiProvider.model,
           messages: [
             { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
             ...clientMessages,
@@ -529,11 +530,11 @@ serve(async (req) => {
     ];
 
     for (let i = 0; i < 6; i++) {
-      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const resp = await fetch(aiProvider.url, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${aiProvider.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: aiProvider.model,
           messages,
           tools,
         }),
