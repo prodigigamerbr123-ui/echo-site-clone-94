@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import type { Database } from "../../../src/integrations/supabase/types.ts";
+import type { Database } from "../_shared/database.types.ts";
 import { formatPhone } from "../_shared/phone.ts";
 import { sendEvolutionText, getEvolutionState } from "../_shared/evolution.ts";
 import { requireCronSecret, corsHeaders } from "../_shared/auth.ts";
