@@ -30,7 +30,7 @@ async function connectionError(error: unknown): Promise<string> {
       const response = await error.context.json();
       if (typeof response?.error === "string") {
         if (/HTTP (401|403)/.test(response.error)) {
-          return "O provedor recusou a credencial da integração. Confira o token da instância no painel da Evolution GO. A fila aguardará até a conexão ser restabelecida.";
+          return "O provedor recusou a autenticação da integração. Verifique a configuração e o funcionamento do serviço Evolution GO. A fila aguardará até a conexão ser restabelecida.";
         }
         return response.error.slice(0, 500);
       }

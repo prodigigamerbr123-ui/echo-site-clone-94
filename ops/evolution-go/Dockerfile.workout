@@ -1,0 +1,9 @@
+FROM golang:1.25.0-alpine AS build
+RUN apk add --no-cache git build-base libjpeg-turbo-dev libwebp-dev
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=1 go build -ldflags "-X main.version=0.7.2-workout-pool25" -o server ./cmd/evolution-go
+FROM workout-evolution-original:20261011
+COPY --from=build /build/server /app/server
