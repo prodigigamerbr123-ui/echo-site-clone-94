@@ -1,8 +1,6 @@
 
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { requireUser } from "../_shared/auth.ts";
+import { requireStaffRole } from "../_shared/auth.ts";
 import { getSupabasePublishableKey } from "../_shared/supabaseEnv.ts";
 
 const corsHeaders = {
@@ -10,19 +8,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const authFail = await requireUser(req);
+  const authFail = await requireStaffRole(req, ["admin", "recepcao"]);
   if (authFail) return authFail;
 
   try {
-    const { action, params, userConfirmation } = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body) ||
+        typeof body.action !== 'string' || !body.action ||
+        !body.params || typeof body.params !== 'object' || Array.isArray(body.params)) {
+      return new Response(JSON.stringify({ error: 'Informe uma ação e seus parâmetros válidos' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { action, params, userConfirmation } = body;
 
     // Verificar se o usuário confirmou a ação
-    if (!userConfirmation) {
+    if (userConfirmation !== true) {
       return new Response(JSON.stringify({
         error: 'Ação não autorizada pelo usuário',
         requiresConfirmation: true,
@@ -70,15 +76,13 @@ serve(async (req) => {
         break;
 
       case 'update_student_evaluation':
-        result = await supabase
-          .from('students')
-          .update({
-            last_evaluation_date: params.evaluation_date,
-            had_evaluation: true
-          })
-          .eq('id', params.student_id)
-          .select()
-          .single();
+        if (typeof params?.evaluation_id !== 'string' ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.evaluation_id)) {
+          return new Response(JSON.stringify({ error: 'Informe a avaliação agendada para concluir pelo seu identificador. Use a agenda de avaliações.' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        result = await supabase.rpc('complete_evaluation_tx', { _evaluation_id: params.evaluation_id });
         break;
 
       case 'create_predefined_message':

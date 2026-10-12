@@ -1,4 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { canVisit } from "@/lib/staffRoles";
 
 import {
   Users,
@@ -68,12 +70,18 @@ const menuGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { role } = useAuth();
+  const previewMode = import.meta.env.VITE_PREVIEW_MODE === "true";
   const isActive = (path: string) => location.pathname === path;
+  const visibleGroups = menuGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => previewMode || canVisit(role, item.url)),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarContent>
-        {menuGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>

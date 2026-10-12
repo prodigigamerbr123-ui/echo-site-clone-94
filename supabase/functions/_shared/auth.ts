@@ -36,6 +36,33 @@ export async function requireUser(req: Request): Promise<Response | null> {
   return null;
 }
 
+export type StaffRole = "admin" | "recepcao" | "avaliador";
+
+/** Requires an active staff membership after validating the caller's JWT. */
+export async function requireStaffRole(req: Request, allowed: readonly StaffRole[]): Promise<Response | null> {
+  const authError = await requireUser(req);
+  if (authError) return authError;
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    getSupabasePublishableKey(),
+    { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
+  );
+  const { data, error } = await supabase.rpc("current_staff_role");
+  if (error) {
+    console.error("Unable to resolve staff role:", error.message);
+    return new Response(JSON.stringify({ error: "Permissões indisponíveis" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (!data || !allowed.includes(data as StaffRole)) {
+    return new Response(JSON.stringify({ error: "Acesso negado" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  return null;
+}
+
 /**
  * Validates the x-cron-secret header against the CRON_SECRET env var.
  * Returns 500 if the server is misconfigured, 401 if the secret is missing/wrong,

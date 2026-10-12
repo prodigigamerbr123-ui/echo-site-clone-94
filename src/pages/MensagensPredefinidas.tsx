@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+import { useAuth } from "@/hooks/useAuth";
+import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
 interface PredefinedMessage {
   id: string;
@@ -21,6 +23,8 @@ interface PredefinedMessage {
 }
 
 export default function MensagensPredefinidas() {
+  const { role } = useAuth();
+  const canManageTemplates = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
   const [messages, setMessages] = useState<PredefinedMessage[]>([]);
   const [automationIds, setAutomationIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,6 +77,7 @@ export default function MensagensPredefinidas() {
   const withVars = useMemo(() => currentList.filter((m) => /\{\w+\}/.test(m.content)).length, [currentList]);
 
   const handleSaveMessage = async () => {
+    if (!canManageTemplates) return;
     if (!title.trim() || !content.trim()) {
       toast({ title: "Atenção", description: "Preencha todos os campos obrigatórios.", variant: "destructive" });
       return;
@@ -109,6 +114,7 @@ export default function MensagensPredefinidas() {
   };
 
   const handleEditMessage = (m: PredefinedMessage) => {
+    if (!canManageTemplates) return;
     setEditingMessage(m);
     setTitle(m.title);
     setContent(m.content);
@@ -116,6 +122,7 @@ export default function MensagensPredefinidas() {
   };
 
   const handleDeleteMessage = async (id: string) => {
+    if (!canManageTemplates) return;
     if (!confirm("Tem certeza que deseja excluir esta mensagem pré-definida?")) return;
     try {
       const { error } = await supabase.from("predefined_messages").delete().eq("id", id);
@@ -140,6 +147,7 @@ export default function MensagensPredefinidas() {
   };
 
   const openNewMessageDialog = () => {
+    if (!canManageTemplates) return;
     setEditingMessage(null);
     setTitle("");
     setContent("");
@@ -183,12 +191,12 @@ export default function MensagensPredefinidas() {
             </div>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
+            {canManageTemplates && <DialogTrigger asChild>
               <Button onClick={openNewMessageDialog} className="gap-2 shadow-sm">
                 <Plus className="h-4 w-4" />
                 Nova Mensagem
               </Button>
-            </DialogTrigger>
+            </DialogTrigger>}
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>{editingMessage ? "Editar" : "Nova"} Mensagem Pré-definida</DialogTitle>
@@ -310,7 +318,7 @@ export default function MensagensPredefinidas() {
             <p className="text-muted-foreground mb-4">
               {searchTerm ? "Nenhuma mensagem encontrada." : "Nenhuma mensagem pré-definida ainda."}
             </p>
-            {!searchTerm && (
+            {!searchTerm && canManageTemplates && (
               <Button onClick={openNewMessageDialog} variant="outline" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Criar Primeira Mensagem
@@ -333,7 +341,7 @@ export default function MensagensPredefinidas() {
                     <h3 className="font-semibold text-base leading-snug line-clamp-2 flex-1">
                       {message.title}
                     </h3>
-                    <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                    {canManageTemplates && <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -354,7 +362,7 @@ export default function MensagensPredefinidas() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
+                    </div>}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">

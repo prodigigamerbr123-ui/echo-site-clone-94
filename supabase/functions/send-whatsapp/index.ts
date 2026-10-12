@@ -1,12 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireUser, corsHeaders } from "../_shared/auth.ts";
+import { requireStaffRole, corsHeaders } from "../_shared/auth.ts";
 import { getSupabasePublishableKey } from "../_shared/supabaseEnv.ts";
 
 // Compatibility endpoint: every interactive send now goes through the same queue.
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  const fail = await requireUser(req);
+  const fail = await requireStaffRole(req, ["admin", "recepcao"]);
   if (fail) return fail;
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
     status, headers: { ...corsHeaders, "Content-Type": "application/json" },

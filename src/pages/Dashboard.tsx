@@ -2,6 +2,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { AISuggestions } from "@/components/dashboard/AISuggestions";
+import { useAuth } from "@/hooks/useAuth";
+import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
 function SectionDivider({ label }: { label: string }) {
   return (
@@ -17,6 +19,8 @@ function SectionDivider({ label }: { label: string }) {
 
 export default function Dashboard() {
   usePageTitle("Dashboard");
+  const { role } = useAuth();
+  const canUseAI = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <SectionDivider label="Atalhos" />
@@ -25,8 +29,10 @@ export default function Dashboard() {
       <SectionDivider label="Números" />
       <StatsOverview />
 
-      <SectionDivider label="Sugestões da IA" />
-      <AISuggestions />
+      {canUseAI && <>
+        <SectionDivider label="Sugestões da IA" />
+        <AISuggestions />
+      </>}
     </div>
   );
 }

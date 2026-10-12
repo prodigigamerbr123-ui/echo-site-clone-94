@@ -1,11 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { corsHeaders, requireUser } from "../_shared/auth.ts";
+import { corsHeaders, requireStaffRole } from "../_shared/auth.ts";
 import { getEvolutionState } from "../_shared/evolution.ts";
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const authFail = await requireUser(req);
+  const authFail = await requireStaffRole(req, ["admin"]);
   if (authFail) return authFail;
 
   try {

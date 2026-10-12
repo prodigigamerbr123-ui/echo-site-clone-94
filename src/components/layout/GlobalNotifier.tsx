@@ -7,6 +7,7 @@ import {
   useNotificationSettings,
 } from "@/lib/appSettings";
 import { useAuth } from "@/hooks/useAuth";
+import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
 type ScheduledMessageEvent = {
   id?: string;
@@ -18,8 +19,8 @@ type ScheduledMessageEvent = {
 };
 
 export function GlobalNotifier() {
-  const { session } = useAuth();
-  const { data: settings } = useNotificationSettings(Boolean(session));
+  const { session, role, roleLoading } = useAuth();
+  const { data: settings } = useNotificationSettings(Boolean(session && role && !roleLoading));
   const settingsRef = useRef<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const lastMessageCheckRef = useRef<string | null>(null);
   const handledMessageEventsRef = useRef<Set<string>>(new Set());
@@ -34,7 +35,9 @@ export function GlobalNotifier() {
   }, [settings]);
 
   useEffect(() => {
-    if (!session || !settingsLoaded) return;
+    if (!session || !settingsLoaded || roleLoading || !role) return;
+    let disposed = false;
+    const canMonitorMessages = hasRole(role, FRONT_DESK);
     const flushSent = () => {
       const bucket = sentBucketRef.current;
       if (bucket.count > 0) {
@@ -92,6 +95,7 @@ export function GlobalNotifier() {
       if (row.status === "sent") {
         if (cfg.notify_sent_each) {
           const studentName = await fetchStudentName(row.student_id);
+          if (disposed) return;
           toast.success("Mensagem enviada", { description: studentName || undefined });
         }
         queueSent();
@@ -100,6 +104,7 @@ export function GlobalNotifier() {
 
       if (row.status === "failed" && cfg.notify_failed) {
         const studentName = await fetchStudentName(row.student_id);
+        if (disposed) return;
         toast.error("Mensagem falhou", {
           description: [studentName, row.failure_reason].filter(Boolean).join(" — "),
         });
@@ -115,6 +120,7 @@ export function GlobalNotifier() {
         .limit(20);
 
       const newest = data?.[0]?.updated_at || new Date().toISOString();
+      if (disposed) return;
       lastMessageCheckRef.current = newest;
       for (const row of data || []) {
         if (row.id && row.status && row.updated_at) {
@@ -140,11 +146,15 @@ export function GlobalNotifier() {
         return;
       }
 
-      for (const row of data || []) await notifyMessageStatus(row);
+      if (disposed) return;
+      for (const row of data || []) {
+        if (disposed) return;
+        await notifyMessageStatus(row);
+      }
     };
 
-    initializeMessagePolling();
-    const pollingTimer = window.setInterval(pollMessageStatuses, 8_000);
+    if (canMonitorMessages) void initializeMessagePolling();
+    const pollingTimer = canMonitorMessages ? window.setInterval(pollMessageStatuses, 8_000) : null;
 
     const channel = supabase
       .channel("global-notifier")
@@ -152,6 +162,7 @@ export function GlobalNotifier() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "scheduled_messages" },
         async (payload: any) => {
+          if (!canMonitorMessages) return;
           const oldRow = payload.old || {};
           const newRow = payload.new || {};
           const cfg = settingsRef.current;
@@ -191,6 +202,7 @@ export function GlobalNotifier() {
             cfg.notify_message_reenqueued
           ) {
             const studentName = await fetchStudentName(newRow.student_id);
+            if (disposed) return;
             toast("Mensagem reenfileirada", {
               description: studentName || "Nova tentativa em breve",
             });
@@ -224,6 +236,7 @@ export function GlobalNotifier() {
             cfg.notify_evaluation_rescheduled
           ) {
             const studentName = await fetchStudentName(newRow.student_id);
+            if (disposed) return;
             toast("Avaliação remarcada", {
               description: [studentName, new Date(newRow.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })]
                 .filter(Boolean)
@@ -234,9 +247,11 @@ export function GlobalNotifier() {
           if (oldRow.status !== newRow.status) {
             if (newRow.status === "completed" && cfg.notify_evaluation_completed) {
               const studentName = await fetchStudentName(newRow.student_id);
+              if (disposed) return;
               toast.success("Avaliação realizada", { description: studentName });
             } else if (newRow.status === "cancelled" && cfg.notify_evaluation_cancelled) {
               const studentName = await fetchStudentName(newRow.student_id);
+              if (disposed) return;
               toast("Avaliação cancelada", { description: studentName });
             }
           }
@@ -281,15 +296,19 @@ export function GlobalNotifier() {
       });
 
     return () => {
+      disposed = true;
       const bucket = sentBucketRef.current;
       if (bucket.timer) {
         clearTimeout(bucket.timer);
         bucket.timer = null;
       }
-      window.clearInterval(pollingTimer);
+      if (pollingTimer !== null) window.clearInterval(pollingTimer);
+      bucket.count = 0;
+      lastMessageCheckRef.current = null;
+      handledMessageEventsRef.current.clear();
       supabase.removeChannel(channel);
     };
-  }, [session, settingsLoaded]);
+  }, [session, settingsLoaded, role, roleLoading]);
 
   return null;
 }

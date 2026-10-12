@@ -17,6 +17,8 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { useDashboardStats } from "@/hooks/useDashboardData";
+import { useAuth } from "@/hooks/useAuth";
+import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
 type Stat = {
   title: string;
@@ -50,6 +52,8 @@ function StatCard({ stat }: { stat: Stat }) {
 }
 
 export function StatsOverview() {
+  const { role } = useAuth();
+  const canViewMessages = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
   const { data: stats, isLoading } = useDashboardStats();
   const v = (n?: number) => (isLoading ? "..." : (n ?? 0).toString());
 
@@ -217,16 +221,16 @@ export function StatsOverview() {
   return (
     <div className="space-y-6">
       <Section icon={Calendar} title="Acontecendo Hoje">
-        {peopleStats.map((s) => (
+        {(canViewMessages ? peopleStats : peopleStats.slice(2)).map((s) => (
           <StatCard key={s.title} stat={s} />
         ))}
       </Section>
 
-      <Section icon={MessageSquare} title="Status das Mensagens">
+      {canViewMessages && <Section icon={MessageSquare} title="Status das Mensagens">
         {messageStats.map((s) => (
           <StatCard key={s.title} stat={s} />
         ))}
-      </Section>
+      </Section>}
 
       <Section icon={ClipboardList} title="Avaliação Física">
         {evaluationStats.map((s) => (

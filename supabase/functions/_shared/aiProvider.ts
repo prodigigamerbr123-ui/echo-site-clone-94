@@ -5,7 +5,7 @@ export function getAIProvider(lovableModel: string) {
     return {
       apiKey: geminiKey,
       url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      model: Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-2.5-flash",
+      model: Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-3.6-flash",
     };
   }
   return {

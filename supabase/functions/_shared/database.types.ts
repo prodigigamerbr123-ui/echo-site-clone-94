@@ -18,18 +18,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          owner_id: string
           title: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          owner_id?: string
           title?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          owner_id?: string
           title?: string
           updated_at?: string
         }
@@ -287,6 +290,30 @@ export type Database = {
           },
         ]
       }
+      staff_members: {
+        Row: {
+          user_id: string
+          role: string
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          role: string
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          role?: string
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           birth_date: string | null
@@ -343,6 +370,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_staff_role: { Args: Record<PropertyKey, never>; Returns: string | null }
+      has_staff_role: { Args: { _roles: string[] }; Returns: boolean }
       mutate_evaluation_tx: {
         Args: { _action: string; _evaluation_id: string; _student_id?: string; _scheduled_at?: string; _notes?: string; _messages?: Json; _allow_conflict?: boolean }
         Returns: Json

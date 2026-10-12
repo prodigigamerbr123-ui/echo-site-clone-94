@@ -1,8 +1,7 @@
 import { getAIProvider } from "../_shared/aiProvider.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireUser } from "../_shared/auth.ts";
-import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
+import { requireStaffRole } from "../_shared/auth.ts";
+import { getSupabasePublishableKey, getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 import {
   createEvaluationWithMessages,
   completeEvaluation,
@@ -16,7 +15,6 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SECRET_KEY = getSupabaseSecretKey();
 const aiProvider = getAIProvider("google/gemini-3-flash-preview");
 
 // Ferramentas que MODIFICAM dados. Sempre exigem confirmação do usuário.
@@ -468,20 +466,29 @@ REGRAS DE COMPORTAMENTO:
 //   { message: string, pendingAction?: { tool, args, description, id } }
 // Se pendingAction presente, o front renderiza card e reenvia com body.confirmedAction.
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const authFail = await requireUser(req);
+  const authFail = await requireStaffRole(req, ["admin", "recepcao"]);
   if (authFail) return authFail;
 
   try {
-    if (!aiProvider.apiKey) {
-      return new Response(JSON.stringify({ error: "Provedor de IA não configurado" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
     const body = await req.json();
     const clientMessages = body.messages || [];
-    const confirmedAction = body.confirmedAction as { tool: string; args: any } | undefined;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
+    if (!Array.isArray(clientMessages) || clientMessages.length > 40 || clientMessages.some((m: any) =>
+      !['user','assistant'].includes(m?.role) || typeof m.content !== 'string' || m.content.length > 12000)) {
+      return new Response(JSON.stringify({ error: 'Histórico de conversa inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const confirmedAction = body.confirmedAction as { id?: string } | undefined;
+    const supabase = createClient(SUPABASE_URL, getSupabasePublishableKey(), {
+      global: { headers: { Authorization: req.headers.get("Authorization")! } },
+    });
+    const identity = await supabase.auth.getUser(req.headers.get('Authorization')!.replace(/^Bearer /,''));
+    if (identity.error || !identity.data.user) return new Response(JSON.stringify({ error:'Não autorizado' }), {status:401,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    const ownerId = identity.data.user.id;
+    // Administrative access is restricted to the server-owned confirmation store.
+    // The action itself still uses the caller's client and its RLS.
+    const confirmations = createClient(SUPABASE_URL, getSupabaseSecretKey());
 
     // Contexto temporal atual (timezone de Brasília) — injetado a cada request
     const tz = "America/Sao_Paulo";
@@ -493,17 +500,35 @@ serve(async (req) => {
     const dateContext = `DATA/HORA ATUAL: ${fmt.format(now)} (${tz}). ISO: ${now.toISOString()}. Use SEMPRE esta referência para interpretar "hoje", "amanhã", "esta semana", etc.`;
 
     // Se veio uma ação já confirmada, executa direto e retorna mensagem sintetizada.
-    if (confirmedAction && WRITE_TOOLS.has(confirmedAction.tool)) {
+    if (confirmedAction) {
+      if (typeof confirmedAction.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(confirmedAction.id)) {
+        return new Response(JSON.stringify({ error:'Solicite uma nova proposta antes de confirmar.' }), {status:400,headers:{...corsHeaders,'Content-Type':'application/json'}});
+      }
+      const claim = await confirmations.rpc('claim_ai_action_tx',{_id:confirmedAction.id,_owner_id:ownerId});
+      if (claim.error) return new Response(JSON.stringify({error:'Confirmação indisponível, expirada ou sem permissão.'}), {status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
+      const action = claim.data;
+      if (action.state !== 'claimed') {
+        const complete = action.state === 'completed';
+        return new Response(JSON.stringify({message:complete ? 'Esta ação já foi processada.' : 'Esta ação já foi iniciada. Confira o resultado antes de tentar outra operação.',result:action.result,alreadyProcessed:true}),{status:complete?200:409,headers:{...corsHeaders,'Content-Type':'application/json'}});
+      }
       let result: any;
       try {
-        result = await executeTool(confirmedAction.tool, confirmedAction.args, supabase);
+        if (!WRITE_TOOLS.has(action.tool)) throw new Error('Ação inválida');
+        result = await executeTool(action.tool, action.args, supabase);
       } catch (e: any) {
+        await confirmations.rpc('finish_ai_action_tx',{_id:confirmedAction.id,_owner_id:ownerId,_result:{error:'Execução falhou; confira os registros antes de criar outra proposta.'},_failed:true});
         return new Response(JSON.stringify({
           message: `❌ Não consegui executar: ${e?.message || "erro"}.`,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      // Pede ao modelo uma resposta curta com base no resultado
+      const finished = await confirmations.rpc('finish_ai_action_tx',{_id:confirmedAction.id,_owner_id:ownerId,_result:result,_failed:false});
+      if (finished.error) return new Response(JSON.stringify({message:'A execução foi iniciada, mas não consegui registrar o resultado. Confira os dados antes de criar outra proposta.'}),{status:409,headers:{...corsHeaders,'Content-Type':'application/json'}});
+      let finalMsg = result?.success === false ? 'A operação foi bloqueada. Confira o resultado.' : 'Operação executada.';
+      // Failure of the optional summary must never turn a completed write into a retry.
+      try {
+      if (aiProvider.apiKey) {
       const summarizeResp = await fetch(aiProvider.url, {
+        signal: AbortSignal.timeout(15000),
         method: "POST",
         headers: { Authorization: `Bearer ${aiProvider.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -511,18 +536,21 @@ serve(async (req) => {
           messages: [
             { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
             ...clientMessages,
-            { role: "assistant", content: `Ação "${confirmedAction.tool}" executada com resultado: ${JSON.stringify(result).slice(0, 800)}` },
+            { role: "assistant", content: `Ação "${action.tool}" executada com resultado: ${JSON.stringify(result).slice(0, 800)}` },
             { role: "user", content: "Escreva UMA resposta curta em português confirmando ao usuário o que foi feito (ou o erro/bloqueio, se houver). Não chame ferramentas." },
           ],
         }),
       });
-      let finalMsg = "✅ Feito.";
       if (summarizeResp.ok) {
         const d = await summarizeResp.json();
         finalMsg = d.choices?.[0]?.message?.content || finalMsg;
       }
-      return new Response(JSON.stringify({ message: finalMsg }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      } catch { /* The structured, committed result remains available. */ }
+      return new Response(JSON.stringify({ message: finalMsg,result }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    if (!aiProvider.apiKey) return new Response(JSON.stringify({error:'Provedor de IA não configurado'}),{status:500,headers:{...corsHeaders,'Content-Type':'application/json'}});
 
     const messages: any[] = [
       { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
@@ -531,6 +559,7 @@ serve(async (req) => {
 
     for (let i = 0; i < 6; i++) {
       const resp = await fetch(aiProvider.url, {
+        signal: AbortSignal.timeout(45000),
         method: "POST",
         headers: { Authorization: `Bearer ${aiProvider.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -572,13 +601,15 @@ serve(async (req) => {
         let args: any = {};
         try { args = JSON.parse(writeCall.function.arguments || "{}"); } catch {}
         const description = await describeWriteAction(writeCall.function.name, args, supabase);
+        const stored = await confirmations.from('ai_pending_actions').insert({owner_id:ownerId,tool:writeCall.function.name,args}).select('id').single();
+        if (stored.error) throw new Error('Não foi possível registrar a proposta de ação');
         const preface = (msg.content && typeof msg.content === "string" && msg.content.trim())
           ? msg.content
           : "Antes de executar, preciso da sua confirmação:";
         return new Response(JSON.stringify({
           message: preface,
           pendingAction: {
-            id: writeCall.id,
+            id: stored.data.id,
             tool: writeCall.function.name,
             args,
             description,

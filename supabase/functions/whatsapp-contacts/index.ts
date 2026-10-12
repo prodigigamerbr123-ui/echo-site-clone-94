@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { requireUser } from "../_shared/auth.ts";
+import { requireStaffRole } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +11,7 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const authFail = await requireUser(req);
+  const authFail = await requireStaffRole(req, ["admin", "recepcao"]);
   if (authFail) return authFail;
 
   // TODO: Evolution GO ainda não expõe endpoint de listagem de contatos compatível.

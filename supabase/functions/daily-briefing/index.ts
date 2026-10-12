@@ -1,7 +1,7 @@
 import { getAIProvider } from "../_shared/aiProvider.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireUser } from "../_shared/auth.ts";
-import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
+import { requireStaffRole } from "../_shared/auth.ts";
+import { getSupabasePublishableKey } from "../_shared/supabaseEnv.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +9,6 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SECRET_KEY = getSupabaseSecretKey();
 const aiProvider = getAIProvider("google/gemini-2.5-flash");
 
 function fmtBR(date: Date) {
@@ -23,11 +22,13 @@ function fmtBR(date: Date) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const authFail = await requireUser(req);
+  const authFail = await requireStaffRole(req, ["admin", "recepcao"]);
   if (authFail) return authFail;
 
   try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
+    const supabase = createClient(SUPABASE_URL, getSupabasePublishableKey(), {
+      global: { headers: { Authorization: req.headers.get("Authorization")! } },
+    });
     const now = new Date();
 
     // Compute Brasília day boundaries via Intl parts (evita bug de DST/toLocaleString)

@@ -19,6 +19,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarAlunoDialog } from "./EditarAlunoDialog";
 import { StudentSheet } from "./StudentSheet";
+import { useAuth } from "@/hooks/useAuth";
+import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
 type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "lastEval" | "status";
 const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
@@ -70,6 +72,9 @@ function paymentStatus(due: string | null) {
 }
 
 export function ListaAlunos() {
+  const { role } = useAuth();
+  const canManageStudents = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
+  const canDeleteStudents = import.meta.env.VITE_PREVIEW_MODE === "true" || role === "admin";
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -287,7 +292,7 @@ export function ListaAlunos() {
 
   const ActionButtons = ({ student }: { student: Student }) => (
     <div className="flex justify-end gap-1">
-      <Button
+      {canManageStudents && <Button
         variant="ghost"
         size="icon"
         className="h-10 w-10"
@@ -296,7 +301,7 @@ export function ListaAlunos() {
         title="Enviar mensagem"
       >
         <Send className="h-4 w-4" />
-      </Button>
+      </Button>}
       <Button
         variant="ghost"
         size="icon"
@@ -307,7 +312,7 @@ export function ListaAlunos() {
       >
         <CalendarPlus className="h-4 w-4" />
       </Button>
-      <Button
+      {canManageStudents && <Button
         variant="ghost"
         size="icon"
         className="h-10 w-10"
@@ -316,8 +321,8 @@ export function ListaAlunos() {
         title="Editar aluno"
       >
         <Edit className="h-4 w-4" />
-      </Button>
-      <Button
+      </Button>}
+      {canDeleteStudents && <Button
         variant="ghost"
         size="icon"
         onClick={() => handleDeleteStudent(student.id, student.name)}
@@ -327,7 +332,7 @@ export function ListaAlunos() {
         title="Excluir aluno"
       >
         <Trash2 className="h-4 w-4" />
-      </Button>
+      </Button>}
     </div>
   );
 

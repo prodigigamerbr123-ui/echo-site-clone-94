@@ -13,6 +13,8 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { canVisit } from "@/lib/staffRoles";
 
 type Action = {
   to: string;
@@ -125,11 +127,16 @@ const groups: { title: string; description: string; actions: Action[] }[] = [
 ];
 
 export function QuickActions() {
+  const { role } = useAuth();
+  const visibleGroups = groups.map(group => ({
+    ...group,
+    actions: group.actions.filter(action => import.meta.env.VITE_PREVIEW_MODE === "true" || canVisit(role, action.to.split("?")[0])),
+  })).filter(group => group.actions.length > 0);
   return (
     <Card className="overflow-hidden border-primary/10 shadow-card">
       <CardContent className="pt-6">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title} className="space-y-3">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>

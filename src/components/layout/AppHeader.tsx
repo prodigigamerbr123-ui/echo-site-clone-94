@@ -5,9 +5,10 @@ import { Bot, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import workoutLogo from "@/assets/workout-logo.png";
 import { useAuth } from "@/hooks/useAuth";
+import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
 export function AppHeader() {
-  const { signOut } = useAuth();
+  const { signOut, role } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -28,7 +29,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
+          {(import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK)) && <Button
             asChild
             variant="ghost"
             size="icon"
@@ -38,7 +39,7 @@ export function AppHeader() {
             <Link to="/assistente-ia">
               <Bot className="h-5 w-5" />
             </Link>
-          </Button>
+          </Button>}
           <ThemeToggle />
           <Button
             variant="ghost"

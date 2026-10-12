@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
 import { maskCpf } from "@/lib/cpf";
+import { useAuth } from "@/hooks/useAuth";
+import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
 interface Student {
   id: string; name: string; phone: string;
@@ -31,6 +33,8 @@ interface Props {
 }
 
 export function StudentSheet({ student, open, onOpenChange }: Props) {
+  const { role } = useAuth();
+  const canManageStudents = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -53,7 +57,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
   const { data: recent = [] } = useQuery({
     queryKey: ["student-recent-msgs", student?.id],
     staleTime: 0,
-    enabled: !!student?.id && open,
+    enabled: !!student?.id && open && canManageStudents,
     queryFn: async () => {
       const [{ data: sent }, { data: sched }] = await Promise.all([
         supabase.from("messages").select("id, content, sent_at, status")
@@ -108,7 +112,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
                 <span className={student.status === "active" ? "text-green-600 font-medium" : "text-muted-foreground"}>
                   {student.status === "active" ? "Ativo" : "Inativo"}
                 </span>
-                <Switch checked={student.status === "active"} onCheckedChange={toggleStatus} />
+                <Switch checked={student.status === "active"} onCheckedChange={toggleStatus} disabled={!canManageStudents} />
               </div>
             </div>
             {student.plan && (
@@ -191,9 +195,9 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
             <Button variant="outline" onClick={() => { onOpenChange(false); navigate(`/agendar-avaliacao?aluno=${student.id}`); }}>
               <CalendarPlus className="h-4 w-4 mr-2" /> Agendar avaliação
             </Button>
-            <Button variant="outline" onClick={() => { onOpenChange(false); navigate(`/mensagens?aluno=${student.id}`); }}>
+            {canManageStudents && <Button variant="outline" onClick={() => { onOpenChange(false); navigate(`/mensagens?aluno=${student.id}`); }}>
               <Send className="h-4 w-4 mr-2" /> Enviar mensagem
-            </Button>
+            </Button>}
           </div>
         </div>
       </SheetContent>

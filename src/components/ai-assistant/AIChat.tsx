@@ -156,7 +156,7 @@ export function AIChat({ isExpanded, conversationId, onConversationCreated, onCo
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: {
           messages: historyForApi(messages.slice(0, idx + 1)),
-          confirmedAction: { tool: msg.pendingAction.tool, args: msg.pendingAction.args },
+          confirmedAction: { id: msg.pendingAction.id },
         },
       });
       if (error) throw error;

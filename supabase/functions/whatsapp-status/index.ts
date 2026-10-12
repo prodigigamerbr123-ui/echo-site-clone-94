@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { requireUser } from "../_shared/auth.ts";
+import { requireStaffRole } from "../_shared/auth.ts";
 import { parseEvolutionStatus } from "../_shared/evolution.ts";
 
 const corsHeaders = {
@@ -12,14 +12,15 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const authFail = await requireUser(req);
-  if (authFail) return authFail;
-
   try {
     const { action = 'status' } = await req.json().catch(() => ({ action: 'status' }));
     if (!['status', 'qr', 'connect', 'logout'].includes(action)) {
       return json({ error: 'Ação inválida' }, 400);
     }
+
+    const authFail = await requireStaffRole(req, action === 'status'
+      ? ['admin', 'recepcao', 'avaliador'] : ['admin']);
+    if (authFail) return authFail;
 
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
     const EVOLUTION_INSTANCE_TOKEN = Deno.env.get('EVOLUTION_INSTANCE_TOKEN');
