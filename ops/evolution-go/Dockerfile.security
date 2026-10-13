@@ -1,0 +1,16 @@
+ARG BUILD_BASE=golang:1.25.14-alpine@sha256:1ae0735f00daffa3aaf1363a5184c0d2dc55c78e3db4ec70241cdac97bf84b59
+FROM ${BUILD_BASE} AS build
+ENV GOTOOLCHAIN=local GOMAXPROCS=2
+RUN go version | grep 'go1.25.14'
+RUN apk add --no-cache git build-base libjpeg-turbo-dev libwebp-dev
+WORKDIR /build
+COPY . .
+RUN go get github.com/jackc/pgx/v5@v5.9.2 github.com/rabbitmq/amqp091-go@v1.13.0 && go mod tidy
+RUN CGO_ENABLED=1 go test -count=1 -p 2 ./pkg/utils ./pkg/message/repository ./pkg/sendMessage/service ./pkg/whatsmeow/service
+RUN CGO_ENABLED=1 go build -p 2 -ldflags "-X main.version=0.7.2-workout-security1" -o server ./cmd/evolution-go
+RUN go version -m server > build-info.txt
+FROM workout-evolution@sha256:e8ed22400352063d8d134d70b388c4ce582c6464fc35a58706b2830770a6bba8
+COPY --from=build /build/server /app/server
+COPY --from=build /build/build-info.txt /app/workout-build-info.txt
+COPY --from=build /build/go.mod /app/workout-go.mod
+COPY --from=build /build/go.sum /app/workout-go.sum
