@@ -13,6 +13,7 @@ import {
   ToolValidationError,
   type ChatMessage,
 } from "../_shared/aiContracts.ts";
+import { getAssistantDashboard } from "../_shared/aiDashboard.ts";
 import { getAIProvider } from "../_shared/aiProvider.ts";
 import {
   createClient,
@@ -344,56 +345,9 @@ async function executeTool(
       return { count: data?.length || 0, students: data };
     }
     case "get_dashboard_stats": {
-      // Calcular "hoje" em America/Sao_Paulo (UTC-3), não no fuso do runtime Deno (UTC)
-      const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
-      const now = new Date();
-      const sp = new Date(now.getTime() + SP_OFFSET_MS);
-      const y = sp.getUTCFullYear();
-      const mo = sp.getUTCMonth();
-      const d = sp.getUTCDate();
-      const todayStart = new Date(Date.UTC(y, mo, d, 0, 0) - SP_OFFSET_MS);
-      const todayEnd = new Date(Date.UTC(y, mo, d + 1, 0, 0) - SP_OFFSET_MS);
-      const [
-        { count: totalStudents },
-        { count: sentToday },
-        { count: pendingScheduled },
-        { data: allStudents },
-      ] = await Promise.all([
-        supabase.from("students").select("*", { count: "exact", head: true }),
-        supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .gte("sent_at", todayStart.toISOString())
-          .lt("sent_at", todayEnd.toISOString()),
-        supabase
-          .from("scheduled_messages")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pending"),
-        supabase
-          .from("students")
-          .select("name, birth_date, had_evaluation")
-          .not("birth_date", "is", null),
-      ]);
-      const mm = String(mo + 1).padStart(2, "0");
-      const dd = String(d).padStart(2, "0");
-      const birthdays = (allStudents || [])
-        .filter((s) => {
-          if (!s.birth_date) return false;
-          const [, m, dy] = s.birth_date.split("-");
-          return m === mm && dy === dd;
-        })
-        .map((s) => s.name);
-      const semAvaliacao = (allStudents || []).filter(
-        (s) => !s.had_evaluation,
-      ).length;
-      return {
-        totalStudents,
-        messagesSentToday: sentToday,
-        pendingScheduledMessages: pendingScheduled,
-        birthdaysToday: birthdays,
-        studentsWithoutEvaluation: semAvaliacao,
-      };
+      return await getAssistantDashboard(() => supabase.rpc("get_workout_dashboard"));
     }
+
     case "list_scheduled_messages": {
       let q = supabase
         .from("scheduled_messages")
