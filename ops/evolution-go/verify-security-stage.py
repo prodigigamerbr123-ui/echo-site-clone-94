@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Isolated candidate smoke checks. Never mount production data or session keys."""
-import json,pathlib,secrets,subprocess,time,urllib.request,urllib.error,re
-ROOT=pathlib.Path('/home/ubuntu/workout-evolution-security-20261013')
-PREFIX='workout-evolution-security-qa-20261013'
-IMAGE='workout-evolution:0.7.2-security1'
+import json,pathlib,secrets,subprocess,time,urllib.request,urllib.error,re,sys
+SECOND='--second' in sys.argv
+ROOT=pathlib.Path('/home/ubuntu/workout-evolution-security2-20261013' if SECOND else '/home/ubuntu/workout-evolution-security-20261013')
+PREFIX='workout-evolution-security2-qa-20261013' if SECOND else 'workout-evolution-security-qa-20261013'
+IMAGE='workout-evolution:0.7.2-security2' if SECOND else 'workout-evolution:0.7.2-security1'
 checks=[]
 def run(args):
  r=subprocess.run(args,capture_output=True,text=True)
@@ -69,9 +70,19 @@ try:
  check('no_instances_connected',not json.loads(run(['docker','exec',PREFIX+'-db','psql','-U','qa','-d','workout_qa','-Atqc','SELECT count(*) FROM instances;'])))
  check('postgres_migrations_created_tables',int(run(['docker','exec',PREFIX+'-db','psql','-U','qa','-d','workout_qa','-Atqc',"SELECT count(*) FROM pg_tables WHERE schemaname='public';"]))>0)
  info=run(['docker','exec',PREFIX+'-app','cat','/app/workout-build-info.txt'])
- check('go_patch_applied','go1.25.14' in info)
+ check('go_patch_applied',('go1.26.9' if SECOND else 'go1.25.14') in info)
  check('pgx_patch_applied','github.com/jackc/pgx/v5\tv5.9.2' in info)
  check('amqp_patch_applied','github.com/rabbitmq/amqp091-go\tv1.13.0' in info)
+ if SECOND:
+  for module,version in [('github.com/chai2010/webp','v1.4.0'),('golang.org/x/net','v0.60.0')]:
+   check(module+'_patched',module+'\t'+version in info)
+  run(['docker','exec',PREFIX+'-app','ffmpeg','-v','error','-f','lavfi','-i','color=c=blue:s=80x40','-frames:v','1','-threads','1','-y','/tmp/qa.png'])
+  check('runtime_media_tool',True)
+  for _ in range(25):
+   health=json.loads(run(['docker','inspect',PREFIX+'-app']))[0]['State'].get('Health',{}).get('Status')
+   if health=='healthy':break
+   time.sleep(2)
+  check('runtime_healthcheck',health=='healthy')
  inspect=json.loads(run(['docker','inspect',PREFIX+'-app']))[0]
  check('only_isolated_network',list(inspect['NetworkSettings']['Networks'])==[PREFIX])
  check('no_production_mounts',all(not m.get('Source','').startswith('/var/lib/docker/volumes/evolution_') for m in inspect['Mounts']))

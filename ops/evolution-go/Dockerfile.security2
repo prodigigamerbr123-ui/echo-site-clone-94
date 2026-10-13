@@ -1,0 +1,24 @@
+FROM golang:1.26.9-alpine3.23@sha256:6750308561953d451210ed1a8086d36c8c8bdcbf672d38d9d0d424b8a7a0216c AS build
+ENV GOTOOLCHAIN=local GOMAXPROCS=2
+RUN apk add --no-cache git build-base libjpeg-turbo-dev libwebp-dev poppler-utils
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go get github.com/jackc/pgx/v5@v5.9.2 github.com/rabbitmq/amqp091-go@v1.13.0 github.com/chai2010/webp@v1.4.0 golang.org/x/image@v0.45.0 golang.org/x/net@v0.60.0 && go mod download
+COPY . .
+RUN go get github.com/jackc/pgx/v5@v5.9.2 github.com/rabbitmq/amqp091-go@v1.13.0 github.com/chai2010/webp@v1.4.0 golang.org/x/image@v0.45.0 golang.org/x/net@v0.60.0 && go mod tidy
+RUN CGO_ENABLED=1 go test -v -count=1 -p 2 ./pkg/utils ./pkg/message/repository ./pkg/sendMessage/service ./pkg/whatsmeow/service
+RUN CGO_ENABLED=1 go build -p 2 -ldflags "-X main.version=0.7.2-workout-security2" -o server ./cmd/evolution-go
+RUN go version -m server > build-info.txt
+FROM workout-evolution@sha256:8e1022c8b5ed34eede17d9449329fc330c746439d3844d51f2d1bd0be518665a AS previous
+FROM alpine:3.23@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
+RUN apk upgrade --no-cache && apk add --no-cache tzdata ffmpeg libjpeg-turbo libwebp poppler-utils
+WORKDIR /app
+COPY --from=previous /app/manager/dist ./manager/dist
+COPY --from=previous /app/VERSION ./VERSION
+COPY --from=build /build/server ./server
+COPY --from=build /build/build-info.txt ./workout-build-info.txt
+COPY --from=build /build/go.mod ./workout-go.mod
+COPY --from=build /build/go.sum ./workout-go.sum
+ENV TZ=America/Sao_Paulo
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -q -O /dev/null "http://127.0.0.1:${SERVER_PORT:-4000}/server/ok" || exit 1
+ENTRYPOINT ["/app/server"]

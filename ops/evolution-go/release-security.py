@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Controlled same-instance update. No message sends, license cloning or DB restores."""
 import copy,datetime,hashlib,http.client,json,os,pathlib,socket,subprocess,sys,time,urllib.request
-ROOT=pathlib.Path('/home/ubuntu/workout-evolution-release-20261013')
-OLD='sha256:e8ed22400352063d8d134d70b388c4ce582c6464fc35a58706b2830770a6bba8'
-NEW='sha256:8e1022c8b5ed34eede17d9449329fc330c746439d3844d51f2d1bd0be518665a'
-NAME='evolution-go';PREVIOUS='evolution-go-previous-security-20261013';NETWORK='evolution-net'
+SECOND='--second' in sys.argv
+if SECOND:sys.argv.remove('--second')
+ROOT=pathlib.Path('/home/ubuntu/workout-evolution-release2-20261013' if SECOND else '/home/ubuntu/workout-evolution-release-20261013')
+OLD='sha256:8e1022c8b5ed34eede17d9449329fc330c746439d3844d51f2d1bd0be518665a' if SECOND else 'sha256:e8ed22400352063d8d134d70b388c4ce582c6464fc35a58706b2830770a6bba8'
+NEW='sha256:11f42613e1f88a396c09c34d28f04460fda2b98af1ba471710349820ae331727' if SECOND else 'sha256:8e1022c8b5ed34eede17d9449329fc330c746439d3844d51f2d1bd0be518665a'
+NAME='evolution-go';PREVIOUS='evolution-go-previous-security2-20261013' if SECOND else 'evolution-go-previous-security-20261013';NETWORK='evolution-net'
 JOBS="'process-scheduled-messages-every-minute','daily-automation'"
 os.umask(0o077);ROOT.mkdir(mode=0o700,exist_ok=True)
 def run(args,data=None):
@@ -118,7 +120,7 @@ elif phase=='apply':
   for _ in range(60):
    try:
     admin,key=keys()
-    if request('/license/status').get('status')=='active' and len(request('/instance/all',admin)['data'])==s['instance_count'] and connected(key):break
+    if request('/license/status').get('status')=='active' and len(request('/instance/all',admin)['data'])==s['instance_count'] and connected(key) and (not SECOND or inspect(NAME)['State'].get('Health',{}).get('Status')=='healthy'):break
    except Exception:pass
    time.sleep(2)
   else:raise RuntimeError('Candidate failed live verification')
