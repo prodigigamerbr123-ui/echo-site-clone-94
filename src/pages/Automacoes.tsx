@@ -18,7 +18,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { fetchAutomationSettings, AutomationSettingsMap } from "@/lib/automationSettings";
+import { fetchAutomationSettings, automationTemplates, type AutomationParams, AutomationSettingsMap } from "@/lib/automationSettings";
 import { invalidateTemplateCache } from "@/lib/messageTemplates";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
 
@@ -151,7 +151,7 @@ type PredefinedMsg = { id: string; title: string; content: string };
 
 async function updateAutomationSetting(
   key: string,
-  values: { enabled?: boolean; params?: Record<string, any> },
+  values: { enabled?: boolean; params?: AutomationParams },
 ) {
   const { data, error } = await supabase
     .from("automation_settings")
@@ -270,11 +270,11 @@ export default function Automacoes() {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
       toast.success("Automação atualizada");
     },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao atualizar"),
+    onError: (e) => toast.error(e.message ?? "Erro ao atualizar"),
   });
 
   const paramsMutation = useMutation({
-    mutationFn: async ({ key, params }: { key: string; params: Record<string, any> }) => {
+    mutationFn: async ({ key, params }: { key: string; params: AutomationParams }) => {
       await updateAutomationSetting(key, { params });
     },
     onSuccess: () => {
@@ -282,7 +282,7 @@ export default function Automacoes() {
       invalidateTemplateCache();
       toast.success("Configuração salva");
     },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
+    onError: (e) => toast.error(e.message ?? "Erro ao salvar"),
   });
 
   const templateMutation = useMutation({
@@ -290,7 +290,7 @@ export default function Automacoes() {
       key, messageType, predefinedId,
     }: { key: string; messageType: string; predefinedId: string | null }) => {
       const current = settings?.[key]?.params ?? {};
-      const templates = { ...(current.templates ?? {}) } as Record<string, string>;
+      const templates = automationTemplates(current);
       if (predefinedId) templates[messageType] = predefinedId;
       else delete templates[messageType];
       const newParams = { ...current, templates };
@@ -301,7 +301,7 @@ export default function Automacoes() {
       invalidateTemplateCache();
       toast.success("Mensagem vinculada");
     },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao vincular"),
+    onError: (e) => toast.error(e.message ?? "Erro ao vincular"),
   });
 
   const [creatingFor, setCreatingFor] = useState<{
@@ -439,7 +439,7 @@ function AutomationCard({
   predefined: PredefinedMsg[];
   perTypeCounts: Record<string, number>;
   onToggle: (enabled: boolean) => void;
-  onSaveParams: (params: Record<string, any>) => void;
+  onSaveParams: (params: AutomationParams) => void;
   onLinkTemplate: (messageType: string, predefinedId: string | null) => void;
   onCreateNew: (messageType: string, suggestedTitle: string) => void;
   onPreview: (msg: PredefinedMsg) => void;
@@ -447,7 +447,7 @@ function AutomationCard({
 }) {
   const setting = settings?.[def.key];
   const enabled = !!setting?.enabled;
-  const templates = (setting?.params?.templates ?? {}) as Record<string, string>;
+  const templates = automationTemplates(setting?.params);
 
   const initialParams = useMemo(() => {
     const p: Record<string, number> = {};

@@ -8,7 +8,8 @@
 // - Só considera alunos com status 'active'
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { Database, Json } from "../_shared/database.types.ts";
 import { requireCronSecret } from "../_shared/auth.ts";
 import { resolveAutomationMessage } from "../_shared/messageTemplates.ts";
 import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
@@ -23,13 +24,19 @@ const DEFAULT_DAYS_OVERDUE = 90;
 const DEFAULT_PAYMENT_DAYS_BEFORE = 3;
 const DEFAULT_PAYMENT_CAP = 200;
 
-type SettingsMap = Record<string, { enabled: boolean; params: Record<string, any> }>;
+type AutomationClient = SupabaseClient<Database>;
+type Student = Pick<Database["public"]["Tables"]["students"]["Row"],
+  "id" | "name" | "birth_date" | "last_evaluation_date" | "had_evaluation" | "created_at" | "status" | "payment_due_date">;
+type QueuedMessage = Database["public"]["Tables"]["scheduled_messages"]["Insert"];
+type SettingsMap = Record<string, { enabled: boolean; params: Record<string, Json | undefined> }>;
 
 // PostgREST enforces a row cap per request. Every decision about duplicate
 // messages and attempts must consider the complete matching set.
-async function fetchAllRows(buildQuery: (from: number, to: number) => any): Promise<any[]> {
+async function fetchAllRows<T>(buildQuery: (from: number, to: number) => PromiseLike<{
+  data: T[] | null; error: { message: string } | null;
+}>): Promise<T[]> {
   const pageSize = 500;
-  const rows: any[] = [];
+  const rows: T[] = [];
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await buildQuery(from, from + pageSize - 1);
     if (error) throw error;
@@ -40,14 +47,14 @@ async function fetchAllRows(buildQuery: (from: number, to: number) => any): Prom
   return rows;
 }
 
-async function loadSettings(supabase: any): Promise<SettingsMap> {
+async function loadSettings(supabase: AutomationClient): Promise<SettingsMap> {
   const { data, error } = await supabase
     .from("automation_settings")
     .select("key, enabled, params");
   if (error) throw error;
   const map: SettingsMap = {};
   for (const r of data ?? []) {
-    map[r.key] = { enabled: !!r.enabled, params: (r.params as any) ?? {} };
+    map[r.key] = { enabled: !!r.enabled, params: r.params && typeof r.params === "object" && !Array.isArray(r.params) ? r.params : {} };
   }
   return map;
 }
@@ -150,11 +157,11 @@ serve(async (req: Request) => {
   const cronFail = requireCronSecret(req);
   if (cronFail) return cronFail;
 
-  let runClient: any = null;
+  let runClient: AutomationClient | null = null;
   let runId: string | null = null;
   let schedulingFinished = false;
   try {
-    const supabase = createClient(
+    const supabase = createClient<Database>(
       Deno.env.get("SUPABASE_URL")!,
       getSupabaseSecretKey(),
     );
@@ -171,6 +178,7 @@ serve(async (req: Request) => {
       });
     }
     if (runError) throw runError;
+    if (!run) throw new Error("Histórico de execução não foi criado.");
     runId = run.id;
 
     const settings = await loadSettings(supabase);
@@ -192,7 +200,7 @@ serve(async (req: Request) => {
     );
 
     // Carrega todos os alunos ativos (pagina para passar do limite 1000)
-    const activeStudents: any[] = [];
+    const activeStudents: Student[] = [];
     let from = 0;
     const pageSize = 1000;
     while (true) {
@@ -222,7 +230,7 @@ serve(async (req: Request) => {
         "payment_overdue",
       ]).order("id").range(start, end));
     const hasPending = new Set(
-      pendings.map((p: any) => `${p.student_id}:${p.message_type}`),
+      pendings.map((p) => `${p.student_id}:${p.message_type}`),
     );
 
     // Idempotência diária: uma segunda execução no mesmo dia não deve
@@ -243,11 +251,11 @@ serve(async (req: Request) => {
         "payment_overdue",
       ]).order("id").range(start, end));
     const hasScheduledToday = new Set(
-      scheduledToday.map((p: any) => `${p.student_id}:${p.message_type}`),
+      scheduledToday.map((p) => `${p.student_id}:${p.message_type}`),
     );
 
     // ---- 1) Aniversariantes de hoje ----
-    const birthdayInserts: any[] = [];
+    const birthdayInserts: QueuedMessage[] = [];
     if (birthdayOn) {
       for (const s of activeStudents) {
         if (!isBirthdayToday(s.birth_date)) continue;
@@ -275,12 +283,12 @@ serve(async (req: Request) => {
       .gte("scheduled_at", new Date().toISOString())
       .order("id").range(start, end));
     const studentsWithFutureEval = new Set(
-      futureEvals.map((e: any) => e.student_id),
+      futureEvals.map((e) => e.student_id),
     );
 
     // ---- 2) Lembretes de avaliação vencida ----
-    const reminderInserts: any[] = [];
-    let reminderCandidates: any[] = [];
+    const reminderInserts: QueuedMessage[] = [];
+    let reminderCandidates: Student[] = [];
     if (inviteOn) {
       const minIntervalDays = Number(
         getParam(settings, "evaluation_invite", "min_interval_days", 14),
@@ -357,7 +365,7 @@ serve(async (req: Request) => {
     }
 
     // ---- 3) Lembretes de vencimento da mensalidade ----
-    const paymentInserts: any[] = [];
+    const paymentInserts: QueuedMessage[] = [];
     let paymentBeforeCount = 0;
     let paymentDueCount = 0;
     if (paymentOn) {
@@ -374,7 +382,7 @@ serve(async (req: Request) => {
           const content = await resolveAutomationMessage(
             supabase, settings, "payment_reminder", "payment_reminder_before",
             PAYMENT_BEFORE_TEMPLATE(s.name, paymentDaysBefore),
-            { nome: s.name, dias: String(paymentDaysBefore) } as any,
+            { nome: s.name, dias: String(paymentDaysBefore) },
           );
           paymentInserts.push({
             student_id: s.id,
@@ -392,7 +400,7 @@ serve(async (req: Request) => {
           const content = await resolveAutomationMessage(
             supabase, settings, "payment_reminder", "payment_reminder_due",
             PAYMENT_DUE_TEMPLATE(s.name),
-            { nome: s.name, dias: "0" } as any,
+            { nome: s.name, dias: "0" },
           );
           paymentInserts.push({
             student_id: s.id,
@@ -407,7 +415,7 @@ serve(async (req: Request) => {
     }
 
     // ---- 4) Cobrança de mensalidade vencida ----
-    const overdueInserts: any[] = [];
+    const overdueInserts: QueuedMessage[] = [];
     if (overdueOn) {
       const todaySP = spDateStrToday();
       const overdueDaysAfter = Number(
@@ -428,7 +436,7 @@ serve(async (req: Request) => {
         .gte("scheduled_for", sinceISO)
         .order("id").range(start, end));
       const recentByStudent = new Set(
-        recentOverdue.map((r: any) => r.student_id),
+        recentOverdue.map((r) => r.student_id),
       );
 
       for (const s of activeStudents) {
@@ -452,7 +460,7 @@ serve(async (req: Request) => {
         const content = await resolveAutomationMessage(
           supabase, settings, "payment_overdue", "payment_overdue",
           PAYMENT_OVERDUE_TEMPLATE(s.name, daysLate),
-          { nome: s.name, dias: String(daysLate) } as any,
+          { nome: s.name, dias: String(daysLate) },
         );
         overdueInserts.push({
           student_id: s.id,
@@ -536,13 +544,14 @@ serve(async (req: Request) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("daily-automation error:", error);
     if (runClient && runId && !schedulingFinished) {
       // Do not copy arbitrary database exception text or secret values into a
       // table that can be viewed from the administrative interface.
-      const errorCode = typeof error?.code === "string" && /^[A-Za-z0-9_]{1,16}$/.test(error.code)
-        ? ` (${error.code})` : "";
+      const code = error && typeof error === "object" && "code" in error ? error.code : null;
+      const errorCode = typeof code === "string" && /^[A-Za-z0-9_]{1,16}$/.test(code)
+        ? ` (${code})` : "";
       try {
         const { data: loggedRun, error: logError } = await runClient.from("automation_runs")
           .update({

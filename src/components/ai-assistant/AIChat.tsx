@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errorMessage";
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
@@ -136,9 +137,9 @@ export function AIChat({ isExpanded, conversationId, onConversationCreated, onCo
       ]);
       if (convId) await persistMessage(convId, 'assistant', assistantText);
       onConversationChanged?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('chat error:', e);
-      toast({ title: 'Erro', description: e?.message || 'Falha ao processar.', variant: 'destructive' });
+      toast({ title: 'Erro', description: errorMessage(e, 'Falha ao processar.'), variant: 'destructive' });
       const err = 'Desculpe, ocorreu um erro. Tente novamente.';
       setMessages((prev) => [...prev, { role: 'assistant', content: err }]);
       if (convId) await persistMessage(convId, 'assistant', err);
@@ -171,8 +172,8 @@ export function AIChat({ isExpanded, conversationId, onConversationCreated, onCo
       });
       if (convIdRef.current) await persistMessage(convIdRef.current, 'assistant', resultText);
       onConversationChanged?.();
-    } catch (e: any) {
-      toast({ title: 'Erro ao executar', description: e?.message, variant: 'destructive' });
+    } catch (e: unknown) {
+      toast({ title: 'Erro ao executar', description: errorMessage(e), variant: 'destructive' });
     } finally {
       setRunningActionIdx(null);
     }

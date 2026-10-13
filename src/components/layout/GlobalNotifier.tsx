@@ -1,3 +1,4 @@
+import type { Database } from "@/integrations/supabase/types";
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -37,6 +38,8 @@ export function GlobalNotifier() {
   useEffect(() => {
     if (!session || !settingsLoaded || roleLoading || !role) return;
     let disposed = false;
+    const effectBucket = sentBucketRef.current;
+    const effectHandledEvents = handledMessageEventsRef.current;
     const canMonitorMessages = hasRole(role, FRONT_DESK);
     const flushSent = () => {
       const bucket = sentBucketRef.current;
@@ -158,13 +161,13 @@ export function GlobalNotifier() {
 
     const channel = supabase
       .channel("global-notifier")
-      .on(
+      .on<Database["public"]["Tables"]["scheduled_messages"]["Row"]>(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "scheduled_messages" },
-        async (payload: any) => {
+        async (payload) => {
           if (!canMonitorMessages) return;
-          const oldRow = payload.old || {};
-          const newRow = payload.new || {};
+          const oldRow = payload.old;
+          const newRow = payload.new;
           const cfg = settingsRef.current;
 
           // Reagendamento manual: mudou data, continua pending, e NÃO é retry
@@ -209,10 +212,10 @@ export function GlobalNotifier() {
           }
         }
       )
-      .on(
+      .on<Database["public"]["Tables"]["evaluations"]["Row"]>(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "evaluations" },
-        (payload: any) => {
+        (payload) => {
           if (!settingsRef.current.notify_evaluation_created) return;
           const row = payload.new;
           if (!row) return;
@@ -221,12 +224,12 @@ export function GlobalNotifier() {
           });
         }
       )
-      .on(
+      .on<Database["public"]["Tables"]["evaluations"]["Row"]>(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "evaluations" },
-        async (payload: any) => {
-          const oldRow = payload.old || {};
-          const newRow = payload.new || {};
+        async (payload) => {
+          const oldRow = payload.old;
+          const newRow = payload.new;
           const cfg = settingsRef.current;
 
           if (
@@ -257,32 +260,32 @@ export function GlobalNotifier() {
           }
         }
       )
-      .on(
+      .on<Database["public"]["Tables"]["students"]["Row"]>(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "students" },
-        (payload: any) => {
+        (payload) => {
           if (!settingsRef.current.notify_student_registered) return;
           const row = payload.new;
           if (!row) return;
           toast("Novo aluno cadastrado", { description: row.name });
         }
       )
-      .on(
+      .on<Database["public"]["Tables"]["students"]["Row"]>(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "students" },
-        (payload: any) => {
+        (payload) => {
           if (!settingsRef.current.notify_student_status_change) return;
-          const oldRow = payload.old || {};
-          const newRow = payload.new || {};
+          const oldRow = payload.old;
+          const newRow = payload.new;
           if (oldRow.status === newRow.status) return;
           const label = newRow.status === "active" ? "ativo" : "inativo";
           toast(`Aluno marcado como ${label}`, { description: newRow.name });
         }
       )
-      .on(
+      .on<Database["public"]["Tables"]["students"]["Row"]>(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "students" },
-        (payload: any) => {
+        (payload) => {
           if (!settingsRef.current.notify_student_deleted) return;
           const row = payload.old;
           if (!row) return;
@@ -297,7 +300,7 @@ export function GlobalNotifier() {
 
     return () => {
       disposed = true;
-      const bucket = sentBucketRef.current;
+      const bucket = effectBucket;
       if (bucket.timer) {
         clearTimeout(bucket.timer);
         bucket.timer = null;
@@ -305,7 +308,7 @@ export function GlobalNotifier() {
       if (pollingTimer !== null) window.clearInterval(pollingTimer);
       bucket.count = 0;
       lastMessageCheckRef.current = null;
-      handledMessageEventsRef.current.clear();
+      effectHandledEvents.clear();
       supabase.removeChannel(channel);
     };
   }, [session, settingsLoaded, role, roleLoading]);

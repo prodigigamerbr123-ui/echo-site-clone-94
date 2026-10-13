@@ -29,6 +29,8 @@ jobs:
         run: npm ci
       - name: Check application types
         run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Check coding rules
+        run: npm run lint
       - name: Run isolated tests
         run: npm run test
       - name: Build GitHub Pages

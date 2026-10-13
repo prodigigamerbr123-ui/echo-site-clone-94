@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errorMessage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -32,7 +33,7 @@ import {
   WifiOff,
 } from "lucide-react";
 
-type NotifKey = keyof NotificationSettings;
+type NotifKey = Exclude<keyof NotificationSettings, "sent_summary_minutes">;
 
 type NotifItem = {
   key: NotifKey;
@@ -171,9 +172,10 @@ export default function Configuracoes() {
   const update = useUpdateNotificationSettings();
   const [minutes, setMinutes] = useState<number>(10);
 
+  const persistedMinutes = settings?.sent_summary_minutes;
   useEffect(() => {
-    if (settings) setMinutes(settings.sent_summary_minutes);
-  }, [settings?.sent_summary_minutes]);
+    if (persistedMinutes !== undefined) setMinutes(persistedMinutes);
+  }, [persistedMinutes]);
 
   const totals = useMemo(() => {
     if (!settings) return { active: 0, total: 0 };
@@ -186,8 +188,8 @@ export default function Configuracoes() {
     try {
       await update.mutateAsync(partial);
       toast.success("Configuração salva");
-    } catch (e: any) {
-      toast.error("Erro ao salvar", { description: e?.message });
+    } catch (e: unknown) {
+      toast.error("Erro ao salvar", { description: errorMessage(e) });
     }
   };
 
@@ -202,7 +204,7 @@ export default function Configuracoes() {
 
   const toggleAll = async (enabled: boolean) => {
     const patch: Partial<NotificationSettings> = {};
-    for (const g of GROUPS) for (const i of g.items) (patch as any)[i.key] = enabled;
+    for (const g of GROUPS) for (const i of g.items) patch[i.key] = enabled;
     await save(patch);
   };
 
@@ -323,7 +325,7 @@ export default function Configuracoes() {
                           </div>
                           <Switch
                             checked={checked}
-                            onCheckedChange={(v) => save({ [item.key]: v } as any)}
+                            onCheckedChange={(v) => save({ [item.key]: v })}
                           />
                         </div>
                       </div>

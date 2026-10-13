@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { MessageSquare, Search, Plus, Edit, Trash2, Copy, Sparkles, FileText, Calendar, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,11 +39,7 @@ export default function MensagensPredefinidas() {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchMessages();
-  }, []);
-
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const [{ data, error }, autoIds] = await Promise.all([
         supabase.from("predefined_messages").select("*").order("title"),
@@ -58,7 +54,9 @@ export default function MensagensPredefinidas() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => { void fetchMessages(); }, [fetchMessages]);
 
   const manualMessages = useMemo(() => messages.filter((m) => !automationIds.has(m.id)), [messages, automationIds]);
   const automationMessages = useMemo(() => messages.filter((m) => automationIds.has(m.id)), [messages, automationIds]);

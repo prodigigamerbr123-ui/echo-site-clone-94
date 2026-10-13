@@ -1,3 +1,6 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { Database, Json } from "./database.types.ts";
+import { evaluationResult } from "./contracts.ts";
 // Lógica compartilhada de avaliações físicas — precisa ficar em paridade
 // exata com src/lib/evaluationMessages.ts e src/pages/AgendarAvaliacao.tsx.
 //
@@ -150,18 +153,19 @@ export const AUTO_EVAL_MESSAGE_TYPES = [
 
 export type AutomationSettingsMap = Record<
   string,
-  { enabled: boolean; params: Record<string, any> }
+  { enabled: boolean; params: Record<string, Json | undefined> }
 >;
 
 export async function loadAutomationSettings(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
 ): Promise<AutomationSettingsMap> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("automation_settings")
     .select("key, enabled, params");
+  if (error) throw error;
   const map: AutomationSettingsMap = {};
   for (const r of data ?? []) {
-    map[r.key] = { enabled: !!r.enabled, params: (r.params as any) ?? {} };
+    map[r.key] = { enabled: !!r.enabled, params: r.params && typeof r.params === "object" && !Array.isArray(r.params) ? r.params : {} };
   }
   return map;
 }
@@ -195,7 +199,7 @@ export interface ScheduleConflictCheck {
 }
 
 export async function checkScheduleConflicts(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   studentId: string,
   scheduledAt: Date,
 ): Promise<ScheduleConflictCheck> {
@@ -206,12 +210,13 @@ export async function checkScheduleConflicts(
     Date.UTC(nowSp.getUTCFullYear(), nowSp.getUTCMonth(), nowSp.getUTCDate(), 0, 0) - SP_OFFSET_MS,
   );
 
-  const { data: futureEvals } = await supabase
+  const { data: futureEvals, error } = await supabase
     .from("evaluations")
     .select("id, student_id, scheduled_at, students(name)")
     .eq("status", "scheduled")
     .gte("scheduled_at", startOfToday.toISOString());
 
+  if (error) throw error;
   const res: ScheduleConflictCheck = {};
   const target = scheduledAt.getTime();
 
@@ -237,7 +242,7 @@ export async function checkScheduleConflicts(
 // -------- Ações principais --------
 
 export async function createEvaluationWithMessages(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   studentId: string,
   scheduledAt: Date,
   notes: string | null,
@@ -254,13 +259,13 @@ export async function createEvaluationWithMessages(
   }
   const { data, error } = await supabase.rpc("mutate_evaluation_tx", {
     _action: "create", _evaluation_id: crypto.randomUUID(), _student_id: studentId,
-    _scheduled_at: scheduledAt.toISOString(), _notes: notes, _messages: auto,
+    _scheduled_at: scheduledAt.toISOString(), _notes: notes ?? undefined, _messages: auto.map(message => ({ ...message })),
   });
   if (error) throw error;
-  return { evaluation_id: data.evaluation_id, messages_created: data.messages_created };
+  return evaluationResult(data);
 }
 
-async function finishEvaluationOutcome(supabase: any, evaluationId: string, outcome: "completed" | "no_show") {
+async function finishEvaluationOutcome(supabase: SupabaseClient<Database>, evaluationId: string, outcome: "completed" | "no_show") {
   const { data: ev, error } = await supabase.from("evaluations")
     .select("id, student_id, students(name)").eq("id", evaluationId).single();
   if (error || !ev) throw new Error("Avaliação não encontrada");
@@ -282,14 +287,14 @@ async function finishEvaluationOutcome(supabase: any, evaluationId: string, outc
     _action: outcome, _evaluation_id: evaluationId, _messages: messages,
   });
   if (actionError) throw actionError;
-  return data;
+  return evaluationResult(data);
 }
 
-export async function completeEvaluation(supabase: any, evaluationId: string): Promise<{ followup_scheduled: boolean }> {
+export async function completeEvaluation(supabase: SupabaseClient<Database>, evaluationId: string): Promise<{ followup_scheduled: boolean }> {
   const result = await finishEvaluationOutcome(supabase, evaluationId, "completed");
   return { followup_scheduled: result.messages_created > 0 };
 }
 
-export async function noShowEvaluation(supabase: any, evaluationId: string): Promise<void> {
+export async function noShowEvaluation(supabase: SupabaseClient<Database>, evaluationId: string): Promise<void> {
   await finishEvaluationOutcome(supabase, evaluationId, "no_show");
 }

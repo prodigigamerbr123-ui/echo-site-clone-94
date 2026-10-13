@@ -1,3 +1,5 @@
+import type { Database } from "@/integrations/supabase/types";
+import { errorMessage } from "@/lib/errorMessage";
 import { buildMessageSeries } from "@/lib/recurrence";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { useEffect, useMemo, useState } from "react";
@@ -73,7 +75,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
     }
     setSaving(true);
     try {
-      const rows: any[] = [];
+      const rows: Database["public"]["Tables"]["scheduled_messages"]["Insert"][] = [];
       const finalContent = replaceNameVar(content.trim(), selected?.name ?? "");
       if (mode === "quick") {
         const [h, m] = quickTime.split(":").map(Number);
@@ -116,8 +118,8 @@ export function AgendarMensagemForm({ onSaved }: Props) {
       if (error) throw error;
       toast({ title: `${rows.length} mensagem(ns) agendada(s)` });
       onSaved();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
     } finally {
       setSaving(false);
     }

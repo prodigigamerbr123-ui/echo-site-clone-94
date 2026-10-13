@@ -1,3 +1,7 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { Database, Json } from "./database.types.ts";
+
+type SettingsMap = Record<string, { params: Record<string, Json | undefined> }>;
 // Espelho de src/lib/messageTemplates.ts para uso em edge functions.
 // Resolve o texto final de uma mensagem automática se o usuário linkou uma
 // mensagem pré-definida em automation_settings.params.templates[message_type].
@@ -31,20 +35,20 @@ export function interpolate(text: string, vars: TemplateVars): string {
 }
 
 export function getLinkedTemplateId(
-  settings: any,
+  settings: SettingsMap,
   automationKey: string,
   messageType: string,
 ): string | null {
   const t = settings?.[automationKey]?.params?.templates;
-  const id = t && typeof t === "object" ? t[messageType] : null;
+  const id = t && typeof t === "object" && !Array.isArray(t) ? t[messageType] : null;
   return id && typeof id === "string" ? id : null;
 }
 
 const contentCache = new Map<string, string | null>();
 
 export async function resolveAutomationMessage(
-  supabase: any,
-  settings: any,
+  supabase: SupabaseClient<Database>,
+  settings: SettingsMap,
   automationKey: string,
   messageType: string,
   fallback: string,

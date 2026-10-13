@@ -218,9 +218,9 @@ export const useTodayActions = () => {
         .select('student_id')
         .eq('status', 'scheduled')
         .gte('scheduled_at', new Date().toISOString());
-      const scheduledSet = new Set((futureEvals || []).map((e: any) => e.student_id));
+      const scheduledSet = new Set((futureEvals || []).map((e) => e.student_id));
       const studentsNeedingEvaluation = (rawEvalCandidates || []).filter(
-        (s: any) => !scheduledSet.has(s.id),
+        (s) => !scheduledSet.has(s.id),
       );
 
 

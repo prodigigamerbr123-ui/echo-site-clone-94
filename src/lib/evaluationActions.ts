@@ -1,15 +1,11 @@
+import { evaluationResult, type EvaluationResult } from "../../supabase/functions/_shared/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { buildEvaluationMessages, applyLinkedEvaluationTemplates, buildFollowup, buildReschedule } from "./evaluationMessages";
 import { fetchAutomationSettings, isAutomationEnabled, getAutomationParam } from "./automationSettings";
 import { resolveAutomationMessage } from "./messageTemplates";
 import { spParts, spDate } from "./spTime";
 
-export interface EvaluationActionResult {
-  evaluation_id: string;
-  messages_created: number;
-  already_applied: boolean;
-  in_flight: number;
-}
+export type EvaluationActionResult = EvaluationResult;
 
 export async function saveEvaluationWithMessages(
   studentId: string, name: string, scheduledAt: Date, notes: string | null,
@@ -24,7 +20,7 @@ export async function saveEvaluationWithMessages(
     _messages: messages.map((message) => ({ ...message })), _allow_conflict: allowConflict,
   });
   if (error) throw error;
-  return data as unknown as EvaluationActionResult;
+  return evaluationResult(data);
 }
 
 export async function finishEvaluationWithMessages(
@@ -33,7 +29,7 @@ export async function finishEvaluationWithMessages(
   if (outcome === "cancel") {
     const { data, error } = await supabase.rpc("mutate_evaluation_tx", { _action: "cancel", _evaluation_id: evaluationId, _messages: [] });
     if (error) throw error;
-    return data as unknown as EvaluationActionResult;
+    return evaluationResult(data);
   }
   const settings = await fetchAutomationSettings();
   const key = outcome === "completed" ? "evaluation_followup" : "no_show_reschedule";
@@ -52,5 +48,5 @@ export async function finishEvaluationWithMessages(
     _action: outcome, _evaluation_id: evaluationId, _messages: messages,
   });
   if (error) throw error;
-  return data as unknown as EvaluationActionResult;
+  return evaluationResult(data);
 }

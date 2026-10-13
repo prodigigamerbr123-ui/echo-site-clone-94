@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errorMessage";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,9 @@ export function AIInsightsPanel() {
             setGeneratedAt(c.generatedAt);
             return;
           }
-        } catch {}
+        } catch {
+          // Ignore malformed cached JSON and regenerate the briefing.
+        }
       }
     }
     setLoading(true);
@@ -54,8 +57,8 @@ export function AIInsightsPanel() {
       } else {
         setError("Resposta vazia da IA.");
       }
-    } catch (e: any) {
-      setError(e?.message || "Falha ao gerar briefing.");
+    } catch (e: unknown) {
+      setError(errorMessage(e, "Falha ao gerar briefing."));
     } finally {
       setLoading(false);
     }

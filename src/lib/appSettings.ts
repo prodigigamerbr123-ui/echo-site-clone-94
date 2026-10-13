@@ -62,7 +62,7 @@ export async function updateNotificationSettings(
   const merged = { ...current, ...partial };
   const { error } = await supabase
     .from("app_settings")
-    .upsert({ key: "notifications", value: merged as any, updated_at: new Date().toISOString() });
+    .upsert({ key: "notifications", value: { ...merged }, updated_at: new Date().toISOString() });
   if (error) throw error;
   return merged;
 }

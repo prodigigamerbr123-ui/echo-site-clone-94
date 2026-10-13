@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errorMessage";
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -148,11 +149,11 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
 
       onOpenChange(false);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating student:', error);
       toast({
         title: "Erro ao atualizar aluno",
-        description: error.message || "Tente novamente em alguns instantes.",
+        description: errorMessage(error, "Tente novamente em alguns instantes."),
         variant: "destructive"
       });
     } finally {

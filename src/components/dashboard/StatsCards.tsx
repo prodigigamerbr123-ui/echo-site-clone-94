@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, TrendingUp, Users, MessageCircle, Clock, Calendar } from "lucide-react";
@@ -6,7 +7,7 @@ import { useDashboardStats } from "@/hooks/useDashboardData";
 interface StatCardProps {
   title: string;
   value: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   description: string;
   color: string;
   isLoading?: boolean;

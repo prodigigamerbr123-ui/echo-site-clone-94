@@ -58,7 +58,7 @@ export function TodayInbox() {
         .select("id, name, birth_date").not("birth_date", "is", null).limit(5000);
 
       const { startIso, endIso, mm, dd } = spTodayBounds();
-      const todays = (students || []).filter((s: any) => {
+      const todays = (students || []).filter((s) => {
         if (!s.birth_date) return false;
         const [, m, d] = s.birth_date.split("-");
         return m === mm && d === dd;
@@ -70,8 +70,8 @@ export function TodayInbox() {
         .gte("scheduled_for", startIso)
         .lte("scheduled_for", endIso);
       const byStudent = new Map<string, string>();
-      for (const m of msgs || []) byStudent.set((m as any).student_id, (m as any).status);
-      return todays.map((s: any) => ({ ...s, msgStatus: byStudent.get(s.id) }));
+      for (const m of msgs || []) byStudent.set(m.student_id, m.status);
+      return todays.map((s) => ({ ...s, msgStatus: byStudent.get(s.id) }));
     },
     refetchInterval: 60_000,
   });
@@ -88,7 +88,7 @@ export function TodayInbox() {
           .eq("status", "active").limit(5000),
 
       ]);
-      const overdueCount = (overdue || []).filter((s: any) => {
+      const overdueCount = (overdue || []).filter((s) => {
         if (s.last_evaluation_date) {
           return (Date.now() - new Date(s.last_evaluation_date).getTime()) / 86400000 > 90;
         }
@@ -186,7 +186,7 @@ export function TodayInbox() {
           {birthdays.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">Ninguém aniversariando 🎂</p>
           ) : (
-            birthdays.map((s: any) => (
+            birthdays.map((s) => (
               <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border p-2">
                 <p className="text-sm font-medium truncate">{s.name}</p>
                 {s.msgStatus === "sent" ? (
@@ -216,7 +216,7 @@ export function TodayInbox() {
             <p className="text-sm text-muted-foreground text-center py-4">Tudo em ordem 👏</p>
           ) : (
             <>
-              {(attention?.failed || []).map((f: any) => (
+              {(attention?.failed || []).map((f) => (
                 <div key={f.id} className="rounded-lg border border-destructive/30 bg-destructive/5 p-2">
                   <p className="text-xs font-medium truncate">{f.students?.name} — falhou</p>
                   <p className="text-[11px] text-destructive truncate">{f.failure_reason || "Erro no envio"}</p>

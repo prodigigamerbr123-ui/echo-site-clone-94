@@ -2,11 +2,18 @@
 """Workout 13 October release. Explicit phases; never restores a live database."""
 import datetime, hashlib, json, os, pathlib, shutil, subprocess, sys, time
 
-ROOT = pathlib.Path('/opt/workout-releases/20261013-automations')
+CONTRACTS = '--contracts' in sys.argv
+if CONTRACTS:
+    sys.argv.remove('--contracts')
+ROOT = pathlib.Path('/opt/workout-releases/20261013-contracts' if CONTRACTS else '/opt/workout-releases/20261013-automations')
 STACK = pathlib.Path('/opt/workout-supabase')
 DB = 'workout-supabase-db'
 VERSION = '20261013010000'
-FILES = ['daily-automation/index.ts', '_shared/phone.ts', '_shared/database.types.ts']
+FILES = (['_shared/database.types.ts', '_shared/evaluations.ts', '_shared/evolution.ts',
+          '_shared/messageTemplates.ts', '_shared/aiContracts.ts', '_shared/contracts.ts',
+          'ai-assistant/index.ts', 'ai-database-actions/index.ts', 'daily-automation/index.ts',
+          'daily-briefing/index.ts', 'whatsapp-status/index.ts'] if CONTRACTS else
+         ['daily-automation/index.ts', '_shared/phone.ts', '_shared/database.types.ts'])
 JOBS = "'process-scheduled-messages-every-minute','daily-automation'"
 os.umask(0o077)
 
@@ -55,11 +62,16 @@ if phase == 'preflight':
     manifest = verify_package()
     if sql("SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261012010000'") != '1':
         raise RuntimeError('Required previous migration absent')
-    if sql("SELECT to_regclass('public.automation_runs') IS NULL") != 't':
-        raise RuntimeError('Automation history already exists; inspect release state')
+    history_missing = sql("SELECT to_regclass('public.automation_runs') IS NULL") == 't'
+    if history_missing == CONTRACTS:
+        raise RuntimeError('Unexpected automation history schema; inspect release state')
+    if CONTRACTS and sql("SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261013010000'") != '1':
+        raise RuntimeError('Required automation history migration absent')
     for name in FILES:
-        before = (STACK/'volumes/functions'/name).read_bytes().replace(b'\r\n', b'\n')
-        if hashlib.sha256(before).hexdigest() != manifest['before_sha256'][name]:
+        target = STACK/'volumes/functions'/name
+        before = target.read_bytes().replace(b'\r\n', b'\n') if target.exists() else None
+        actual = hashlib.sha256(before).hexdigest() if before is not None else None
+        if actual != manifest['before_sha256'][name]:
             raise RuntimeError('Production runtime differs from reviewed predecessor: ' + name)
     jobs = json.loads(sql('SELECT json_agg(json_build_object(\'id\',jobid,\'active\',active,\'name\',jobname)) FROM cron.job WHERE jobname IN ('+JOBS+');'))
     if not jobs or len(jobs) != 2:
@@ -75,6 +87,8 @@ elif phase == 'prepare':
     if not jobs or len(jobs) != 2:
         raise RuntimeError('Unexpected cron configuration')
     state = {'phase': 'pausing', 'jobs': jobs,
+             'release_kind': 'contracts' if CONTRACTS else 'automation_history',
+             'new_files': [],
              'prepared_utc': datetime.datetime.now(datetime.timezone.utc).isoformat()}
     save(state)
     sql('UPDATE cron.job SET active=false WHERE jobname IN ('+JOBS+');')
@@ -97,7 +111,11 @@ elif phase == 'prepare':
         for name in FILES:
             before = ROOT/'before'/name
             before.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(STACK/'volumes/functions'/name, before)
+            source = STACK/'volumes/functions'/name
+            if source.exists():
+                shutil.copyfile(source, before)
+            else:
+                state['new_files'].append(name)
         gateway(True)
         state['phase'] = 'prepared'
         save(state)
@@ -117,12 +135,13 @@ elif phase == 'apply':
     if sys.argv[2:4] != [state['backup_sha256']['database.dump'], state['backup_sha256']['runtime.tar.gz']]:
         raise RuntimeError('Independent backup verification missing')
     verify_package()
-    migration = (ROOT/'automation-history.sql').read_text()
-    migration = migration.replace('BEGIN;', 'BEGIN;\nSET LOCAL ROLE postgres;', 1)
-    migration = migration.replace('COMMIT;', "RESET ROLE;\nINSERT INTO supabase_migrations.schema_migrations(version,name) VALUES ('"+VERSION+"','automation_run_history');\nCOMMIT;")
-    sql(migration)
-    state['phase'] = 'migration_applied'
-    save(state)
+    if not CONTRACTS:
+        migration = (ROOT/'automation-history.sql').read_text()
+        migration = migration.replace('BEGIN;', 'BEGIN;\nSET LOCAL ROLE postgres;', 1)
+        migration = migration.replace('COMMIT;', "RESET ROLE;\nINSERT INTO supabase_migrations.schema_migrations(version,name) VALUES ('"+VERSION+"','automation_run_history');\nCOMMIT;")
+        sql(migration)
+        state['phase'] = 'migration_applied'
+        save(state)
     for name in FILES:
         target = STACK/'volumes/functions'/name
         temp = target.with_suffix(target.suffix+'.release')
@@ -160,8 +179,15 @@ elif phase == 'resume':
 elif phase == 'restore_backend':
     # Additive history table remains. Never delete queue/history or restore database.
     state = json.loads((ROOT/'state.json').read_text())
+    if sql('SELECT count(*) FROM cron.job WHERE jobname IN ('+JOBS+') AND active;') != '0':
+        raise RuntimeError('Pause cron jobs before restoring runtime')
     for name in FILES:
-        shutil.copyfile(ROOT/'before'/name, STACK/'volumes/functions'/name)
+        source = ROOT/'before'/name
+        target = STACK/'volumes/functions'/name
+        if source.exists():
+            shutil.copyfile(source, target)
+        elif name in state.get('new_files', []):
+            target.unlink(missing_ok=True)
     run(['docker','restart','workout-supabase-edge-functions'])
     gateway(False)
     restore_jobs(state)

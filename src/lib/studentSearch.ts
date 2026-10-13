@@ -17,7 +17,7 @@ export function matchesStudentSearch(student: SearchableStudent, search: string)
   if (normalizeText(student.name).includes(normalizeText(term))) return true;
 
   // An empty digit string matches every CPF; never use it as a search term.
-  if (!/^[\d\s()+.\-]+$/.test(term)) return false;
+  if (!/^[\d\s()+.-]+$/.test(term)) return false;
   const digits = term.replace(/\D/g, "");
   if (!digits) return false;
 

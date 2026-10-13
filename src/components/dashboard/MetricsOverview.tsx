@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ interface MetricCardProps {
   value: string;
   change: string;
   changeType: "positive" | "negative" | "neutral";
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   description: string;
 }
 

@@ -1,3 +1,4 @@
+import { record } from "../../supabase/functions/_shared/contracts";
 import { useState, FormEvent, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -18,7 +19,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const from = (location.state as any)?.from?.pathname || "/";
+  const pathname = record(record(location.state).from).pathname;
+  const from = typeof pathname === "string" && pathname.startsWith("/") && !pathname.startsWith("//") ? pathname : "/";
 
   useEffect(() => {
     if (!loading && session) navigate(from, { replace: true });

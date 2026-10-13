@@ -1,5 +1,8 @@
+import type { Database, Json } from "../_shared/database.types.ts";
+import { isRecord, record, errorMessage } from "../_shared/contracts.ts";
+import { parseToolAction, clientHistory, modelMessage, ToolValidationError, type ChatMessage } from "../_shared/aiContracts.ts";
 import { getAIProvider } from "../_shared/aiProvider.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireStaffRole } from "../_shared/auth.ts";
 import { getSupabasePublishableKey, getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 import {
@@ -216,15 +219,16 @@ function fmtBR(iso: string) {
   return d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-async function studentName(supabase: any, id: string): Promise<string> {
+async function studentName(supabase: SupabaseClient<Database>, id: string): Promise<string> {
   const { data, error } = await supabase.from("students").select("name").eq("id", id).maybeSingle();
   if (error) console.error("studentName error:", error);
   return data?.name ?? "aluno";
 }
 
 // Descrição legível pro card de confirmação
-async function describeWriteAction(name: string, args: any, supabase: any): Promise<string> {
-  switch (name) {
+async function describeWriteAction(name: string, rawArgs: unknown, supabase: SupabaseClient<Database>): Promise<string> {
+  const { tool, args } = parseToolAction(name, rawArgs);
+  switch (tool) {
     case "schedule_evaluation": {
       const n = await studentName(supabase, args.student_id);
       return `Agendar avaliação de ${n} para ${fmtBR(args.scheduled_at)} (com 3 mensagens automáticas: confirmação, véspera 18h e 3h antes).`;
@@ -260,9 +264,10 @@ async function describeWriteAction(name: string, args: any, supabase: any): Prom
 
 // ---------- executor ----------
 
-async function executeTool(name: string, args: any, supabase: any): Promise<any> {
-  console.log(`[tool] ${name}`, JSON.stringify(args).slice(0, 300));
-  switch (name) {
+async function executeTool(name: string, rawArgs: unknown, supabase: SupabaseClient<Database>): Promise<Json> {
+  const { tool, args } = parseToolAction(name, rawArgs);
+  console.log(`[tool] ${tool}`);
+  switch (tool) {
     // READ
     case "list_students": {
       let q = supabase.from("students").select("id, name, phone, birth_date, had_evaluation, last_evaluation_date, created_at").order("name");
@@ -290,12 +295,12 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
       ]);
       const mm = String(mo + 1).padStart(2, "0");
       const dd = String(d).padStart(2, "0");
-      const birthdays = (allStudents || []).filter((s: any) => {
+      const birthdays = (allStudents || []).filter((s) => {
         if (!s.birth_date) return false;
         const [, m, dy] = s.birth_date.split("-");
         return m === mm && dy === dd;
-      }).map((s: any) => s.name);
-      const semAvaliacao = (allStudents || []).filter((s: any) => !s.had_evaluation).length;
+      }).map((s) => s.name);
+      const semAvaliacao = (allStudents || []).filter((s) => !s.had_evaluation).length;
       return { totalStudents, messagesSentToday: sentToday, pendingScheduledMessages: pendingScheduled, birthdaysToday: birthdays, studentsWithoutEvaluation: semAvaliacao };
     }
     case "list_scheduled_messages": {
@@ -315,7 +320,8 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
       if (error) throw error;
       let filtered = data;
       if (args.student_name) {
-        filtered = (data || []).filter((m: any) => m.students?.name?.toLowerCase().includes(args.student_name.toLowerCase()));
+        const searchName = args.student_name.toLowerCase();
+        filtered = (data || []).filter((m) => m.students?.name?.toLowerCase().includes(searchName));
       }
       return { count: filtered?.length || 0, messages: filtered };
     }
@@ -388,18 +394,20 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
       const ids: string[] = args.student_ids || [];
       if (!ids.length) return { success: false, error: "student_ids vazio" };
       const base = args.scheduled_for ? new Date(args.scheduled_for) : new Date(Date.now() + 2 * 60 * 1000);
-      if (isNaN(base.getTime())) return { success: false, error: "scheduled_for inválido" };
+      if (isNaN(base.getTime()) || base.getTime() <= Date.now()) return { success: false, error: "scheduled_for deve ser futuro" };
       const spread = ids.length > 20;
       const spanMs = spread ? 60 * 60 * 1000 : 0;
 
       // Buscar nomes para substituir {nome} — mesmo comportamento de replaceNameVar
       // em src/pages/EnviarMensagem.tsx
-      const { data: studentsForNames } = await supabase
+      const { data: studentsForNames, error: studentsError } = await supabase
         .from("students")
         .select("id, name")
         .in("id", ids);
+      if (studentsError) throw studentsError;
+      if (studentsForNames?.length !== ids.length) throw new ToolValidationError("Um ou mais alunos não foram encontrados.");
       const nameById = new Map<string, string>(
-        (studentsForNames || []).map((s: any) => [s.id, s.name || "aluno"]),
+        (studentsForNames || []).map((s) => [s.id, s.name || "aluno"]),
       );
 
       const rawContent: string = args.content || "";
@@ -427,7 +435,9 @@ async function executeTool(name: string, args: any, supabase: any): Promise<any>
     case "delete_scheduled_message": {
       const { data, error } = await supabase.rpc("cancel_scheduled_messages_tx", { _ids: [args.id] });
       if (error) throw error;
-      return { success: data.cancelled > 0, ...data };
+      const cancelled = record(data).cancelled, inFlight = record(data).in_flight;
+      if (typeof cancelled !== "number" || typeof inFlight !== "number") throw new Error("Resposta de cancelamento inválida");
+      return { success: cancelled > 0, cancelled, in_flight: inFlight };
     }
     case "create_predefined_message": {
       const { data, error } = await supabase.from("predefined_messages").insert({ title: args.title, content: args.content }).select().single();
@@ -473,14 +483,12 @@ Deno.serve(async (req) => {
   if (authFail) return authFail;
 
   try {
-    const body = await req.json();
-    const clientMessages = body.messages || [];
-    if (!Array.isArray(clientMessages) || clientMessages.length > 40 || clientMessages.some((m: any) =>
-      !['user','assistant'].includes(m?.role) || typeof m.content !== 'string' || m.content.length > 12000)) {
-      return new Response(JSON.stringify({ error: 'Histórico de conversa inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const confirmedAction = body.confirmedAction as { id?: string } | undefined;
-    const supabase = createClient(SUPABASE_URL, getSupabasePublishableKey(), {
+    const rawBody: unknown = await req.json().catch(() => { throw new ToolValidationError("JSON da requisição inválido."); });
+    if (!isRecord(rawBody)) throw new ToolValidationError("Corpo da requisição inválido.");
+    const body = rawBody;
+    const clientMessages = clientHistory(body.messages ?? []);
+    const confirmedAction = body.confirmedAction === undefined ? undefined : record(body.confirmedAction);
+    const supabase = createClient<Database>(SUPABASE_URL, getSupabasePublishableKey(), {
       global: { headers: { Authorization: req.headers.get("Authorization")! } },
     });
     const identity = await supabase.auth.getUser(req.headers.get('Authorization')!.replace(/^Bearer /,''));
@@ -488,7 +496,7 @@ Deno.serve(async (req) => {
     const ownerId = identity.data.user.id;
     // Administrative access is restricted to the server-owned confirmation store.
     // The action itself still uses the caller's client and its RLS.
-    const confirmations = createClient(SUPABASE_URL, getSupabaseSecretKey());
+    const confirmations = createClient<Database>(SUPABASE_URL, getSupabaseSecretKey());
 
     // Contexto temporal atual (timezone de Brasília) — injetado a cada request
     const tz = "America/Sao_Paulo";
@@ -506,24 +514,24 @@ Deno.serve(async (req) => {
       }
       const claim = await confirmations.rpc('claim_ai_action_tx',{_id:confirmedAction.id,_owner_id:ownerId});
       if (claim.error) return new Response(JSON.stringify({error:'Confirmação indisponível, expirada ou sem permissão.'}), {status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
-      const action = claim.data;
+      const action = record(claim.data);
       if (action.state !== 'claimed') {
         const complete = action.state === 'completed';
         return new Response(JSON.stringify({message:complete ? 'Esta ação já foi processada.' : 'Esta ação já foi iniciada. Confira o resultado antes de tentar outra operação.',result:action.result,alreadyProcessed:true}),{status:complete?200:409,headers:{...corsHeaders,'Content-Type':'application/json'}});
       }
-      let result: any;
+      let result: Json;
       try {
-        if (!WRITE_TOOLS.has(action.tool)) throw new Error('Ação inválida');
+        if (typeof action.tool !== 'string' || !WRITE_TOOLS.has(action.tool)) throw new Error('Ação inválida');
         result = await executeTool(action.tool, action.args, supabase);
-      } catch (e: any) {
+      } catch (e: unknown) {
         await confirmations.rpc('finish_ai_action_tx',{_id:confirmedAction.id,_owner_id:ownerId,_result:{error:'Execução falhou; confira os registros antes de criar outra proposta.'},_failed:true});
         return new Response(JSON.stringify({
-          message: `❌ Não consegui executar: ${e?.message || "erro"}.`,
+          message: `❌ Não consegui executar: ${errorMessage(e, "erro")}.`,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const finished = await confirmations.rpc('finish_ai_action_tx',{_id:confirmedAction.id,_owner_id:ownerId,_result:result,_failed:false});
       if (finished.error) return new Response(JSON.stringify({message:'A execução foi iniciada, mas não consegui registrar o resultado. Confira os dados antes de criar outra proposta.'}),{status:409,headers:{...corsHeaders,'Content-Type':'application/json'}});
-      let finalMsg = result?.success === false ? 'A operação foi bloqueada. Confira o resultado.' : 'Operação executada.';
+      let finalMsg = record(result).success === false ? 'A operação foi bloqueada. Confira o resultado.' : 'Operação executada.';
       // Failure of the optional summary must never turn a completed write into a retry.
       try {
       if (aiProvider.apiKey) {
@@ -542,8 +550,8 @@ Deno.serve(async (req) => {
         }),
       });
       if (summarizeResp.ok) {
-        const d = await summarizeResp.json();
-        finalMsg = d.choices?.[0]?.message?.content || finalMsg;
+        const d = modelMessage(await summarizeResp.json());
+        finalMsg = d?.content || finalMsg;
       }
       }
       } catch { /* The structured, committed result remains available. */ }
@@ -552,7 +560,7 @@ Deno.serve(async (req) => {
 
     if (!aiProvider.apiKey) return new Response(JSON.stringify({error:'Provedor de IA não configurado'}),{status:500,headers:{...corsHeaders,'Content-Type':'application/json'}});
 
-    const messages: any[] = [
+    const messages: ChatMessage[] = [
       { role: "system", content: SYSTEM_PROMPT + "\n\n" + dateContext },
       ...clientMessages,
     ];
@@ -581,9 +589,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Erro no AI Gateway", details: txt.slice(0, 500) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const data = await resp.json();
-      const choice = data.choices?.[0];
-      const msg = choice?.message;
+      const msg = modelMessage(await resp.json());
       if (!msg) {
         return new Response(JSON.stringify({ message: "Não recebi resposta do modelo. Reformule a pergunta." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -596,10 +602,12 @@ Deno.serve(async (req) => {
       }
 
       // Se alguma tool_call for de escrita, INTERROMPE aqui e devolve pendingAction ao front.
-      const writeCall = toolCalls.find((tc: any) => WRITE_TOOLS.has(tc.function?.name));
+      const writeCall = toolCalls.find((tc) => WRITE_TOOLS.has(tc.function?.name));
       if (writeCall) {
-        let args: any = {};
-        try { args = JSON.parse(writeCall.function.arguments || "{}"); } catch {}
+        let rawArgs: unknown;
+        try { rawArgs = JSON.parse(writeCall.function.arguments || "{}"); }
+        catch { throw new ToolValidationError("A IA propôs argumentos inválidos. Solicite uma nova proposta."); }
+        const { args } = parseToolAction(writeCall.function.name, rawArgs);
         const description = await describeWriteAction(writeCall.function.name, args, supabase);
         const stored = await confirmations.from('ai_pending_actions').insert({owner_id:ownerId,tool:writeCall.function.name,args}).select('id').single();
         if (stored.error) throw new Error('Não foi possível registrar a proposta de ação');
@@ -619,13 +627,13 @@ Deno.serve(async (req) => {
 
       // Só tools de leitura — executa e continua o loop
       for (const tc of toolCalls) {
-        let result: any;
+        let result: Json;
         try {
           const args = JSON.parse(tc.function.arguments || "{}");
           result = await executeTool(tc.function.name, args, supabase);
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error(`Tool ${tc.function.name} error:`, e);
-          result = { error: e?.message || "tool error" };
+          result = { error: errorMessage(e, "tool error") };
         }
         messages.push({
           role: "tool",
@@ -636,8 +644,8 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ message: "Não consegui concluir a tarefa. Reformule?" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("ai-assistant error:", e);
-    return new Response(JSON.stringify({ error: "Erro interno", details: e?.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: e instanceof ToolValidationError ? e.message : "Erro interno. Confira os logs do servidor." }), { status: e instanceof ToolValidationError ? 400 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

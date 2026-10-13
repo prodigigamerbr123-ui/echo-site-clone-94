@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errorMessage";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,10 +112,10 @@ export function CadastrarAlunoForm() {
 
       setSuccessData({ name: data.name });
       setFormData({ nome: "", telefone: "", dataNascimento: "", plano: "Mensal", cidade: "", cpf: "", vencimento: "" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro ao cadastrar aluno",
-        description: error.message || "Tente novamente.",
+        description: errorMessage(error, "Tente novamente."),
         variant: "destructive"
       });
     } finally {

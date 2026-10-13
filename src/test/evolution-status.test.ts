@@ -56,4 +56,17 @@ describe("Evolution connection status", () => {
     const result = await sendEvolutionText({ baseUrl: "https://example.test", instanceToken: "fake", number: "5543999999999", text: "Mensagem fictícia" });
     expect(result).toMatchObject({ ok: true, messageId: "fake-provider-id" });
   });
+
+  it.each([null, [], "offline", {}, { Connected: "true", LoggedIn: "true" }])(
+    "não considera um status malformado como sessão encerrada: %j", (body) => {
+      expect(parseEvolutionStatus(body).state).toBe("unknown");
+    },
+  );
+  it.each([{}, 42, true, " "])("não confirma envio com ID inválido: %j", async (id) => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ Connected: true, LoggedIn: true })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { Info: { ID: id } } }))));
+    const result = await sendEvolutionText({ baseUrl: "https://example.test", instanceToken: "fake", number: "5543999999999", text: "Fixture" });
+    expect(result).toMatchObject({ ok: false, uncertain: true });
+  });
 });

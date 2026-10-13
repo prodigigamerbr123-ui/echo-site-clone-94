@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errorMessage";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { saveEvaluationWithMessages, finishEvaluationWithMessages } from "@/lib/evaluationActions";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -229,7 +230,7 @@ export default function AgendarAvaliacao() {
       (e) => e.student_id !== student.id && new Date(e.scheduled_at).getTime() === target,
     );
     if (sameSlot) {
-      const other = (sameSlot as any).students?.name ?? "outro aluno";
+      const other = sameSlot.students?.name ?? "outro aluno";
       const ok = await askConfirm({
         title: "Horário já ocupado",
         description: `Já existe avaliação de ${other} exatamente neste horário. Deseja agendar assim mesmo?`,
@@ -245,7 +246,7 @@ export default function AgendarAvaliacao() {
       });
       if (near) {
         const w = format(new Date(near.scheduled_at), "HH:mm");
-        const other = (near as any).students?.name ?? "outro aluno";
+        const other = near.students?.name ?? "outro aluno";
         const ok = await askConfirm({
           title: "Conflito de horário",
           description: `Já existe avaliação de ${other} às ${w} (raio de 30 min). Prosseguir?`,
@@ -292,8 +293,8 @@ export default function AgendarAvaliacao() {
       qc.invalidateQueries({ queryKey: ["evaluations-history"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       qc.invalidateQueries({ queryKey: ["today-evaluations"] });
-    } catch (e: any) {
-      toast({ title: "Erro ao agendar", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro ao agendar", description: errorMessage(e), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -316,7 +317,7 @@ export default function AgendarAvaliacao() {
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({ title: "Avaliação cancelada", description: result.in_flight ? "Há envio já iniciado; ele pode chegar ao aluno. Confira no WhatsApp." : "Lembretes ainda não enviados foram cancelados." });
     } catch (e) {
-      toast({ title: "Erro ao cancelar", description: e.message, variant: "destructive" });
+      toast({ title: "Erro ao cancelar", description: errorMessage(e), variant: "destructive" });
     } finally { setSaving(false); }
   };
 
@@ -355,8 +356,8 @@ export default function AgendarAvaliacao() {
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({ title: "Avaliação remarcada", description: "Lembretes substituídos. Um envio já iniciado pode chegar ao aluno; confira no WhatsApp." });
       setRescheduleTarget(null);
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -376,8 +377,8 @@ export default function AgendarAvaliacao() {
         title: "Avaliação marcada como realizada",
         description: followupScheduled ? "Follow-up agendado." : "Follow-up não agendado (automação desligada ou já existente).",
       });
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -403,8 +404,8 @@ export default function AgendarAvaliacao() {
         title: "Falta registrada",
         description: rescheduled ? "Mensagem de remarcação agendada." : "Remarcação automática desligada.",
       });
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
     } finally {
       setSaving(false);
     }

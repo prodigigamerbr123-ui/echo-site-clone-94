@@ -3,8 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
+type FixtureSession = { user: { id: string }; access_token: string };
+
 const mocks = vi.hoisted(() => ({
-  listener: null as null | ((event: string, session: any) => void),
+  listener: null as null | ((event: string, session: FixtureSession | null) => void),
   getSession: vi.fn(), rpc: vi.fn(), unsubscribe: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
@@ -48,7 +50,7 @@ describe("session isolation and staff revocation", () => {
     expect(client.getQueryData(["private-messages"])).toBeUndefined();
   });
   it("ignores an outdated initial session response after a sign-out event", async () => {
-    let resolveSession!: (value: any) => void;
+    let resolveSession!: (value: { data: { session: FixtureSession | null } }) => void;
     mocks.getSession.mockImplementation(() => new Promise(resolve => { resolveSession = resolve; }));
     setup();
     act(() => mocks.listener?.("SIGNED_OUT", null));

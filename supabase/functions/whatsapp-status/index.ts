@@ -1,3 +1,4 @@
+import { errorMessage } from "../_shared/contracts.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { requireStaffRole } from "../_shared/auth.ts";
 import { parseEvolutionStatus } from "../_shared/evolution.ts";
@@ -92,10 +93,10 @@ serve(async (req: Request) => {
     const statusData = JSON.parse(statusText);
 
     return json({ ...parseEvolutionStatus(statusData), dashboardUrl: `${baseUrl}/manager/login` });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('whatsapp-status error:', error);
     return new Response(
-      JSON.stringify({ error: error?.message || 'Internal error' }),
+      JSON.stringify({ error: errorMessage(error, 'Internal error') }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

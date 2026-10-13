@@ -1,3 +1,4 @@
+import { record } from "../_shared/contracts.ts";
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireStaffRole } from "../_shared/auth.ts";
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
           .single();
         break;
 
-      case 'get_students_needing_followup':
+      case 'get_students_needing_followup': {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -106,8 +107,9 @@ Deno.serve(async (req) => {
           .lt('created_at', sevenDaysAgo.toISOString())
           .is('last_evaluation_date', null);
         break;
+      }
 
-      case 'send_whatsapp_message':
+      case 'send_whatsapp_message': {
         // Buscar dados dos alunos se apenas IDs foram fornecidos
         let students = params.students;
         if (params.student_ids && params.student_ids.length > 0) {
@@ -132,6 +134,7 @@ Deno.serve(async (req) => {
 
         result = { data: whatsappResult };
         break;
+      }
 
       default:
         throw new Error(`Ação não reconhecida: ${action}`);
@@ -161,7 +164,7 @@ Deno.serve(async (req) => {
   }
 });
 
-function getActionDescription(action: string, params: any): string {
+function getActionDescription(action: string, params: Record<string, unknown>): string {
   switch (action) {
     case 'create_student':
       return `Criar novo aluno: ${params.name} (${params.phone})`;
@@ -173,15 +176,16 @@ function getActionDescription(action: string, params: any): string {
       return `Criar mensagem pré-definida: ${params.title}`;
     case 'get_students_needing_followup':
       return `Buscar alunos que precisam de acompanhamento`;
-    case 'send_whatsapp_message':
-      const studentCount = params.students?.length || params.student_ids?.length || 0;
-      return `Enviar mensagem via WhatsApp para ${studentCount} aluno(s): "${params.message?.substring(0, 50)}..."`;
+    case 'send_whatsapp_message': {
+      const studentCount = Array.isArray(params.students) ? params.students.length : Array.isArray(params.student_ids) ? params.student_ids.length : 0;
+      return `Enviar mensagem via WhatsApp para ${studentCount} aluno(s): "${typeof params.message === "string" ? params.message.substring(0, 50) : ""}..."`;
+    }
     default:
       return `Executar ação: ${action}`;
   }
 }
 
-function getSuccessMessage(action: string, data?: any): string {
+function getSuccessMessage(action: string, data?: unknown): string {
   switch (action) {
     case 'create_student':
       return 'Aluno criado com sucesso!';
@@ -193,13 +197,14 @@ function getSuccessMessage(action: string, data?: any): string {
       return 'Mensagem pré-definida criada com sucesso!';
     case 'get_students_needing_followup':
       return 'Dados obtidos com sucesso!';
-    case 'send_whatsapp_message':
-      const summary = data?.summary;
-      if (summary?.queued !== undefined) return `${summary.queued} mensagem(ns) na fila de envio.`;
-      if (summary) {
+    case 'send_whatsapp_message': {
+      const summary = record(record(data).summary);
+      if (typeof summary.queued === "number") return `${summary.queued} mensagem(ns) na fila de envio.`;
+      if (typeof summary.sent === "number" && typeof summary.failed === "number") {
         return `Mensagens enviadas! ${summary.sent} enviadas com sucesso, ${summary.failed} falharam.`;
       }
       return 'Mensagens enviadas com sucesso!';
+    }
     default:
       return 'Ação executada com sucesso!';
   }

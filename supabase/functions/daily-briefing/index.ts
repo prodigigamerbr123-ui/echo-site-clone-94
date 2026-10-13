@@ -1,3 +1,4 @@
+import type { Database } from "../_shared/database.types.ts";
 import { getAIProvider } from "../_shared/aiProvider.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireStaffRole } from "../_shared/auth.ts";
@@ -26,7 +27,7 @@ Deno.serve(async (req) => {
   if (authFail) return authFail;
 
   try {
-    const supabase = createClient(SUPABASE_URL, getSupabasePublishableKey(), {
+    const supabase = createClient<Database>(SUPABASE_URL, getSupabasePublishableKey(), {
       global: { headers: { Authorization: req.headers.get("Authorization")! } },
     });
     const now = new Date();
@@ -63,15 +64,15 @@ Deno.serve(async (req) => {
     ]);
 
     const students = studentsRes.data || [];
-    const active = students.filter((s: any) => s.status === "active").length;
-    const withoutEval = students.filter((s: any) => s.had_evaluation === false).length;
-    const birthdayList = (birthdaysRes.data || []).filter((s: any) => {
+    const active = students.filter((s) => s.status === "active").length;
+    const withoutEval = students.filter((s) => s.had_evaluation === false).length;
+    const birthdayList = (birthdaysRes.data || []).filter((s) => {
       if (!s.birth_date) return false;
       const [_, m, d] = s.birth_date.split("-");
       return m === mm && d === dd;
-    }).map((s: any) => s.name);
+    }).map((s) => s.name);
 
-    const evalNames = (evalsWithStudentsRes.data || []).map((e: any) => {
+    const evalNames = (evalsWithStudentsRes.data || []).map((e) => {
       const t = new Date(e.scheduled_at).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
       return `${t} - ${e.students?.name || "?"}`;
     });

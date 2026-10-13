@@ -1,3 +1,4 @@
+import { isRecord, record } from "./contracts.ts";
 export interface EvolutionSendResult {
   ok: boolean;
   uncertain?: boolean;
@@ -7,7 +8,7 @@ export interface EvolutionSendResult {
   bodyText?: string;
 }
 
-function safeJson(text: string): any {
+function safeJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch (_) {
@@ -15,26 +16,28 @@ function safeJson(text: string): any {
   }
 }
 
-function extractError(data: any): string | null {
-  if (!data) return null;
+function extractError(value: unknown): string | null {
+  const data = record(value);
   if (typeof data.error === "string") return data.error;
   if (data.error && typeof data.error === "object") {
-    return data.error.message || JSON.stringify(data.error);
+    return typeof record(data.error).message === "string" ? String(record(data.error).message) : JSON.stringify(data.error);
   }
   if (typeof data.message === "string" && data.message !== "success") return data.message;
   return null;
 }
 
-export function parseEvolutionStatus(data: any) {
-  const d = data?.data ?? data;
+export function parseEvolutionStatus(data: unknown) {
+  const outer = record(data);
+  const d = record(outer.data ?? data);
+  const hasStatus = typeof (d.Connected ?? d.connected) === "boolean" || typeof (d.LoggedIn ?? d.loggedIn) === "boolean";
   const connected = (d?.Connected ?? d?.connected) === true;
   const loggedIn = (d?.LoggedIn ?? d?.loggedIn) === true;
   return {
     // Uma sessão ainda autenticada, mas temporariamente offline, deve aguardar
     // reconexão em vez de gerar um QR e iniciar outra sessão.
-    state: connected && loggedIn ? "open" : connected || loggedIn ? "connecting" : "close",
+    state: !hasStatus ? "unknown" : connected && loggedIn ? "open" : connected || loggedIn ? "connecting" : "close",
     connected: connected && loggedIn,
-    instance: d?.Name ?? d?.name ?? null,
+    instance: typeof (d.Name ?? d.name) === "string" ? String(d.Name ?? d.name) : null,
   };
 }
 
@@ -47,7 +50,7 @@ export async function getEvolutionState(baseUrl: string, instanceToken: string):
     if (!resp.ok) return "unknown";
     const text = await resp.text();
     const data = safeJson(text);
-    if (!data) return "unknown";
+    if (!isRecord(data)) return "unknown";
     return parseEvolutionStatus(data).state;
   } catch (_) {
     return "unknown";
@@ -78,7 +81,8 @@ export async function sendEvolutionText(params: {
 
   const bodyText = await resp.text();
   const data = safeJson(bodyText);
-  const messageId = data?.data?.Info?.ID || null;
+  const rawId = record(record(record(data).data).Info).ID;
+  const messageId = typeof rawId === "string" && rawId.trim() ? rawId : null;
   const apiError = extractError(data);
 
   console.log(

@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
 export interface PendingAction {
   id: string;
   tool: string;
-  args: any;
+  args: Record<string, unknown>;
   description: string;
 }
 

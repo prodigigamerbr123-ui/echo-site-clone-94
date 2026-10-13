@@ -38,6 +38,12 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_pending_actions: {
+        Row: { id: string; owner_id: string; tool: string; args: Json; state: string; result: Json | null; created_at: string; expires_at: string }
+        Insert: { id?: string; owner_id: string; tool: string; args: Json; state?: string; result?: Json | null; created_at?: string; expires_at?: string }
+        Update: { id?: string; owner_id?: string; tool?: string; args?: Json; state?: string; result?: Json | null; created_at?: string; expires_at?: string }
+        Relationships: []
+      }
       ai_messages: {
         Row: {
           content: string
@@ -397,6 +403,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_ai_action_tx: { Args: { _id: string; _owner_id: string }; Returns: Json }
+      finish_ai_action_tx: { Args: { _id: string; _owner_id: string; _result: Json; _failed?: boolean }; Returns: undefined }
       current_staff_role: { Args: Record<PropertyKey, never>; Returns: string | null }
       has_staff_role: { Args: { _roles: string[] }; Returns: boolean }
       mutate_evaluation_tx: {

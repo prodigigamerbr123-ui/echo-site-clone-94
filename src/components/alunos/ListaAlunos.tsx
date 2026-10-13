@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errorMessage";
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -154,7 +155,7 @@ export function ListaAlunos() {
     }
   });
 
-  const pendingByStudent = pendingScheduled.reduce((acc: Record<string, number>, m: any) => {
+  const pendingByStudent = pendingScheduled.reduce((acc: Record<string, number>, m) => {
     acc[m.student_id] = (acc[m.student_id] || 0) + 1;
     return acc;
   }, {});
@@ -251,8 +252,8 @@ export function ListaAlunos() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: "Aluno excluído", description: `${studentName} foi removido do sistema.` });
-    } catch (error: any) {
-      toast({ title: "Erro ao excluir aluno", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erro ao excluir aluno", description: errorMessage(error), variant: "destructive" });
     } finally {
       setDeletingId(null);
     }
@@ -516,7 +517,7 @@ export function ListaAlunos() {
                 <SelectItem value="inactive">Inativos</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={paymentFilter} onValueChange={(v: any) => setPaymentFilter(v)}>
+            <Select value={paymentFilter} onValueChange={(v) => { if (v === "all" || v === "overdue" || v === "due_soon" || v === "ok" || v === "none") setPaymentFilter(v); }}>
               <SelectTrigger className="w-full sm:w-[170px]">
                 <CalendarClock className="h-4 w-4 mr-2" />
                 <SelectValue />
@@ -543,7 +544,7 @@ export function ListaAlunos() {
                 </SelectContent>
               </Select>
             )}
-            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <Select value={sortBy} onValueChange={(v) => { if (v === "recent" || v === "name" || v === "due" || v === "last_eval") setSortBy(v); }}>
               <SelectTrigger className="w-full sm:w-[190px]">
                 <ArrowUpDown className="h-4 w-4 mr-2" />
                 <SelectValue />

@@ -1,3 +1,4 @@
+import { automationTemplates } from "@/lib/automationSettings";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -9,15 +10,12 @@ export async function fetchAutomationTemplateIds(): Promise<Set<string>> {
   const { data, error } = await supabase
     .from("automation_settings")
     .select("params");
-  if (error || !data) return new Set();
+  if (error) throw error;
+  if (!data) return new Set();
   const ids = new Set<string>();
-  for (const row of data as Array<{ params: any }>) {
-    const tpl = row?.params?.templates;
-    if (tpl && typeof tpl === "object") {
-      for (const v of Object.values(tpl)) {
-        if (typeof v === "string" && v) ids.add(v);
-      }
-    }
+  for (const row of data) {
+    const params = row.params && typeof row.params === "object" && !Array.isArray(row.params) ? row.params : {};
+    for (const id of Object.values(automationTemplates(params))) ids.add(id);
   }
   return ids;
 }

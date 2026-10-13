@@ -1,6 +1,6 @@
 import { fetchAllPages } from "@/lib/fetchAllPages";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MessageCircle, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,12 +37,7 @@ export default function MensagensEnviadasTab() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchMessages();
-    fetchStudents();
-  }, []);
-
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const data = await fetchAllPages((from, to) => supabase
         .from('messages')
@@ -65,9 +60,9 @@ export default function MensagensEnviadasTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const data = await fetchAllPages((from, to) => supabase
         .from("students").select("id, name, phone", { count: "exact" })
@@ -81,7 +76,12 @@ export default function MensagensEnviadasTab() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    void fetchMessages();
+    void fetchStudents();
+  }, [fetchMessages, fetchStudents]);
 
   const sentMessages = messages.filter(m => m.status === 'sent');
   const failedMessages = messages.filter(m => m.status === 'failed');

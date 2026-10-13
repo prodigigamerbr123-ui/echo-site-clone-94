@@ -67,8 +67,8 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
           .order("scheduled_for", { ascending: true }).limit(10),
       ]);
       const items = [
-        ...(sched || []).map((m: any) => ({ ...m, kind: "sched" as const, when: m.scheduled_for })),
-        ...(sent || []).map((m: any) => ({ ...m, kind: "sent" as const, when: m.sent_at })),
+        ...(sched || []).map((m) => ({ ...m, kind: "sched" as const, when: m.scheduled_for })),
+        ...(sent || []).map((m) => ({ ...m, kind: "sent" as const, when: m.sent_at })),
       ].sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime()).slice(0, 10);
       return items;
     },
@@ -172,7 +172,7 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
               <p className="text-sm text-muted-foreground py-3 text-center">Sem histórico.</p>
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {recent.map((m: any) => (
+                {recent.map((m) => (
                   <div key={`${m.kind}-${m.id}`} className="rounded border p-2 text-xs">
                     <div className="flex items-center justify-between mb-1">
                       <Badge variant={m.kind === "sched" ? "secondary" : "outline"} className="text-[10px]">

@@ -1,3 +1,5 @@
+import type { Database } from "@/integrations/supabase/types";
+import { errorMessage } from "@/lib/errorMessage";
 import { buildMessageSeries } from "@/lib/recurrence";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -144,8 +146,8 @@ export default function Mensagens() {
           : "Serão enviadas nos próximos minutos.",
       });
       resetForm();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
     } finally {
       setSending(false);
       setConfirmOpen(false);
@@ -156,7 +158,7 @@ export default function Mensagens() {
     setSending(true);
     try {
       const selected = students.filter(s => selectedStudents.includes(s.id));
-      const rows: any[] = [];
+      const rows: Database["public"]["Tables"]["scheduled_messages"]["Insert"][] = [];
 
       if (schedType === "quick") {
         const [h, m] = quickTime.split(":").map(Number);
@@ -202,8 +204,8 @@ export default function Mensagens() {
       if (error) throw error;
       toast({ title: `${rows.length} mensagem(ns) agendada(s)` });
       resetForm();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
     } finally {
       setSending(false);
       setConfirmOpen(false);
