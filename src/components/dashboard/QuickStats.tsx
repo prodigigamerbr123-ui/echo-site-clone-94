@@ -8,7 +8,7 @@ export function QuickStats() {
   
   const birthdayActions = todayActions.filter(action => action.type === "birthday").length;
   const evaluationActions = todayActions.filter(action => action.type === "evaluation").length;
-  const followupActions = todayActions.filter(action => action.type === "followup").length;
+  const followupActions = todayActions.filter(action => action.type === "daqui_7_dias" || action.type === "daqui_21_dias").length;
   const totalActions = todayActions.length;
 
   const completionRate = 75; // Simulado

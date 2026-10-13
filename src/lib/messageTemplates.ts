@@ -5,25 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAutomationSettings, AutomationSettingsMap } from "@/lib/automationSettings";
-
-export type TemplateVars = {
-  nome?: string;
-  data?: string;
-  hora?: string;
-};
-
-export function interpolate(text: string, vars: TemplateVars): string {
-  const map: Record<string, string> = {
-    nome: vars.nome ?? "",
-    name: vars.nome ?? "",
-    aluno: vars.nome ?? "",
-    data: vars.data ?? "",
-    date: vars.data ?? "",
-    hora: vars.hora ?? "",
-    time: vars.hora ?? "",
-  };
-  return text.replace(/\{(\w+)\}/g, (m, k) => (map[k.toLowerCase()] ?? m));
-}
+import { interpolate, type TemplateVars } from "../../supabase/functions/_shared/templateResolver";
+export { interpolate, type TemplateVars } from "../../supabase/functions/_shared/templateResolver";
 
 export function getLinkedTemplateId(
   settings: AutomationSettingsMap | undefined,
@@ -31,26 +14,18 @@ export function getLinkedTemplateId(
   messageType: string,
 ): string | null {
   const t = settings?.[automationKey]?.params?.templates;
-  const id = t && typeof t === "object" ? (t as Record<string, string>)[messageType] : null;
+  const id = t && typeof t === "object" && !Array.isArray(t) ? t[messageType] : null;
   return id && typeof id === "string" ? id : null;
 }
 
-const contentCache = new Map<string, string | null>();
-
 async function getPredefinedContent(id: string): Promise<string | null> {
-  if (contentCache.has(id)) return contentCache.get(id)!;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("predefined_messages")
     .select("content")
     .eq("id", id)
     .maybeSingle();
-  const content = data?.content ?? null;
-  contentCache.set(id, content);
-  return content;
-}
-
-export function invalidateTemplateCache() {
-  contentCache.clear();
+  if (error) throw error;
+  return data?.content ?? null;
 }
 
 /**

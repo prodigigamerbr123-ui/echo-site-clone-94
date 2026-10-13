@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { dashboardSnapshot, briefingContext, type DashboardSnapshot } from "../../supabase/functions/_shared/dashboardContracts";
 
 const ids = {
   admin: "00000000-0000-4000-8000-000000000010",
@@ -65,6 +66,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(resolve("supabase/migrations/20261011030000_staff_authorization.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261012010000_persist_ai_confirmations.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261013010000_automation_run_history.sql"), "utf8"));
+  await db.exec(readFileSync(resolve("supabase/migrations/20261013020000_dashboard_snapshot.sql"), "utf8"));
   await db.query("INSERT INTO staff_members(user_id,role) VALUES ($1,'recepcao'),($2,'avaliador')", [ids.reception, ids.evaluator]);
   await db.query("INSERT INTO students(id,name,phone,status) VALUES ($1,'Aluno fictício','43999999999','active')", [ids.student]);
 }, 60_000);
@@ -297,5 +299,107 @@ describe("permissões dos profissionais e dados do Workout", () => {
   it("impede que o último administrador desative a própria conta", async () => {
     await expect(asUser("admin", "UPDATE staff_members SET active=false WHERE user_id=$1", [ids.admin]))
       .rejects.toThrow("último administrador");
+  });
+});
+
+
+async function dashboard(user: "admin" | "reception" | "evaluator" = "admin") {
+  const result = await asUser<{ snapshot: DashboardSnapshot }>(user,"SELECT get_workout_dashboard() AS snapshot");
+  return dashboardSnapshot(result.rows[0].snapshot);
+}
+
+describe("snapshot de dados do painel", () => {
+  it("conta mais de 1000 alunos, considera ativos nas mensalidades e limita só a amostra de nomes", async () => {
+    await db.exec("BEGIN");
+    try {
+      await db.exec(`INSERT INTO students(name,phone,status,birth_date,payment_due_date) SELECT
+        'Snapshot '||g,'fixture-'||g,CASE WHEN g<=1005 THEN 'active' ELSE 'inactive' END,
+        (now() AT TIME ZONE 'America/Sao_Paulo')::date,(now() AT TIME ZONE 'America/Sao_Paulo')::date-1
+        FROM generate_series(1,1010) g`);
+      const result = await dashboard();
+      expect(result.stats.totalStudents).toBeGreaterThanOrEqual(1011);
+      expect(result.stats.birthdaysToday).toBe(1005);
+      expect(result.stats.paymentOverdueCount).toBe(1005);
+      expect(result.birthdayNames).toHaveLength(20);
+      expect(result.actions.filter(a=>a.type==='birthday')).toHaveLength(1005);
+      expect(briefingContext(result)).toMatchObject({totalAniversariantesAtivos:1005,aniversariantesLimitados:true});
+    } finally { await db.exec("RESET ROLE; ROLLBACK"); }
+  });
+  it("exclui o início do próximo dia/mês e conta só envios aceitos", async () => {
+    await db.exec("BEGIN");
+    try {
+      await db.exec(`DELETE FROM evaluations; DELETE FROM messages;
+        INSERT INTO evaluations(student_id,scheduled_at) VALUES
+        ('${ids.student}',((now() AT TIME ZONE 'America/Sao_Paulo')::date+1)::timestamp AT TIME ZONE 'America/Sao_Paulo'),
+        ('${ids.student}',(date_trunc('month',now() AT TIME ZONE 'America/Sao_Paulo')+interval '1 month') AT TIME ZONE 'America/Sao_Paulo');
+        INSERT INTO messages(student_id,content,status,sent_at) VALUES
+        ('${ids.student}','fixture','sent',((now() AT TIME ZONE 'America/Sao_Paulo')::date)::timestamp AT TIME ZONE 'America/Sao_Paulo'),
+        ('${ids.student}','fixture','failed',now()),
+        ('${ids.student}','fixture','sent',((now() AT TIME ZONE 'America/Sao_Paulo')::date+1)::timestamp AT TIME ZONE 'America/Sao_Paulo');`);
+      const result = await dashboard();
+      expect(result.stats.evaluationsToday).toBe(0);
+      const nextDayInThisMonth = await db.query<{n:number}>(`SELECT (date_trunc('month',now() AT TIME ZONE 'America/Sao_Paulo') =
+        date_trunc('month',(now() AT TIME ZONE 'America/Sao_Paulo')+interval '1 day'))::int AS n`);
+      expect(result.stats.evaluationsMonth).toBe(nextDayInThisMonth.rows[0].n);
+      expect(result.stats.messagesSentToday).toBe(1);
+      expect(result.agenda).toHaveLength(0);
+    } finally { await db.exec("RESET ROLE; ROLLBACK"); }
+  });
+  it("usa o prazo configurado, carência de 14 dias e a data de cadastro em SP", async () => {
+    await db.exec("BEGIN");
+    try {
+      await db.exec(`UPDATE automation_settings SET params='{"days_overdue":90,"min_interval_days":14,"max_attempts":3}' WHERE key='evaluation_invite';
+        INSERT INTO students(name,phone,status,had_evaluation,last_evaluation_date,created_at) VALUES
+        ('Recente','fixture-recente','active',true,current_date-8,now()-interval '100 days'),
+        ('Vencida','fixture-vencida','active',true,current_date-100,now()-interval '100 days'),
+        ('Novo','fixture-novo','active',false,null,now()-interval '8 days'),
+        ('Primeira','fixture-primeira','active',false,null,now()-interval '20 days'),
+        ('Primeira semana','fixture-semana','active',false,null,
+          (((now() AT TIME ZONE 'America/Sao_Paulo')::date-7)::timestamp AT TIME ZONE 'America/Sao_Paulo')+interval '23 hours');`);
+      const result = await dashboard();
+      const evaluationNames = result.actions.filter(a=>a.type==='evaluation').map(a=>a.name);
+      expect(evaluationNames).toContain('Vencida');
+      expect(evaluationNames).toContain('Primeira');
+      expect(evaluationNames).not.toContain('Recente');
+      expect(evaluationNames).not.toContain('Novo');
+      expect(result.actions.some(a=>a.name==='Primeira semana' && a.type==='daqui_7_dias')).toBe(true);
+      await db.exec("UPDATE automation_settings SET params=jsonb_set(params,'{days_overdue}','7') WHERE key='evaluation_invite'");
+      expect((await dashboard()).actions.some(a=>a.name==='Recente' && a.type==='evaluation')).toBe(true);
+    } finally { await db.exec("RESET ROLE; ROLLBACK"); }
+  });
+  it("não sugere convites repetidos, alunos com agenda futura ou aniversário já programado", async () => {
+    await db.exec("BEGIN");
+    try {
+      await db.exec(`INSERT INTO students(name,phone,status,birth_date,had_evaluation,last_evaluation_date) VALUES
+        ('Com envio','fixture-envio','active',(now() AT TIME ZONE 'America/Sao_Paulo')::date,true,current_date-120),
+        ('Com agenda','fixture-agenda','active',null,true,current_date-120),
+        ('Com convite','fixture-convite','active',null,true,current_date-120);
+        INSERT INTO scheduled_messages(student_id,content,message_type,scheduled_for,status)
+          SELECT id,'fixture','birthday',now(),'pending' FROM students WHERE phone='fixture-envio';
+        INSERT INTO scheduled_messages(student_id,content,message_type,scheduled_for,status)
+          SELECT id,'fixture','evaluation_reminder',now()-interval '1 day','sent' FROM students WHERE phone='fixture-convite';
+        INSERT INTO evaluations(student_id,scheduled_at)
+          SELECT id,now()+interval '1 day' FROM students WHERE phone='fixture-agenda';`);
+      const actions = (await dashboard()).actions;
+      expect(actions.some(a=>a.name==='Com envio' && a.type==='birthday')).toBe(false);
+      expect(actions.some(a=>a.name==='Com agenda' && a.type==='evaluation')).toBe(false);
+      expect(actions.some(a=>a.name==='Com convite' && a.type==='evaluation')).toBe(false);
+    } finally { await db.exec("RESET ROLE; ROLLBACK"); }
+  });
+  it("preserva RLS e não transforma falta de acesso em zero mensagens", async () => {
+    await expect(asUser('stranger','SELECT get_workout_dashboard()')).rejects.toMatchObject({code:'42501'});
+    const evaluator = await dashboard('evaluator');
+    expect(evaluator.stats.messagesSentToday).toBeNull();
+    expect(evaluator.stats.messagesToSendToday).toBeNull();
+    expect(evaluator.actions).toHaveLength(0);
+    await db.exec('SET ROLE anon');
+    try { await expect(db.query('SELECT get_workout_dashboard()')).rejects.toMatchObject({code:'42501'}); }
+    finally { await db.exec('RESET ROLE'); }
+  });
+  it("rejeita contratos incompletos em vez de inventar zeros", async () => {
+    const result = await dashboard();
+    expect(()=>dashboardSnapshot({...result,stats:{...result.stats,totalStudents:null}})).toThrow();
+    expect(()=>dashboardSnapshot({...result,stats:{...result.stats,messagesSentToday:-1}})).toThrow();
+    expect(()=>dashboardSnapshot({...result,actions:[{id:'malformed'}]})).toThrow();
   });
 });

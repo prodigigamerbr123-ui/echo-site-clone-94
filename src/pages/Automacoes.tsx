@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { fetchAutomationSettings, automationTemplates, type AutomationParams, AutomationSettingsMap } from "@/lib/automationSettings";
-import { invalidateTemplateCache } from "@/lib/messageTemplates";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
 
 
@@ -268,6 +267,7 @@ export default function Automacoes() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Automação atualizada");
     },
     onError: (e) => toast.error(e.message ?? "Erro ao atualizar"),
@@ -279,7 +279,7 @@ export default function Automacoes() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
-      invalidateTemplateCache();
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Configuração salva");
     },
     onError: (e) => toast.error(e.message ?? "Erro ao salvar"),
@@ -298,7 +298,6 @@ export default function Automacoes() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
-      invalidateTemplateCache();
       toast.success("Mensagem vinculada");
     },
     onError: (e) => toast.error(e.message ?? "Erro ao vincular"),

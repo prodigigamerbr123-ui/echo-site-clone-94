@@ -30,7 +30,7 @@ export default function Dashboard() {
       <StatsOverview />
 
       {canUseAI && <>
-        <SectionDivider label="Sugestões da IA" />
+        <SectionDivider label="Sugestões de ações" />
         <AISuggestions />
       </>}
     </div>

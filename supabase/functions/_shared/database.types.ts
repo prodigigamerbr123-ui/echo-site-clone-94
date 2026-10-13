@@ -403,6 +403,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+    get_workout_dashboard: { Args: Record<PropertyKey, never>; Returns: Json }
       claim_ai_action_tx: { Args: { _id: string; _owner_id: string }; Returns: Json }
       finish_ai_action_tx: { Args: { _id: string; _owner_id: string; _result: Json; _failed?: boolean }; Returns: undefined }
       current_staff_role: { Args: Record<PropertyKey, never>; Returns: string | null }

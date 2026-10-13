@@ -19,6 +19,7 @@ import {
 import { useDashboardStats } from "@/hooks/useDashboardData";
 import { useAuth } from "@/hooks/useAuth";
 import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
+import { Button } from "@/components/ui/button";
 
 type Stat = {
   title: string;
@@ -54,8 +55,16 @@ function StatCard({ stat }: { stat: Stat }) {
 export function StatsOverview() {
   const { role } = useAuth();
   const canViewMessages = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
-  const { data: stats, isLoading } = useDashboardStats();
-  const v = (n?: number) => (isLoading ? "..." : (n ?? 0).toString());
+  const { data: stats, isLoading, isError, refetch, isFetching } = useDashboardStats();
+  const v = (n?: number | null) => (isLoading ? "..." : n == null ? "—" : n.toString());
+
+  if (isError) return (
+    <Card role="alert"><CardContent className="p-5 space-y-3">
+      <p className="font-medium">Não foi possível atualizar os números do painel.</p>
+      <p className="text-sm text-muted-foreground">Verifique a conexão e tente novamente.</p>
+      <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>Tentar novamente</Button>
+    </CardContent></Card>
+  );
 
   const studentStats: Stat[] = [
     {
@@ -94,7 +103,7 @@ export function StatsOverview() {
       title: "Vencem em 3 dias",
       value: v(stats?.paymentDueIn3DaysCount),
       icon: CalendarClock,
-      description: "Mensalidade próxima",
+      description: "Alunos ativos: hoje até 3 dias",
       gradient: "bg-gradient-to-br from-amber-500 to-orange-600",
       iconBg: "bg-gradient-to-br from-amber-500 to-orange-600",
     },
@@ -167,7 +176,7 @@ export function StatsOverview() {
       title: "Enviadas Hoje",
       value: v(stats?.messagesSentToday),
       icon: CheckCircle2,
-      description: "Já entregues no dia",
+      description: "Envios aceitos pelo provedor",
       gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
       iconBg: "bg-gradient-to-br from-emerald-500 to-teal-600",
     },
@@ -183,7 +192,7 @@ export function StatsOverview() {
       title: "Aniversariantes",
       value: v(stats?.birthdaysToday),
       icon: Cake,
-      description: "Fazem aniversário hoje",
+      description: "Alunos ativos aniversariantes",
       gradient: "bg-gradient-to-br from-purple-500 to-pink-600",
       iconBg: "bg-gradient-to-br from-purple-500 to-pink-600",
     },
@@ -191,7 +200,7 @@ export function StatsOverview() {
       title: "Mensalidades Vencidas",
       value: v(stats?.paymentOverdueCount),
       icon: DollarSign,
-      description: "Alunos em atraso",
+      description: "Alunos ativos em atraso",
       gradient: "bg-gradient-to-br from-red-500 to-rose-600",
       iconBg: "bg-gradient-to-br from-red-500 to-rose-600",
     },

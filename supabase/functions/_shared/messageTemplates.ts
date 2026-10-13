@@ -2,37 +2,8 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { Database, Json } from "./database.types.ts";
 
 type SettingsMap = Record<string, { params: Record<string, Json | undefined> }>;
-// Espelho de src/lib/messageTemplates.ts para uso em edge functions.
-// Resolve o texto final de uma mensagem automática se o usuário linkou uma
-// mensagem pré-definida em automation_settings.params.templates[message_type].
-
-export type TemplateVars = {
-  nome?: string;
-  data?: string;
-  hora?: string;
-  dias?: string;
-  [key: string]: string | undefined;
-};
-
-export function interpolate(text: string, vars: TemplateVars): string {
-  const map: Record<string, string> = {
-    nome: vars.nome ?? "",
-    name: vars.nome ?? "",
-    aluno: vars.nome ?? "",
-    data: vars.data ?? "",
-    date: vars.data ?? "",
-    hora: vars.hora ?? "",
-    time: vars.hora ?? "",
-    dias: vars.dias ?? "",
-    days: vars.dias ?? "",
-  };
-  return text.replace(/\{(\w+)\}/g, (m, k) => {
-    const key = String(k).toLowerCase();
-    if (key in map) return map[key];
-    const extra = vars[key];
-    return extra !== undefined ? String(extra) : m;
-  });
-}
+import { createTemplateReader, interpolate, type TemplateVars } from "./templateResolver.ts";
+export { interpolate, type TemplateVars } from "./templateResolver.ts";
 
 export function getLinkedTemplateId(
   settings: SettingsMap,
@@ -44,28 +15,26 @@ export function getLinkedTemplateId(
   return id && typeof id === "string" ? id : null;
 }
 
-const contentCache = new Map<string, string | null>();
+// Each handler creates a new authenticated/service client per request. Keying by
+// that client avoids sharing template contents between requests or RLS identities.
+const readers = new WeakMap<SupabaseClient<Database>, ReturnType<typeof createTemplateReader>>();
 
 export async function resolveAutomationMessage(
-  supabase: SupabaseClient<Database>,
-  settings: SettingsMap,
-  automationKey: string,
-  messageType: string,
-  fallback: string,
-  vars: TemplateVars,
+  supabase: SupabaseClient<Database>, settings: SettingsMap,
+  automationKey: string, messageType: string, fallback: string, vars: TemplateVars,
 ): Promise<string> {
   const id = getLinkedTemplateId(settings, automationKey, messageType);
   if (!id) return fallback;
-  let content = contentCache.get(id) ?? null;
-  if (!contentCache.has(id)) {
-    const { data } = await supabase
-      .from("predefined_messages")
-      .select("content")
-      .eq("id", id)
-      .maybeSingle();
-    content = data?.content ?? null;
-    contentCache.set(id, content);
+  let read = readers.get(supabase);
+  if (!read) {
+    read = createTemplateReader(async (templateId) => {
+      const { data, error } = await supabase.from("predefined_messages")
+        .select("content").eq("id", templateId).maybeSingle();
+      if (error) throw error;
+      return data?.content ?? null;
+    });
+    readers.set(supabase, read);
   }
-  if (!content) return fallback;
-  return interpolate(content, vars);
+  const content = await read(id);
+  return content ? interpolate(content, vars) : fallback;
 }

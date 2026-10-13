@@ -39,16 +39,13 @@ export function AISuggestions() {
   const queryClient = useQueryClient();
   const [seed, setSeed] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const { data: todayActions = [], isLoading: actionsLoading } = useTodayActions();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: todayActions = [], isLoading: actionsLoading, isError: actionsError } = useTodayActions();
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useDashboardStats();
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["today-actions"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setSeed((s) => s + 1);
     } finally {
       setTimeout(() => setRefreshing(false), 400);
@@ -105,15 +102,16 @@ export function AISuggestions() {
   const generateSuggestions = (): Suggestion[] => {
     const suggestions: Suggestion[] = [];
 
-    if (stats?.birthdaysToday && stats.birthdaysToday > 0) {
+    const birthdays = todayActions.filter(a => a.type === "birthday").length;
+    if (birthdays > 0) {
       suggestions.push({
         id: "birthday",
         title: "Enviar Parabéns de Aniversário",
-        description: `${stats.birthdaysToday} aluno(s) fazem aniversário hoje.`,
-        example: `Ex.: "Gere uma mensagem carinhosa de parabéns para os ${stats.birthdaysToday} aniversariantes de hoje."`,
+        description: `${birthdays} aniversariante(s) ainda sem envio programado ou registrado.`,
+        example: `Ex.: "Gere uma mensagem de parabéns para os ${birthdays} aniversariantes sem envio hoje."`,
         priority: "high",
         icon: Calendar,
-        action: `Envie mensagens de parabéns para os ${stats.birthdaysToday} aniversariante(s) de hoje`,
+        action: `Confira a fila e o histórico e prepare parabéns para os ${birthdays} aniversariante(s) ainda sem envio hoje`,
         accent: "bg-gradient-to-br from-purple-500 to-pink-600",
         border: "border-l-purple-500",
       });
@@ -196,13 +194,21 @@ export function AISuggestions() {
   const suggestions = generateSuggestions();
   const isLoading = statsLoading || actionsLoading;
 
+  if (actionsError || statsError) return (
+    <Card role="alert"><CardHeader><CardTitle>Sugestões indisponíveis</CardTitle></CardHeader>
+      <CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Não foi possível consultar os dados de hoje.</p>
+        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>Tentar novamente</Button>
+      </CardContent>
+    </Card>
+  );
+
   if (isLoading) {
     return (
       <Card className="border-primary/10 shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Sugestões da IA
+            Sugestões de ações
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -262,8 +268,8 @@ export function AISuggestions() {
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-lg">Sugestões da IA</CardTitle>
-              <CardDescription>Ações inteligentes baseadas nos seus dados de hoje</CardDescription>
+              <CardTitle className="text-lg">Sugestões de ações</CardTitle>
+              <CardDescription>Sugestões com os dados de hoje para preparar no assistente de IA</CardDescription>
             </div>
           </div>
           <Button

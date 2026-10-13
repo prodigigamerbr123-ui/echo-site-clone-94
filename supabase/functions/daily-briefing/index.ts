@@ -4,6 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireStaffRole } from "../_shared/auth.ts";
 import { getSupabasePublishableKey } from "../_shared/supabaseEnv.ts";
 
+import { dashboardSnapshot, briefingContext } from "../_shared/dashboardContracts.ts";
+import { modelMessage } from "../_shared/aiContracts.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
@@ -11,14 +14,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const aiProvider = getAIProvider("google/gemini-2.5-flash");
-
-function fmtBR(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    dateStyle: "full",
-    timeStyle: "short",
-  }).format(date);
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -30,65 +25,10 @@ Deno.serve(async (req) => {
     const supabase = createClient<Database>(SUPABASE_URL, getSupabasePublishableKey(), {
       global: { headers: { Authorization: req.headers.get("Authorization")! } },
     });
-    const now = new Date();
-
-    // Compute Brasília day boundaries via Intl parts (evita bug de DST/toLocaleString)
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric", month: "2-digit", day: "2-digit",
-    }).formatToParts(now).reduce<Record<string, string>>((acc, p) => {
-      if (p.type !== "literal") acc[p.type] = p.value;
-      return acc;
-    }, {});
-    const yyyy = parts.year, mm = parts.month, dd = parts.day;
-    // Brasília é UTC-3 fixo (sem DST desde 2019)
-    const startOfDay = new Date(`${yyyy}-${mm}-${dd}T00:00:00-03:00`);
-    const endOfDay = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999-03:00`);
-
-    const [
-      studentsRes,
-      evalsTodayRes,
-      evalsOverdueRes,
-      evalsWithStudentsRes,
-      scheduledMsgsRes,
-      sentTodayRes,
-      birthdaysRes,
-    ] = await Promise.all([
-      supabase.from("students").select("id,status,had_evaluation,created_at,birth_date,name").limit(5000),
-      supabase.from("evaluations").select("id,scheduled_at,student_id,status").eq("status", "scheduled").gte("scheduled_at", startOfDay.toISOString()).lte("scheduled_at", endOfDay.toISOString()),
-      supabase.from("evaluations").select("id,scheduled_at,student_id,status").eq("status", "scheduled").lt("scheduled_at", startOfDay.toISOString()),
-      supabase.from("evaluations").select("id,scheduled_at,status,students(name)").eq("status", "scheduled").gte("scheduled_at", startOfDay.toISOString()).lte("scheduled_at", endOfDay.toISOString()).order("scheduled_at", { ascending: true }).limit(20),
-      supabase.from("scheduled_messages").select("id,scheduled_for,status").eq("status", "pending").gte("scheduled_for", startOfDay.toISOString()).lte("scheduled_for", endOfDay.toISOString()),
-      supabase.from("messages").select("id,sent_at").gte("sent_at", startOfDay.toISOString()).lte("sent_at", endOfDay.toISOString()),
-      supabase.from("students").select("name,birth_date").not("birth_date", "is", null).limit(5000),
-    ]);
-
-    const students = studentsRes.data || [];
-    const active = students.filter((s) => s.status === "active").length;
-    const withoutEval = students.filter((s) => s.had_evaluation === false).length;
-    const birthdayList = (birthdaysRes.data || []).filter((s) => {
-      if (!s.birth_date) return false;
-      const [_, m, d] = s.birth_date.split("-");
-      return m === mm && d === dd;
-    }).map((s) => s.name);
-
-    const evalNames = (evalsWithStudentsRes.data || []).map((e) => {
-      const t = new Date(e.scheduled_at).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
-      return `${t} - ${e.students?.name || "?"}`;
-    });
-
-    const context = {
-      dataHora: fmtBR(now),
-      totalAlunos: students.length,
-      alunosAtivos: active,
-      alunosSemAvaliacao: withoutEval,
-      avaliacoesHoje: evalsTodayRes.data?.length || 0,
-      avaliacoesAtrasadas: evalsOverdueRes.data?.length || 0,
-      agendaHoje: evalNames,
-      mensagensAgendadasHoje: scheduledMsgsRes.data?.length || 0,
-      mensagensEnviadasHoje: sentTodayRes.data?.length || 0,
-      aniversariantes: birthdayList,
-    };
+    const { data: snapshotData, error: snapshotError } = await supabase.rpc("get_workout_dashboard");
+    if (snapshotError) throw snapshotError;
+    const snapshot = dashboardSnapshot(snapshotData);
+    const context = briefingContext(snapshot);
 
     const systemPrompt = `Você é o JARVIS pessoal de um personal trainer. Estilo: elegante, direto, levemente formal com toques descontraídos, como o assistente do Homem de Ferro. Fale em português do Brasil, tratando o usuário como "Chefe" ou "senhor" ocasionalmente (não em toda frase).
 
@@ -104,6 +44,7 @@ Seja conciso (máx ~180 palavras). Use bullets. Se não houver nada em uma seç�
 
     const aiRes = await fetch(aiProvider.url, {
       method: "POST",
+      signal: AbortSignal.timeout(30_000),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${aiProvider.apiKey}`,
@@ -118,21 +59,22 @@ Seja conciso (máx ~180 palavras). Use bullets. Se não houver nada em uma seç�
     });
 
     if (!aiRes.ok) {
-      const text = await aiRes.text();
-      return new Response(JSON.stringify({ error: "ai_error", status: aiRes.status, detail: text }), {
+      await aiRes.body?.cancel();
+      return new Response(JSON.stringify({ error: "Não foi possível gerar o briefing agora.", status: aiRes.status }), {
         status: aiRes.status === 429 || aiRes.status === 402 ? aiRes.status : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await aiRes.json();
-    const briefing = data.choices?.[0]?.message?.content || "Sem briefing disponível.";
+    const briefing = modelMessage(data)?.content;
+    if (!briefing?.trim()) throw new Error("Invalid briefing response");
 
-    return new Response(JSON.stringify({ briefing, context, generatedAt: now.toISOString() }), {
+    return new Response(JSON.stringify({ briefing, context, generatedAt: snapshot.generatedAt }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
+  } catch {
+    return new Response(JSON.stringify({ error: "Não foi possível consultar os dados e gerar o briefing. Tente novamente." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
