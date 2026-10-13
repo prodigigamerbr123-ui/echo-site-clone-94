@@ -1,4 +1,5 @@
 import { buildMessageSeries } from "@/lib/recurrence";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,15 +50,17 @@ export function AgendarMensagemForm({ onSaved }: Props) {
 
   useEffect(() => {
     (async () => {
-      const { data: s } = await supabase.from("students").select("id, name, phone").order("name").limit(5000);
-      setStudents(s || []);
-      const [{ data: p }, autoIds] = await Promise.all([
-        supabase.from("predefined_messages").select("*").order("title"),
+      const s = await fetchAllPages((from, to) => supabase.from("students").select("id, name, phone", { count: "exact" }).order("name").order("id").range(from, to));
+      const [p, autoIds] = await Promise.all([
+        fetchAllPages((from, to) => supabase.from("predefined_messages").select("*", { count: "exact" }).order("title").order("id").range(from, to)),
         fetchAutomationTemplateIds(),
       ]);
-      setPredefined((p || []).filter((m: any) => !autoIds.has(m.id)));
-    })();
-  }, []);
+      setStudents(s);
+      setPredefined(p.filter((m) => !autoIds.has(m.id)));
+    })().catch(() => {
+      toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar todos os alunos e modelos. Reabra o formulário para tentar novamente.", variant: "destructive" });
+    });
+  }, [toast]);
 
   const selected = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
 
@@ -131,7 +134,7 @@ export function AgendarMensagemForm({ onSaved }: Props) {
               <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" aria-hidden="true" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
             <Command>
               <CommandInput placeholder="Buscar por nome ou telefone..." />
               <CommandList>

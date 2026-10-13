@@ -13,7 +13,9 @@ export function formatPhoneBR(rawPhone: string | null | undefined): FormatPhoneR
   let p = String(rawPhone).replace(/\D/g, "");
   if (!p) return { ok: false, number: "", reason: "Telefone sem dígitos" };
   p = p.replace(/^0+/, "");
-  if (!p.startsWith("55")) p = "55" + p;
+  // A 10/11-digit Brazilian national number may itself begin with DDD 55.
+  // Only 12/13-digit input is treated as already containing the country code.
+  if (p.length === 10 || p.length === 11) p = "55" + p;
   if (p.length !== 12 && p.length !== 13) {
     return {
       ok: false,

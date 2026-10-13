@@ -27,6 +27,10 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Check application types
+        run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Run isolated tests
+        run: npm run test
       - name: Build GitHub Pages
         env:
           VITE_PREVIEW_MODE: "false"

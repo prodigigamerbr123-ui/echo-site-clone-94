@@ -64,6 +64,7 @@ beforeAll(async () => {
   await db.exec("INSERT INTO ai_conversations(title) VALUES ('Conversa anterior')");
   await db.exec(readFileSync(resolve("supabase/migrations/20261011030000_staff_authorization.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261012010000_persist_ai_confirmations.sql"), "utf8"));
+  await db.exec(readFileSync(resolve("supabase/migrations/20261013010000_automation_run_history.sql"), "utf8"));
   await db.query("INSERT INTO staff_members(user_id,role) VALUES ($1,'recepcao'),($2,'avaliador')", [ids.reception, ids.evaluator]);
   await db.query("INSERT INTO students(id,name,phone,status) VALUES ($1,'Aluno fictício','43999999999','active')", [ids.student]);
 }, 60_000);
@@ -71,6 +72,31 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("permissões dos profissionais e dados do Workout", () => {
+  it("permite somente uma automação em andamento, mesmo que antiga", async () => {
+    const first = await db.query<{ id: string }>("INSERT INTO automation_runs(started_at) VALUES (now()-interval '2 days') RETURNING id");
+    try {
+      await expect(db.query("INSERT INTO automation_runs DEFAULT VALUES")).rejects.toMatchObject({ code: "23505" });
+      await db.query("UPDATE automation_runs SET status='failed', finished_at=now() WHERE id=$1", [first.rows[0].id]);
+      const second = await db.query<{ id: string }>("INSERT INTO automation_runs DEFAULT VALUES RETURNING id");
+      await db.query("UPDATE automation_runs SET status='success', finished_at=now() WHERE id=$1", [second.rows[0].id]);
+    } finally {
+      await db.exec("DELETE FROM automation_runs");
+    }
+  });
+  it("restringe o histórico ao administrador e gravações ao servidor", async () => {
+    await db.exec("INSERT INTO automation_runs(status,finished_at) VALUES ('success',now())");
+    try {
+      expect((await asUser('admin', 'SELECT * FROM automation_runs')).rows).toHaveLength(1);
+      expect((await asUser('stranger', 'SELECT * FROM automation_runs')).rows).toHaveLength(0);
+      await expect(asUser('admin', 'INSERT INTO automation_runs DEFAULT VALUES')).rejects.toThrow();
+      await expect(asUser('admin', "UPDATE automation_runs SET status='failed'")).rejects.toThrow();
+      await db.exec('SET ROLE service_role');
+      expect((await db.query('SELECT * FROM automation_runs')).rows).toHaveLength(1);
+      await db.exec("INSERT INTO automation_runs DEFAULT VALUES");
+    } finally {
+      await db.exec('RESET ROLE; DELETE FROM automation_runs');
+    }
+  });
   it("consome a confirmação de IA uma vez e conserva o resultado", async () => {
     const row = await db.query<{id:string}>("INSERT INTO ai_pending_actions(owner_id,tool,args) VALUES ($1,'schedule_message','{}') RETURNING id",[ids.admin]);
     await db.exec('SET ROLE service_role');

@@ -4,26 +4,28 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
-import Dashboard from "./pages/Dashboard";
-import Alunos from "./pages/Alunos";
-import CadastrarAluno from "./pages/CadastrarAluno";
-import Mensagens from "./pages/Mensagens";
-import CaixaDeSaida from "./pages/CaixaDeSaida";
-import MensagensPredefinidas from "./pages/MensagensPredefinidas";
-import AssistenteIA from "./pages/AssistenteIA";
-import Automacoes from "./pages/Automacoes";
-import AvaliacaoFisica from "./pages/AvaliacaoFisica";
-import AgendarAvaliacao from "./pages/AgendarAvaliacao";
-import WhatsApp from "./pages/WhatsApp";
-import Configuracoes from "./pages/Configuracoes";
-import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { GlobalNotifier } from "@/components/layout/GlobalNotifier";
 import { ADMIN_ONLY, FRONT_DESK, ALL_STAFF, type StaffRole } from "@/lib/staffRoles";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Alunos = lazy(() => import("./pages/Alunos"));
+const CadastrarAluno = lazy(() => import("./pages/CadastrarAluno"));
+const Mensagens = lazy(() => import("./pages/Mensagens"));
+const CaixaDeSaida = lazy(() => import("./pages/CaixaDeSaida"));
+const MensagensPredefinidas = lazy(() => import("./pages/MensagensPredefinidas"));
+const AssistenteIA = lazy(() => import("./pages/AssistenteIA"));
+const Automacoes = lazy(() => import("./pages/Automacoes"));
+const AvaliacaoFisica = lazy(() => import("./pages/AvaliacaoFisica"));
+const AgendarAvaliacao = lazy(() => import("./pages/AgendarAvaliacao"));
+const WhatsApp = lazy(() => import("./pages/WhatsApp"));
+const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Login = lazy(() => import("./pages/Login"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 const Router = import.meta.env.VITE_DEPLOY_TARGET === "github-pages" ? HashRouter : BrowserRouter;
@@ -31,7 +33,9 @@ const Router = import.meta.env.VITE_DEPLOY_TARGET === "github-pages" ? HashRoute
 const protectedPage = (Page: React.ComponentType, roles: readonly StaffRole[] = ALL_STAFF) => (
   <ProtectedRoute allowedRoles={roles}>
     <AppLayout>
-      <Page />
+      <Suspense fallback={<div role="status" className="py-8 text-center text-muted-foreground">Carregando página...</div>}>
+        <Page />
+      </Suspense>
     </AppLayout>
   </ProtectedRoute>
 );
@@ -46,7 +50,8 @@ const App = () => (
         <Router>
           <AuthProvider>
             <GlobalNotifier />
-            <Routes>
+            <Suspense fallback={<div role="status" className="p-8 text-center text-muted-foreground">Carregando página...</div>}>
+              <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={protectedPage(Dashboard)} />
               <Route path="/alunos" element={protectedPage(Alunos)} />
@@ -66,7 +71,8 @@ const App = () => (
               <Route path="/agendar-avaliacao" element={protectedPage(AgendarAvaliacao)} />
               <Route path="/configuracoes" element={protectedPage(Configuracoes, ADMIN_ONLY)} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           </AuthProvider>
         </Router>
       </TooltipProvider>

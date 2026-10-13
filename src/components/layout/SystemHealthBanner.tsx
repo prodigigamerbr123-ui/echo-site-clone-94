@@ -1,28 +1,11 @@
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, WifiOff, X } from "lucide-react";
+import { AlertTriangle, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
-// Auto-hide after this many ms; dismissal also persists in sessionStorage
-const AUTO_HIDE_MS = 15000;
-
 export function SystemHealthBanner() {
   const navigate = useNavigate();
-  const [dismissed, setDismissed] = useState<Record<string, boolean>>(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem("banner-dismissed") || "{}");
-    } catch {
-      return {};
-    }
-  });
-
-  const dismiss = (key: string) => {
-    const next = { ...dismissed, [key]: true };
-    setDismissed(next);
-    sessionStorage.setItem("banner-dismissed", JSON.stringify(next));
-  };
 
   const { data: whatsapp } = useQuery({
     queryKey: ["whatsapp-health"],
@@ -53,22 +36,39 @@ export function SystemHealthBanner() {
     staleTime: 60000,
   });
 
+  const { data: automationRun, error: automationError } = useQuery({
+    queryKey: ["automation-global-health"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("automation_runs")
+        .select("started_at, status")
+        .order("started_at", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 120000,
+    staleTime: 60000,
+  });
+
+  const { data: overdueQueue = 0, error: overdueQueueError } = useQuery({
+    queryKey: ["automation-overdue-queue"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("scheduled_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending").lt("scheduled_for", new Date(Date.now() - 5 * 60000).toISOString());
+      if (error) throw error;
+      return count ?? 0;
+    },
+    refetchInterval: 120000,
+  });
+
   const disconnected = whatsapp?.connected === false;
-  const showDisconnected = disconnected && !dismissed["whatsapp"];
-  const showFailed = !disconnected && failedCount > 0 && !dismissed["failed"];
+  const staleAutomation = automationRun && Date.now() - new Date(automationRun.started_at).getTime() > 26 * 3600000;
+  const stuckAutomation = automationRun?.status === "running" && Date.now() - new Date(automationRun.started_at).getTime() > 20 * 60000;
+  const automationIssue = !!(automationError || automationRun === null || automationRun?.status === "failed" || staleAutomation || stuckAutomation);
 
-  // Auto-hide timer
-  useEffect(() => {
-    if (!showDisconnected && !showFailed) return;
-    const key = showDisconnected ? "whatsapp" : "failed";
-    const t = setTimeout(() => dismiss(key), AUTO_HIDE_MS);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDisconnected, showFailed]);
+  if (!disconnected && failedCount === 0 && !automationIssue && !overdueQueueError && overdueQueue === 0) return null;
 
-  if (!showDisconnected && !showFailed) return null;
-
-  if (showDisconnected) {
+  if (disconnected) {
     return (
       <div className="w-full bg-destructive text-destructive-foreground px-4 py-2 flex items-center gap-3 text-sm animate-in fade-in slide-in-from-top-2">
         <WifiOff className="h-4 w-4 shrink-0" />
@@ -78,13 +78,6 @@ export function SystemHealthBanner() {
         <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate("/whatsapp")}>
           Reconectar
         </Button>
-        <button
-          onClick={() => dismiss("whatsapp")}
-          className="p-1 rounded hover:bg-white/20 transition-colors"
-          aria-label="Fechar"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
     );
   }
@@ -93,18 +86,14 @@ export function SystemHealthBanner() {
     <div className="w-full bg-amber-500 text-white px-4 py-2 flex items-center gap-3 text-sm animate-in fade-in slide-in-from-top-2">
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span className="flex-1">
-        <strong>{failedCount}</strong> mensagem(ns) falharam nas últimas 24h.
+        {failedCount > 0 && <span><strong>{failedCount}</strong> mensagem(ns) falharam nas últimas 24h. </span>}
+        {overdueQueue > 0 && <span><strong>{overdueQueue}</strong> mensagem(ns) atrasadas. </span>}
+        {overdueQueueError && <span>Não foi possível consultar a fila. </span>}
+        {automationIssue && <span>Motor de automações requer atenção.</span>}
       </span>
-      <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate("/caixa-de-saida")}>
+      <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate(automationIssue ? "/automacoes" : "/caixa-de-saida")}>
         Ver
       </Button>
-      <button
-        onClick={() => dismiss("failed")}
-        className="p-1 rounded hover:bg-white/20 transition-colors"
-        aria-label="Fechar"
-      >
-        <X className="h-4 w-4" />
-      </button>
     </div>
   );
 }

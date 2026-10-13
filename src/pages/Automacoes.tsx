@@ -1,3 +1,4 @@
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMemo, useState, useEffect } from "react";
 import { Zap, Eye, Plus } from "lucide-react";
@@ -148,6 +149,20 @@ function daysAgoISO(n: number) {
 
 type PredefinedMsg = { id: string; title: string; content: string };
 
+async function updateAutomationSetting(
+  key: string,
+  values: { enabled?: boolean; params?: Record<string, any> },
+) {
+  const { data, error } = await supabase
+    .from("automation_settings")
+    .update(values)
+    .eq("key", key)
+    .select("key")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error(`A automação ${key} não foi encontrada no banco. A atualização não foi salva.`);
+}
+
 export default function Automacoes() {
   usePageTitle("Automações");
   const qc = useQueryClient();
@@ -171,19 +186,42 @@ export default function Automacoes() {
   });
 
 
-  const { data: lastRun } = useQuery({
-    queryKey: ["automation-last-run"],
+  const { data: runHistory, error: runHistoryError } = useQuery({
+    queryKey: ["automation-run-history"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("scheduled_messages")
-        .select("created_at")
-        .in("message_type", ["evaluation_reminder", "birthday"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data?.created_at ?? null;
+      const [latest, lastSuccess] = await Promise.all([
+        supabase.from("automation_runs")
+          .select("id, started_at, finished_at, status, error_message, summary")
+          .order("started_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("automation_runs")
+          .select("id, finished_at").eq("status", "success")
+          .order("finished_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (latest.error) throw latest.error;
+      if (lastSuccess.error) throw lastSuccess.error;
+      return { latest: latest.data, lastSuccess: lastSuccess.data };
     },
+    refetchInterval: 60000,
   });
+
+  const { data: overdueQueue = 0, error: overdueQueueError } = useQuery({
+    queryKey: ["automation-overdue-queue"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("scheduled_messages")
+        .select("id", { head: true, count: "exact" })
+        .eq("status", "pending").lt("scheduled_for", new Date(Date.now() - 5 * 60000).toISOString());
+      if (error) throw error;
+      return count ?? 0;
+    },
+    refetchInterval: 60000,
+  });
+
+  const latestRun = runHistory?.latest;
+  const lastSuccess = runHistory?.lastSuccess;
+  const lastStartMs = latestRun ? new Date(latestRun.started_at).getTime() : 0;
+  const runningTooLong = latestRun?.status === "running" && Date.now() - lastStartMs > 20 * 60000;
+  const cronOverdue = lastStartMs > 0 && Date.now() - lastStartMs > 26 * 3600000;
+  const unhealthy = runHistoryError || overdueQueueError || (runHistory && !latestRun) || latestRun?.status === "failed" || runningTooLong || cronOverdue || overdueQueue > 0;
 
   const { data: monthCount } = useQuery({
     queryKey: ["automation-month-count"],
@@ -212,12 +250,10 @@ export default function Automacoes() {
   const { data: perTypeCounts } = useQuery({
     queryKey: ["automation-per-type-30d"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("scheduled_messages")
-        .select("message_type")
+      const data = await fetchAllPages((from, to) => supabase
+        .from("scheduled_messages").select("message_type", { count: "exact" })
         .in("message_type", ALL_AUTO_TYPES)
-        .gte("created_at", daysAgoISO(30));
-      if (error) throw error;
+        .gte("created_at", daysAgoISO(30)).order("id").range(from, to));
       const counts: Record<string, number> = {};
       for (const row of data ?? []) {
         counts[row.message_type] = (counts[row.message_type] ?? 0) + 1;
@@ -228,11 +264,7 @@ export default function Automacoes() {
 
   const toggleMutation = useMutation({
     mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
-      const { error } = await supabase
-        .from("automation_settings")
-        .update({ enabled, updated_at: new Date().toISOString() })
-        .eq("key", key);
-      if (error) throw error;
+      await updateAutomationSetting(key, { enabled });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
@@ -243,11 +275,7 @@ export default function Automacoes() {
 
   const paramsMutation = useMutation({
     mutationFn: async ({ key, params }: { key: string; params: Record<string, any> }) => {
-      const { error } = await supabase
-        .from("automation_settings")
-        .update({ params, updated_at: new Date().toISOString() })
-        .eq("key", key);
-      if (error) throw error;
+      await updateAutomationSetting(key, { params });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
@@ -266,11 +294,7 @@ export default function Automacoes() {
       if (predefinedId) templates[messageType] = predefinedId;
       else delete templates[messageType];
       const newParams = { ...current, templates };
-      const { error } = await supabase
-        .from("automation_settings")
-        .update({ params: newParams, updated_at: new Date().toISOString() })
-        .eq("key", key);
-      if (error) throw error;
+      await updateAutomationSetting(key, { params: newParams });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
@@ -299,13 +323,38 @@ export default function Automacoes() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {unhealthy && (
+        <div role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          <strong>Atenção às automações: </strong>
+          {runHistoryError ? "Não foi possível consultar o histórico de execuções. " : ""}
+          {runHistory && !latestRun ? "Nenhuma execução registrada; confira o cron após o horário programado. " : ""}
+          {overdueQueueError ? "Não foi possível consultar a fila. " : ""}
+          {latestRun?.status === "failed" ? `${latestRun.error_message ?? "A última execução falhou."} ` : ""}
+          {runningTooLong ? "Execução em andamento há mais de 20 minutos. " : ""}
+          {cronOverdue ? "O motor não inicia há mais de 26 horas. " : ""}
+          {overdueQueue > 0 ? `${overdueQueue} mensagem(ns) pendente(s) há mais de 5 minutos.` : ""}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Última execução do motor</CardDescription>
             <CardTitle className="text-lg">
-              {lastRun ? new Date(lastRun).toLocaleString("pt-BR") : "—"}
+              {latestRun ? new Date(latestRun.started_at).toLocaleString("pt-BR") : "—"}
             </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {runHistoryError ? "Consulta indisponível" : latestRun?.status === "success" ? "Concluída" : latestRun?.status === "failed" ? "Falhou" : latestRun?.status === "running" ? "Em andamento" : "Aguardando primeira execução registrada"}
+            </p>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Última execução bem-sucedida</CardDescription>
+            <CardTitle className="text-lg">
+              {lastSuccess?.finished_at ? new Date(lastSuccess.finished_at).toLocaleString("pt-BR") : "—"}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">{overdueQueueError ? "Fila indisponível" : `${overdueQueue} pendentes atrasadas`}</p>
           </CardHeader>
         </Card>
         <Card>

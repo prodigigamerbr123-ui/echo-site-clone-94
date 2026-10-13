@@ -1,3 +1,4 @@
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { useCallback, useEffect, useState } from "react";
 import { Clock, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,26 +60,26 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [messagesResult, studentsResult] = await Promise.all([
-      supabase.from("scheduled_messages")
-        .select("*, students(name, phone)")
-        .eq("status", statusFilter)
-        .order("scheduled_for", { ascending: true }),
-      supabase.from("students").select("id, name, phone").order("name").limit(5000),
-    ]);
-
-    const loadError = messagesResult.error || studentsResult.error;
-    if (loadError) {
-      toast({
-        title: "Erro ao carregar mensagens",
-        description: loadError.message,
-        variant: "destructive",
-      });
+    try {
+      const [loadedMessages, loadedStudents] = await Promise.all([
+        fetchAllPages((from, to) => supabase.from("scheduled_messages")
+          .select("*, students(name, phone)", { count: "exact" })
+          .eq("status", statusFilter)
+          .order("scheduled_for", { ascending: true }).order("id").range(from, to)),
+        fetchAllPages((from, to) => supabase.from("students")
+          .select("id, name, phone", { count: "exact" }).order("name").order("id").range(from, to)),
+      ]);
+      setMessages(loadedMessages);
+      setStudents(loadedStudents);
+      setSelectedMessages([]);
+    } catch {
+      setMessages([]);
+      setStudents([]);
+      setSelectedMessages([]);
+      toast({ title: "Erro ao carregar mensagens", description: "Não foi possível carregar a lista completa. Atualize a página para tentar novamente.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-
-    setMessages(messagesResult.data || []);
-    setStudents(studentsResult.data || []);
-    setLoading(false);
   }, [statusFilter, toast]);
 
   useEffect(() => {

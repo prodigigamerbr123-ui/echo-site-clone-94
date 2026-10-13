@@ -1,3 +1,4 @@
+import { fetchAllPages } from "@/lib/fetchAllPages";
 
 import { useState, useEffect } from "react";
 import { MessageCircle, Filter } from "lucide-react";
@@ -43,7 +44,7 @@ export default function MensagensEnviadasTab() {
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
+      const data = await fetchAllPages((from, to) => supabase
         .from('messages')
         .select(`
           *,
@@ -51,10 +52,8 @@ export default function MensagensEnviadasTab() {
             name,
             phone
           )
-        `)
-        .order('sent_at', { ascending: false });
-
-      if (error) throw error;
+        `, { count: "exact" })
+        .order("sent_at", { ascending: false }).order("id").range(from, to));
       setMessages(data || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -70,14 +69,9 @@ export default function MensagensEnviadasTab() {
 
   const fetchStudents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, name, phone')
-        .order('name')
-        .limit(5000);
-
-
-      if (error) throw error;
+      const data = await fetchAllPages((from, to) => supabase
+        .from("students").select("id, name, phone", { count: "exact" })
+        .order("name").order("id").range(from, to));
       setStudents(data || []);
     } catch (error) {
       console.error('Error fetching students:', error);

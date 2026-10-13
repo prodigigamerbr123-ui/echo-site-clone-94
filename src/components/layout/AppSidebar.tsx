@@ -26,6 +26,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const menuGroups = [
@@ -70,6 +71,7 @@ const menuGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { setOpenMobile } = useSidebar();
   const { role } = useAuth();
   const previewMode = import.meta.env.VITE_PREVIEW_MODE === "true";
   const isActive = (path: string) => location.pathname === path;
@@ -91,6 +93,7 @@ export function AppSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
+                        onClick={() => setOpenMobile(false)}
                         end
                         className={
                           isActive(item.url)

@@ -21,7 +21,8 @@ export function formatPhone(rawPhone: string | null | undefined): FormatPhoneRes
   // Strip leading zeros that sometimes come from imports.
   p = p.replace(/^0+/, "");
 
-  if (!p.startsWith("55")) p = "55" + p;
+  // National DDD 55 is valid. Distinguish it from DDI 55 by digit count.
+  if (p.length === 10 || p.length === 11) p = "55" + p;
 
   if (p.length !== 12 && p.length !== 13) {
     return {

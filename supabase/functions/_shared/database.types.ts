@@ -109,6 +109,33 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_runs: {
+        Row: {
+          id: string
+          started_at: string
+          finished_at: string | null
+          status: string
+          summary: Json
+          error_message: string | null
+        }
+        Insert: {
+          id?: string
+          started_at?: string
+          finished_at?: string | null
+          status?: string
+          summary?: Json
+          error_message?: string | null
+        }
+        Update: {
+          id?: string
+          started_at?: string
+          finished_at?: string | null
+          status?: string
+          summary?: Json
+          error_message?: string | null
+        }
+        Relationships: []
+      }
       evaluations: {
         Row: {
           completed_at: string | null

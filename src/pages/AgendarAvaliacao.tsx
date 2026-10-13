@@ -1,3 +1,4 @@
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { saveEvaluationWithMessages, finishEvaluationWithMessages } from "@/lib/evaluationActions";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useEffect, useMemo, useState } from "react";
@@ -68,6 +69,14 @@ const isOverdue = (dateStr: string | null) => {
   return (Date.now() - new Date(dateStr).getTime()) / 86400000 > 90;
 };
 
+function isValidCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+}
+
 export default function AgendarAvaliacao() {
   usePageTitle("Agendar Avaliação");
   const { toast } = useToast();
@@ -91,22 +100,10 @@ export default function AgendarAvaliacao() {
   const { data: students } = useQuery({
     queryKey: ["students-evaluation-agenda"],
     queryFn: async () => {
-      const pageSize = 1000;
-      let all: Student[] = [];
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("students")
-          .select("id,name,phone,status,had_evaluation,last_evaluation_date,created_at")
-          .order("name", { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        all = all.concat(data as Student[]);
-        if (data.length < pageSize) break;
-        from += pageSize;
-      }
-      return all;
+      return fetchAllPages((from, to) => supabase
+        .from("students")
+        .select("id,name,phone,status,had_evaluation,last_evaluation_date,created_at", { count: "exact" })
+        .order("name").order("id").range(from, to));
     },
   });
 
@@ -118,11 +115,10 @@ export default function AgendarAvaliacao() {
   const { data: evaluations } = useQuery({
     queryKey: ["evaluations-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllPages((from, to) => supabase
         .from("evaluations")
-        .select("id,student_id,scheduled_at,status,notes,completed_at,students(name,phone)")
-        .order("scheduled_at", { ascending: true });
-      if (error) throw error;
+        .select("id,student_id,scheduled_at,status,notes,completed_at,students(name,phone)", { count: "exact" })
+        .order("scheduled_at", { ascending: true }).order("id").range(from, to));
       return data as Evaluation[];
     },
   });
@@ -206,12 +202,11 @@ export default function AgendarAvaliacao() {
     // Consulta FRESCA no banco (não confia no cache do React Query) — evita
     // duplicidades geradas por duplo clique ou por dados desatualizados.
     const startOfTodayIso = startOfDay(new Date()).toISOString();
-    const { data: futureEvals, error: qErr } = await supabase
+    const futureEvals = await fetchAllPages((from, to) => supabase
       .from("evaluations")
-      .select("id, student_id, scheduled_at, students(name)")
+      .select("id, student_id, scheduled_at, students(name)", { count: "exact" })
       .eq("status", "scheduled")
-      .gte("scheduled_at", startOfTodayIso);
-    if (qErr) throw qErr;
+      .gte("scheduled_at", startOfTodayIso).order("id").range(from, to));
 
     const others = (futureEvals ?? []).filter((e) => e.id !== ignoreEvaluationId);
 
@@ -268,9 +263,15 @@ export default function AgendarAvaliacao() {
   const handleCreate = async () => {
     if (!selected) return toast({ title: "Selecione um aluno", variant: "destructive" });
     if (!date) return toast({ title: "Escolha uma data", variant: "destructive" });
+    if (!isValidCalendarDate(date)) {
+      return toast({ title: "Data inválida", description: "Escolha uma data válida no calendário.", variant: "destructive" });
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+      return toast({ title: "Horário inválido", description: "Informe um horário entre 00:00 e 23:59.", variant: "destructive" });
+    }
     const [cy, cmo, cd] = date.split("-").map(Number);
-    const [ch, cmi] = (time || "09:00").split(":").map(Number);
-    const when = spDate(cy, (cmo || 1) - 1, cd || 1, ch, cmi);
+    const [ch, cmi] = time.split(":").map(Number);
+    const when = spDate(cy, cmo - 1, cd, ch, cmi);
     if (when <= new Date()) {
       return toast({ title: "Data inválida", description: "Deve ser no futuro.", variant: "destructive" });
     }
@@ -330,9 +331,15 @@ export default function AgendarAvaliacao() {
   const confirmReschedule = async () => {
     if (!rescheduleTarget) return;
     if (!rDate) return toast({ title: "Escolha data", variant: "destructive" });
+    if (!isValidCalendarDate(rDate)) {
+      return toast({ title: "Data inválida", description: "Escolha uma data válida no calendário.", variant: "destructive" });
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(rTime)) {
+      return toast({ title: "Horário inválido", description: "Informe um horário entre 00:00 e 23:59.", variant: "destructive" });
+    }
     const [ry, rmo, rdd] = rDate.split("-").map(Number);
-    const [rh, rmi] = (rTime || "09:00").split(":").map(Number);
-    const when = spDate(ry, (rmo || 1) - 1, rdd || 1, rh, rmi);
+    const [rh, rmi] = rTime.split(":").map(Number);
+    const when = spDate(ry, rmo - 1, rdd, rh, rmi);
     if (when <= new Date()) {
       return toast({ title: "Data inválida", variant: "destructive" });
     }
@@ -411,8 +418,8 @@ export default function AgendarAvaliacao() {
         <div className="p-2 bg-gradient-to-br from-primary to-primary/70 rounded-lg shadow-lg">
           <CalendarPlus className="h-6 w-6 text-primary-foreground" />
         </div>
-        <div>
-          <h1 className="text-3xl font-bold">Agenda de Avaliações Físicas</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold break-words">Agenda de Avaliações Físicas</h1>
           <p className="text-muted-foreground">
             Compromissos reais + mensagens automáticas geradas pra cada agendamento
           </p>
@@ -458,8 +465,8 @@ export default function AgendarAvaliacao() {
           </CardHeader>
           <CardContent className="space-y-2">
             {pendingClose.map((ev) => (
-              <div key={ev.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
-                <div>
+              <div key={ev.id} className="flex flex-col items-start sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-background p-3">
+                <div className="min-w-0 break-words">
                   <p className="font-medium">{ev.students?.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(ev.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR })} • {ev.students?.phone}
@@ -507,7 +514,7 @@ export default function AgendarAvaliacao() {
                       <Search className="h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 pointer-events-auto" align="start">
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 pointer-events-auto" align="start">
                     <Command shouldFilter={false}>
                       <CommandInput
                         placeholder="Buscar por nome ou telefone..."

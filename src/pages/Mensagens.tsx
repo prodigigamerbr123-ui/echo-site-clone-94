@@ -1,4 +1,5 @@
 import { buildMessageSeries } from "@/lib/recurrence";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -32,7 +33,7 @@ type QuickWhen = "today" | "later";
 export default function Mensagens() {
   usePageTitle("Mensagens");
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [predefinedMessages, setPredefinedMessages] = useState<PredefinedMessage[]>([]);
@@ -44,8 +45,15 @@ export default function Mensagens() {
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Mode
-  const [mode, setMode] = useState<Mode>("now");
+  // The URL is the source of truth, including links opened from the dashboard.
+  const mode: Mode = searchParams.get("tab") === "agendar" ? "schedule" : "now";
+  const setMode = (next: Mode) => {
+    setSearchParams(previous => {
+      const params = new URLSearchParams(previous);
+      params.set("tab", next === "schedule" ? "agendar" : "agora");
+      return params;
+    });
+  };
 
   // Schedule state
   const [schedType, setSchedType] = useState<"quick" | "custom">("quick");
@@ -60,16 +68,17 @@ export default function Mensagens() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: s }, { data: p }, autoIds] = await Promise.all([
-        supabase.from("students").select("id, name, phone, had_evaluation").order("name").limit(5000),
-        supabase.from("predefined_messages").select("*").order("title"),
+      const [s, p, autoIds] = await Promise.all([
+        fetchAllPages((from, to) => supabase.from("students").select("id, name, phone, had_evaluation", { count: "exact" }).order("name").order("id").range(from, to)),
+        fetchAllPages((from, to) => supabase.from("predefined_messages").select("*", { count: "exact" }).order("title").order("id").range(from, to)),
         fetchAutomationTemplateIds(),
       ]);
       setStudents(s || []);
-      setPredefinedMessages((p || []).filter((m: any) => !autoIds.has(m.id)));
-      setLoading(false);
-    })();
-  }, []);
+      setPredefinedMessages(p.filter((m) => !autoIds.has(m.id)));
+    })().catch(() => {
+      toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar todos os alunos e modelos. Atualize a página para tentar novamente.", variant: "destructive" });
+    }).finally(() => setLoading(false));
+  }, [toast]);
 
   useEffect(() => {
     const pre = searchParams.get("aluno");

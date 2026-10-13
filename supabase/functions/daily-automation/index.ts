@@ -25,10 +25,26 @@ const DEFAULT_PAYMENT_CAP = 200;
 
 type SettingsMap = Record<string, { enabled: boolean; params: Record<string, any> }>;
 
+// PostgREST enforces a row cap per request. Every decision about duplicate
+// messages and attempts must consider the complete matching set.
+async function fetchAllRows(buildQuery: (from: number, to: number) => any): Promise<any[]> {
+  const pageSize = 500;
+  const rows: any[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return rows;
+}
+
 async function loadSettings(supabase: any): Promise<SettingsMap> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("automation_settings")
     .select("key, enabled, params");
+  if (error) throw error;
   const map: SettingsMap = {};
   for (const r of data ?? []) {
     map[r.key] = { enabled: !!r.enabled, params: (r.params as any) ?? {} };
@@ -134,11 +150,28 @@ serve(async (req: Request) => {
   const cronFail = requireCronSecret(req);
   if (cronFail) return cronFail;
 
+  let runClient: any = null;
+  let runId: string | null = null;
+  let schedulingFinished = false;
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       getSupabaseSecretKey(),
     );
+    runClient = supabase;
+    const { data: run, error: runError } = await supabase
+      .from("automation_runs")
+      .insert({ status: "running" })
+      .select("id")
+      .single();
+    if (runError?.code === "23505") {
+      return new Response(JSON.stringify({ skipped: true, reason: "Já existe uma execução de automação em andamento." }), {
+        status: 202,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (runError) throw runError;
+    runId = run.id;
 
     const settings = await loadSettings(supabase);
     const birthdayOn = isEnabled(settings, "birthday");
@@ -167,6 +200,7 @@ serve(async (req: Request) => {
         .from("students")
         .select("id, name, birth_date, last_evaluation_date, had_evaluation, created_at, status, payment_due_date")
         .eq("status", "active")
+        .order("id")
         .range(from, from + pageSize - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
@@ -176,7 +210,7 @@ serve(async (req: Request) => {
     }
 
     // Já existe algo pendente para (aluno, tipo)?
-    const { data: pendings } = await supabase
+    const pendings = await fetchAllRows((start, end) => supabase
       .from("scheduled_messages")
       .select("student_id, message_type")
       .eq("status", "pending")
@@ -186,9 +220,9 @@ serve(async (req: Request) => {
         "payment_reminder_before",
         "payment_reminder_due",
         "payment_overdue",
-      ]);
+      ]).order("id").range(start, end));
     const hasPending = new Set(
-      (pendings || []).map((p: any) => `${p.student_id}:${p.message_type}`),
+      pendings.map((p: any) => `${p.student_id}:${p.message_type}`),
     );
 
     // Idempotência diária: uma segunda execução no mesmo dia não deve
@@ -196,7 +230,7 @@ serve(async (req: Request) => {
     // ele já estiver sent/failed. O índice único do banco continua sendo a
     // última barreira contra duas execuções concorrentes.
     const todayBounds = spDayBoundsUtc(spDateStrToday());
-    const { data: scheduledToday, error: scheduledTodayError } = await supabase
+    const scheduledToday = await fetchAllRows((start, end) => supabase
       .from("scheduled_messages")
       .select("student_id, message_type")
       .gte("scheduled_for", todayBounds.start)
@@ -207,10 +241,9 @@ serve(async (req: Request) => {
         "payment_reminder_before",
         "payment_reminder_due",
         "payment_overdue",
-      ]);
-    if (scheduledTodayError) throw scheduledTodayError;
+      ]).order("id").range(start, end));
     const hasScheduledToday = new Set(
-      (scheduledToday || []).map((p: any) => `${p.student_id}:${p.message_type}`),
+      scheduledToday.map((p: any) => `${p.student_id}:${p.message_type}`),
     );
 
     // ---- 1) Aniversariantes de hoje ----
@@ -235,13 +268,14 @@ serve(async (req: Request) => {
     }
 
     // Alunos com avaliação futura já marcada não recebem convite de avaliação vencida.
-    const { data: futureEvals } = await supabase
+    const futureEvals = await fetchAllRows((start, end) => supabase
       .from("evaluations")
       .select("student_id")
       .eq("status", "scheduled")
-      .gte("scheduled_at", new Date().toISOString());
+      .gte("scheduled_at", new Date().toISOString())
+      .order("id").range(start, end));
     const studentsWithFutureEval = new Set(
-      (futureEvals || []).map((e: any) => e.student_id),
+      futureEvals.map((e: any) => e.student_id),
     );
 
     // ---- 2) Lembretes de avaliação vencida ----
@@ -257,17 +291,22 @@ serve(async (req: Request) => {
 
       // Histórico de convites já disparados: para respeitar intervalo e máx. tentativas.
       // Considera envios desde a última avaliação (ou desde sempre, se nunca fez).
-      const { data: pastReminders } = await supabase
+      const pastReminders = await fetchAllRows((start, end) => supabase
         .from("scheduled_messages")
         .select("student_id, scheduled_for, created_at")
         .eq("message_type", "evaluation_reminder")
-        .in("status", ["pending", "sent"]);
+        .in("status", ["pending", "sent"])
+        .order("id").range(start, end));
       const historyByStudent = new Map<string, { last: number; count: number; sinceRef: number }>();
-      for (const r of pastReminders ?? []) {
+      const reminderTimes = new Map<string, number[]>();
+      for (const r of pastReminders) {
         const t = new Date(r.scheduled_for ?? r.created_at).getTime();
         const cur = historyByStudent.get(r.student_id) ?? { last: 0, count: 0, sinceRef: 0 };
         cur.last = Math.max(cur.last, t);
         historyByStudent.set(r.student_id, cur);
+        const times = reminderTimes.get(r.student_id) ?? [];
+        times.push(t);
+        reminderTimes.set(r.student_id, times);
       }
 
       const nowMs = Date.now();
@@ -285,11 +324,7 @@ serve(async (req: Request) => {
           const resetRef = s.last_evaluation_date
             ? new Date(s.last_evaluation_date).getTime()
             : 0;
-          const attempts = (pastReminders ?? []).filter(
-            (r: any) =>
-              r.student_id === s.id &&
-              new Date(r.scheduled_for ?? r.created_at).getTime() >= resetRef,
-          ).length;
+          const attempts = (reminderTimes.get(s.id) ?? []).filter(t => t >= resetRef).length;
           if (attempts >= maxAttempts) return false;
           const h = historyByStudent.get(s.id);
           if (h && h.last > 0) {
@@ -386,17 +421,18 @@ serve(async (req: Request) => {
       const sinceISO = new Date(
         Date.now() - overdueRepeatEvery * 86400000,
       ).toISOString();
-      const { data: recentOverdue } = await supabase
+      const recentOverdue = await fetchAllRows((start, end) => supabase
         .from("scheduled_messages")
         .select("student_id, scheduled_for")
         .eq("message_type", "payment_overdue")
-        .gte("scheduled_for", sinceISO);
+        .gte("scheduled_for", sinceISO)
+        .order("id").range(start, end));
       const recentByStudent = new Set(
-        (recentOverdue || []).map((r: any) => r.student_id),
+        recentOverdue.map((r: any) => r.student_id),
       );
 
       for (const s of activeStudents) {
-        if (overdueInserts.length >= paymentCap) break; // cap compartilhado com lembretes
+        if (paymentInserts.length + overdueInserts.length >= paymentCap) break;
         if (!s.payment_due_date) continue;
         const due = String(s.payment_due_date);
         if (due >= todaySP) continue; // ainda não venceu
@@ -455,6 +491,9 @@ serve(async (req: Request) => {
         throw error;
       }
     }
+    // All scheduling writes have finished. A subsequent audit write failure
+    // must not classify already queued messages as an automation failure.
+    schedulingFinished = true;
 
     const summary = {
       inserted,
@@ -476,13 +515,51 @@ serve(async (req: Request) => {
     };
     console.log("daily-automation:", summary);
 
+    const { data: finishedRun, error: finishError } = await supabase
+      .from("automation_runs")
+      .update({ status: "success", finished_at: new Date().toISOString(), summary })
+      .eq("id", runId)
+      .eq("status", "running")
+      .select("id")
+      .maybeSingle();
+    if (finishError || !finishedRun) {
+      console.error("daily-automation: scheduling completed but audit finalization failed", finishError);
+      return new Response(JSON.stringify({
+        error: "Agendamentos processados, mas não foi possível confirmar o histórico. Confira os logs do servidor.",
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify(summary), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("daily-automation error:", error);
-    return new Response(JSON.stringify({ error: error?.message || "Internal error" }), {
+    if (runClient && runId && !schedulingFinished) {
+      // Do not copy arbitrary database exception text or secret values into a
+      // table that can be viewed from the administrative interface.
+      const errorCode = typeof error?.code === "string" && /^[A-Za-z0-9_]{1,16}$/.test(error.code)
+        ? ` (${error.code})` : "";
+      try {
+        const { data: loggedRun, error: logError } = await runClient.from("automation_runs")
+          .update({
+            status: "failed",
+            finished_at: new Date().toISOString(),
+            error_message: `Falha ao executar a automação${errorCode}. Consulte os logs do servidor.`,
+          })
+          .eq("id", runId)
+          .eq("status", "running")
+          .select("id")
+          .maybeSingle();
+        if (logError || !loggedRun) console.error("daily-automation failed to record error:", logError);
+      } catch (logError) {
+        console.error("daily-automation failed to persist error record:", logError);
+      }
+    }
+    return new Response(JSON.stringify({ error: "Falha interna na automação. Confira os logs do servidor." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

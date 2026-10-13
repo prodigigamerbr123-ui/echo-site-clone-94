@@ -21,6 +21,7 @@ import { EditarAlunoDialog } from "./EditarAlunoDialog";
 import { StudentSheet } from "./StudentSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
+import { matchesStudentSearch } from "@/lib/studentSearch";
 
 type ColumnKey = "phone" | "cpf" | "city" | "birthday" | "plan" | "created" | "dueDate" | "payment" | "lastEval" | "status";
 const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
@@ -87,7 +88,7 @@ export function ListaAlunos() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  
+
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(() => {
     if (typeof window === "undefined") return DEFAULT_COLUMNS;
     try {
@@ -191,11 +192,7 @@ export function ListaAlunos() {
 
   const filteredStudents = (students || [])
     .filter(s => {
-      const term = searchTerm.toLowerCase();
-      const matchesSearch = !term ||
-        s.name.toLowerCase().includes(term) ||
-        s.phone.includes(searchTerm) ||
-        (s.cpf || "").includes(searchTerm.replace(/\D/g, ""));
+      const matchesSearch = matchesStudentSearch(s, searchTerm);
       const active = isActive(s);
       const matchesStatus =
         statusFilter === "all" ||
