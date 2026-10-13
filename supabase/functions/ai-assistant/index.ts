@@ -14,6 +14,7 @@ import {
   type ChatMessage,
 } from "../_shared/aiContracts.ts";
 import { getAssistantDashboard } from "../_shared/aiDashboard.ts";
+import { getAssistantMessageHistory } from "../_shared/aiMessageHistory.ts";
 import { getAIProvider } from "../_shared/aiProvider.ts";
 import {
   createClient,
@@ -364,21 +365,7 @@ async function executeTool(
       return { count: data?.length || 0, messages: data };
     }
     case "list_sent_messages": {
-      let q = supabase
-        .from("messages")
-        .select("id, content, sent_at, status, students(name, phone)")
-        .order("sent_at", { ascending: false });
-      q = q.limit(args.limit || 30);
-      const { data, error } = await q;
-      if (error) throw error;
-      let filtered = data;
-      if (args.student_name) {
-        const searchName = args.student_name.toLowerCase();
-        filtered = (data || []).filter((m) =>
-          m.students?.name?.toLowerCase().includes(searchName),
-        );
-      }
-      return { count: filtered?.length || 0, messages: filtered };
+      return await getAssistantMessageHistory(supabase, args);
     }
     case "list_predefined_messages": {
       const { data, error } = await supabase

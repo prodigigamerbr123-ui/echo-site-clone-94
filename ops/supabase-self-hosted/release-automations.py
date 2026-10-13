@@ -2,13 +2,16 @@
 """Workout 13 October release. Explicit phases; never restores a live database."""
 import datetime, hashlib, json, os, pathlib, shutil, subprocess, sys, time
 
+AI_HISTORY = '--ai-history' in sys.argv
 AI_DASHBOARD = '--ai-dashboard' in sys.argv
-CONTRACTS = '--contracts' in sys.argv or AI_DASHBOARD
+CONTRACTS = '--contracts' in sys.argv or AI_DASHBOARD or AI_HISTORY
 DASHBOARD = '--dashboard' in sys.argv
 CHAT = '--chat' in sys.argv
-if sum([CONTRACTS,DASHBOARD,CHAT])>1:
+if sum(flag in sys.argv for flag in ['--contracts','--ai-dashboard','--ai-history','--dashboard','--chat'])>1:
     raise RuntimeError('Choose one release kind')
-if AI_DASHBOARD:
+if AI_HISTORY:
+    sys.argv.remove('--ai-history')
+elif AI_DASHBOARD:
     sys.argv.remove('--ai-dashboard')
 elif CONTRACTS:
     sys.argv.remove('--contracts')
@@ -16,12 +19,12 @@ if DASHBOARD:
     sys.argv.remove('--dashboard')
 if CHAT:
     sys.argv.remove('--chat')
-ROOT = pathlib.Path('/opt/workout-releases/20261013-ai-dashboard' if AI_DASHBOARD else '/opt/workout-releases/20261013-chat' if CHAT else '/opt/workout-releases/20261013-dashboard' if DASHBOARD else
+ROOT = pathlib.Path('/opt/workout-releases/20261013-ai-history' if AI_HISTORY else '/opt/workout-releases/20261013-ai-dashboard' if AI_DASHBOARD else '/opt/workout-releases/20261013-chat' if CHAT else '/opt/workout-releases/20261013-dashboard' if DASHBOARD else
                     '/opt/workout-releases/20261013-contracts' if CONTRACTS else '/opt/workout-releases/20261013-automations')
 STACK = pathlib.Path('/opt/workout-supabase')
 DB = 'workout-supabase-db'
 VERSION = '20261013030000' if CHAT else '20261013020000' if DASHBOARD else '20261013010000'
-FILES = (['_shared/aiDashboard.ts','ai-assistant/index.ts'] if AI_DASHBOARD else ['_shared/database.types.ts','_shared/aiChatContracts.ts','ai-assistant/index.ts'] if CHAT else
+FILES = (['_shared/aiMessageHistory.ts','ai-assistant/index.ts'] if AI_HISTORY else ['_shared/aiDashboard.ts','ai-assistant/index.ts'] if AI_DASHBOARD else ['_shared/database.types.ts','_shared/aiChatContracts.ts','ai-assistant/index.ts'] if CHAT else
          ['_shared/database.types.ts', '_shared/messageTemplates.ts', '_shared/templateResolver.ts',
           '_shared/dashboardContracts.ts', '_shared/contracts.ts', '_shared/aiContracts.ts', 'daily-briefing/index.ts'] if DASHBOARD else
          ['_shared/database.types.ts', '_shared/evaluations.ts', '_shared/evolution.ts',
@@ -104,7 +107,7 @@ elif phase == 'prepare':
     if not jobs or len(jobs) != 2:
         raise RuntimeError('Unexpected cron configuration')
     state = {'phase': 'pausing', 'jobs': jobs,
-             'release_kind': 'ai_dashboard' if AI_DASHBOARD else 'chat' if CHAT else 'dashboard' if DASHBOARD else 'contracts' if CONTRACTS else 'automation_history',
+             'release_kind': 'ai_history' if AI_HISTORY else 'ai_dashboard' if AI_DASHBOARD else 'chat' if CHAT else 'dashboard' if DASHBOARD else 'contracts' if CONTRACTS else 'automation_history',
              'new_files': [],
              'prepared_utc': datetime.datetime.now(datetime.timezone.utc).isoformat()}
     save(state)
