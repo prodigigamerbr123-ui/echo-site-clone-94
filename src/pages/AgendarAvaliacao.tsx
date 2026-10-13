@@ -1,11 +1,13 @@
 import { errorMessage } from "@/lib/errorMessage";
 import { fetchAllPages } from "@/lib/fetchAllPages";
+import { fetchAutomationSettings } from "@/lib/automationSettings";
+import { evaluationDaysOverdue, elapsedEvaluationDays, needsEvaluation } from "@/lib/evaluationDue";
 import { saveEvaluationWithMessages, finishEvaluationWithMessages } from "@/lib/evaluationActions";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, isToday, isTomorrow, isPast, startOfDay, differenceInDays } from "date-fns";
+import { format, isToday, isTomorrow, isPast, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarPlus,
@@ -65,11 +67,6 @@ interface Evaluation {
   students?: { name: string; phone: string } | null;
 }
 
-const isOverdue = (dateStr: string | null) => {
-  if (!dateStr) return false;
-  return (Date.now() - new Date(dateStr).getTime()) / 86400000 > 90;
-};
-
 function isValidCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [year, month, day] = value.split("-").map(Number);
@@ -98,7 +95,7 @@ export default function AgendarAvaliacao() {
   const [rDate, setRDate] = useState("");
   const [rTime, setRTime] = useState("09:00");
 
-  const { data: students } = useQuery({
+  const { data: students, error: studentsError } = useQuery({
     queryKey: ["students-evaluation-agenda"],
     queryFn: async () => {
       return fetchAllPages((from, to) => supabase
@@ -113,7 +110,7 @@ export default function AgendarAvaliacao() {
     if (pre && students?.some((s) => s.id === pre)) setStudentId(pre);
   }, [students, searchParams]);
 
-  const { data: evaluations } = useQuery({
+  const { data: evaluations, error: evaluationsError } = useQuery({
     queryKey: ["evaluations-list"],
     queryFn: async () => {
       const data = await fetchAllPages((from, to) => supabase
@@ -123,6 +120,24 @@ export default function AgendarAvaliacao() {
       return data as Evaluation[];
     },
   });
+
+  const settingsQuery = useQuery({
+    queryKey: ["automation-settings"],
+    queryFn: fetchAutomationSettings,
+  });
+  let daysOverdue: number | null = null;
+  let deadlineError: unknown = settingsQuery.error;
+  if (!deadlineError && settingsQuery.data) {
+    try { daysOverdue = evaluationDaysOverdue(settingsQuery.data.evaluation_invite?.params?.days_overdue); }
+    catch (error) { deadlineError = error; }
+  }
+  const dueError = deadlineError || studentsError || evaluationsError;
+  const dueReady = !dueError && daysOverdue !== null && students !== undefined && evaluations !== undefined;
+  const now = Date.now();
+  const futureStudentIds = new Set((evaluations ?? []).filter(e =>
+    e.status === "scheduled" && Date.parse(e.scheduled_at) >= now).map(e => e.student_id));
+  const dueStudents = dueReady ? students.filter(s =>
+    needsEvaluation(s, daysOverdue!, futureStudentIds.has(s.id), now)) : [];
 
   const selected = useMemo(
     () => students?.find((s) => s.id === studentId),
@@ -141,38 +156,21 @@ export default function AgendarAvaliacao() {
     const today = (evaluations || []).filter(
       (e) => e.status === "scheduled" && isToday(new Date(e.scheduled_at)),
     ).length;
-    const activeStudents = (students || []).filter((s) => s.status === "active");
-    const studentsWithFuture = new Set(
-      scheduledFuture.map((e) => e.student_id),
-    );
-    const overdue = activeStudents.filter((s) => {
-      if (studentsWithFuture.has(s.id)) return false;
-      if (s.last_evaluation_date) return isOverdue(s.last_evaluation_date);
-      return !s.had_evaluation && differenceInDays(new Date(), new Date(s.created_at)) > 14;
-    }).length;
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
     const noShowMonth = (evaluations || []).filter(
       (e) => e.status === "no_show" && new Date(e.scheduled_at) >= monthStart,
     ).length;
-    return { scheduled, today, overdue, noShowMonth };
-  }, [evaluations, students, scheduledFuture]);
+    return { scheduled, today, noShowMonth };
+  }, [evaluations, scheduledFuture]);
 
   // fila de vencidos (top 20 mais antigos, excluindo quem já tem avaliação futura)
-  const overdueQueue = useMemo(() => {
-    const studentsWithFuture = new Set(scheduledFuture.map((e) => e.student_id));
-    const candidates = (students || [])
-      .filter((s) => s.status === "active" && !studentsWithFuture.has(s.id))
-      .filter((s) => {
-        if (s.last_evaluation_date) return isOverdue(s.last_evaluation_date);
-        return !s.had_evaluation && differenceInDays(new Date(), new Date(s.created_at)) > 14;
-      })
+  const overdueQueue = dueStudents
       .sort((a, b) => {
         const aRef = a.last_evaluation_date || a.created_at;
         const bRef = b.last_evaluation_date || b.created_at;
         return new Date(aRef).getTime() - new Date(bRef).getTime();
-      });
-    return candidates.slice(0, 20);
-  }, [students, scheduledFuture]);
+      })
+      .slice(0, 20);
 
   // agrupar por dia
   const grouped = useMemo(() => {
@@ -442,8 +440,9 @@ export default function AgendarAvaliacao() {
         </Card>
         <Card className="border-l-4 border-l-warning">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Vencidas (+90d)</p>
-            <p className="text-2xl font-bold text-warning">{stats.overdue}</p>
+            <p className="text-sm text-muted-foreground">Precisam de avaliação</p>
+            <p className="text-2xl font-bold text-warning">{dueReady ? dueStudents.length : "—"}</p>
+            {daysOverdue !== null && <p className="text-xs text-muted-foreground">Mais de {daysOverdue} dias; primeira avaliação após 14 dias</p>}
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-destructive">
@@ -580,16 +579,27 @@ export default function AgendarAvaliacao() {
                 <AlertTriangle className="h-5 w-5 text-warning" />
                 Fila de Vencidos
               </CardTitle>
-              <CardDescription>Top 20 alunos sem avaliação há mais tempo.</CardDescription>
+              <CardDescription>Até 20 alunos ativos, sem avaliação futura. {daysOverdue !== null && `Reavaliação após mais de ${daysOverdue} dias; primeira avaliação após 14 dias de cadastro.`}</CardDescription>
             </CardHeader>
             <CardContent>
-              {overdueQueue.length === 0 ? (
+              {dueError ? (
+                <div role="alert" className="space-y-2 text-sm text-destructive">
+                  <p>Não foi possível calcular quem precisa de avaliação. {errorMessage(dueError)}</p>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    void qc.invalidateQueries({ queryKey: ["automation-settings"] });
+                    void qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
+                    void qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+                  }}>Tentar novamente</Button>
+                </div>
+              ) : !dueReady ? (
+                <p role="status" className="text-sm text-muted-foreground py-6">Carregando alunos e prazo de avaliação…</p>
+              ) : overdueQueue.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">Nada vencido — 👏</p>
               ) : (
                 <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                   {overdueQueue.map((s) => {
                     const ref = s.last_evaluation_date || s.created_at;
-                    const days = differenceInDays(new Date(), new Date(ref));
+                    const days = Math.floor(elapsedEvaluationDays(ref, now));
                     return (
                       <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 hover:bg-accent/40">
                         <div className="min-w-0">

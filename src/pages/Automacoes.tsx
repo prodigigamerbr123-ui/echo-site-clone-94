@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { fetchAutomationSettings, automationTemplates, type AutomationParams, AutomationSettingsMap } from "@/lib/automationSettings";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+import { DEFAULT_EVALUATION_DAYS_OVERDUE } from "@/lib/evaluationDue";
 
 
 type ParamDef = { name: string; label: string; fallback: number; suffix?: string };
@@ -45,7 +46,7 @@ const AUTOMATIONS: AutomationDef[] = [
     messageTypes: [{ type: "evaluation_reminder", label: "Convite de avaliação" }],
     placeholders: ["{nome}"],
     params: [
-      { name: "days_overdue", label: "Dias sem avaliação", fallback: 30, suffix: "dias" },
+      { name: "days_overdue", label: "Dias sem avaliação", fallback: DEFAULT_EVALUATION_DAYS_OVERDUE, suffix: "dias" },
       
       { name: "min_interval_days", label: "Intervalo mín. entre envios (mesmo aluno)", fallback: 14, suffix: "dias" },
       { name: "max_attempts", label: "Máx. de tentativas por aluno", fallback: 3, suffix: "envios" },
