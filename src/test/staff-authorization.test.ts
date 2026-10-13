@@ -67,6 +67,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(resolve("supabase/migrations/20261012010000_persist_ai_confirmations.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261013010000_automation_run_history.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261013020000_dashboard_snapshot.sql"), "utf8"));
+  await db.exec(readFileSync(resolve("supabase/migrations/20261013030000_durable_ai_chat.sql"), "utf8"));
   await db.query("INSERT INTO staff_members(user_id,role) VALUES ($1,'recepcao'),($2,'avaliador')", [ids.reception, ids.evaluator]);
   await db.query("INSERT INTO students(id,name,phone,status) VALUES ($1,'Aluno fictício','43999999999','active')", [ids.student]);
 }, 60_000);
@@ -402,4 +403,100 @@ describe("snapshot de dados do painel", () => {
     expect(()=>dashboardSnapshot({...result,stats:{...result.stats,messagesSentToday:-1}})).toThrow();
     expect(()=>dashboardSnapshot({...result,actions:[{id:'malformed'}]})).toThrow();
   });
+});
+
+
+const chatId='00000000-0000-4000-8000-000000000301';
+const secondChatId='00000000-0000-4000-8000-000000000302';
+const proposalId='00000000-0000-4000-8000-000000000303';
+const messageId='00000000-0000-4000-8000-000000000304';
+async function withChat(test:()=>Promise<void>) {
+  await db.query("INSERT INTO ai_conversations(id,owner_id,title) VALUES ($1,$3,'Fixture chat'),($2,$3,'Outra fixture')",[chatId,secondChatId,ids.admin]);
+  try {await test();} finally {
+    await db.exec('RESET ROLE');
+    await db.query("UPDATE ai_pending_actions SET state='failed' WHERE conversation_id=ANY($1::uuid[]) AND state='executing'",[[chatId,secondChatId]]);
+    await db.query('DELETE FROM ai_conversations WHERE id=ANY($1::uuid[])',[[chatId,secondChatId]]);
+  }
+}
+async function storedProposal(state='pending') {
+  await db.query(`INSERT INTO ai_pending_actions(id,owner_id,conversation_id,tool,args,description,state)
+    VALUES ($1,$2,$3,'create_student','{"name":"Fixture","phone":"fixture"}','Criar aluno Fixture',$4)`,[proposalId,ids.admin,chatId,state]);
+  await asUser('admin',"SELECT append_ai_message_tx($1,$2,'assistant','Confirme a proposta',$3)",[messageId,chatId,proposalId]);
+}
+async function history(user:'admin'|'reception'|'evaluator'='admin') {
+  return (await asUser<{result:{version:number;messages:{id:string;content:string;pendingAction:{id:string;description:string}|null;actionState:string|null}[]}}>(user,
+    'SELECT get_ai_conversation_history($1) AS result',[chatId])).rows[0].result;
+}
+describe('histórico durável e propostas de IA',()=> {
+  it('salva uma mensagem uma única vez e rejeita reutilizar o ID com outro texto',()=>withChat(async()=> {
+    const query="SELECT append_ai_message_tx($1,$2,'user',$3)";
+    await asUser('admin',query,[messageId,chatId,'Pergunta fixture']);
+    await asUser('admin',query,[messageId,chatId,'Pergunta fixture']);
+    expect((await history()).messages).toHaveLength(1);
+    await expect(asUser('admin',query,[messageId,chatId,'Texto diferente'])).rejects.toMatchObject({code:'22023'});
+    expect((await history()).messages[0].content).toBe('Pergunta fixture');
+  }));
+  it('recupera o cartão e seu cancelamento do servidor sem permitir execução posterior',()=>withChat(async()=> {
+    await storedProposal();
+    expect((await history()).messages[0]).toMatchObject({pendingAction:{id:proposalId,description:'Criar aluno Fixture'},actionState:'pending'});
+    await db.exec('SET ROLE service_role');
+    const rejected=await db.query<{result:{state:string}}>('SELECT reject_ai_action_tx($1,$2) AS result',[proposalId,ids.admin]);
+    expect(rejected.rows[0].result.state).toBe('rejected');
+    const claimed=await db.query<{result:{state:string}}>('SELECT claim_ai_action_tx($1,$2) AS result',[proposalId,ids.admin]);
+    expect(claimed.rows[0].result.state).toBe('rejected');
+    await db.exec('RESET ROLE');
+    expect((await history()).messages[0].actionState).toBe('rejected');
+  }));
+  it('distingue falha, operação bloqueada, execução concluída e expiração',()=>withChat(async()=> {
+    await storedProposal();
+    await db.query("UPDATE ai_pending_actions SET state='failed' WHERE id=$1",[proposalId]);
+    expect((await history()).messages[0].actionState).toBe('failed');
+    await db.query(`UPDATE ai_pending_actions SET state='completed',result='{"success":false}' WHERE id=$1`,[proposalId]);
+    expect((await history()).messages[0].actionState).toBe('blocked');
+    await db.query(`UPDATE ai_pending_actions SET result='{"success":true}' WHERE id=$1`,[proposalId]);
+    expect((await history()).messages[0].actionState).toBe('completed');
+    await db.query("UPDATE ai_pending_actions SET state='pending',expires_at=now()-interval '1 minute' WHERE id=$1",[proposalId]);
+    expect((await history()).messages[0].actionState).toBe('expired');
+  }));
+  it('nega histórico alheio e ligação de proposta a outra conversa',()=>withChat(async()=> {
+    await storedProposal();
+    await expect(history('reception')).rejects.toMatchObject({code:'42501'});
+    await expect(history('evaluator')).rejects.toMatchObject({code:'42501'});
+    await expect(asUser('reception',"SELECT append_ai_message_tx($1,$2,'user','forged')",[messageId,chatId])).rejects.toMatchObject({code:'42501'});
+    await expect(asUser('admin',"SELECT append_ai_message_tx(gen_random_uuid(),$1,'assistant','forged',$2)",[secondChatId,proposalId])).rejects.toMatchObject({code:'42501'});
+    await expect(asUser('admin','SELECT reject_ai_action_tx($1,$2)',[proposalId,ids.admin])).rejects.toMatchObject({code:'42501'});
+    await expect(asUser('admin','SELECT * FROM ai_pending_actions')).rejects.toMatchObject({code:'42501'});
+  }));
+  it('mantém o histórico completo acima de 1000 mensagens',()=>withChat(async()=> {
+    await db.query(`INSERT INTO ai_messages(conversation_id,role,content,created_at)
+      SELECT $1,'user','Mensagem '||g,now()+g*interval '1 microsecond' FROM generate_series(1,1005) g`,[chatId]);
+    const result=await history();
+    expect(result.messages).toHaveLength(1005);
+    expect(result.messages[0].content).toBe('Mensagem 1');
+    expect(result.messages[1004].content).toBe('Mensagem 1005');
+  }));
+  it('bloqueia exclusão enquanto a ação está em execução e não cancela o que já começou',()=>withChat(async()=> {
+    await storedProposal('executing');
+    await expect(asUser('admin','DELETE FROM ai_conversations WHERE id=$1',[chatId])).rejects.toThrow('Há uma ação em execução');
+    await db.exec('SET ROLE service_role');
+    const result=await db.query<{result:{state:string}}>('SELECT reject_ai_action_tx($1,$2) AS result',[proposalId,ids.admin]);
+    expect(result.rows[0].result.state).toBe('executing');
+    await db.exec('RESET ROLE');
+    expect((await history()).messages[0].actionState).toBe('executing');
+  }));
+});
+
+
+describe('vínculo entre pergunta e resposta',()=> {
+  it('impede associar uma resposta a outra conversa ou reutilizar seu ID para outra pergunta',()=>withChat(async()=> {
+    const secondQuestion='00000000-0000-4000-8000-000000000305';
+    const answer='00000000-0000-4000-8000-000000000306';
+    await asUser('admin',"SELECT append_ai_message_tx($1,$2,'user','Pergunta 1')",[messageId,chatId]);
+    await asUser('admin',"SELECT append_ai_message_tx($1,$2,'user','Pergunta 2')",[secondQuestion,chatId]);
+    await asUser('admin',"SELECT append_ai_message_tx($1,$2,'assistant','Resposta',NULL,$3)",[answer,chatId,messageId]);
+    await expect(asUser('admin',"SELECT append_ai_message_tx($1,$2,'assistant','Resposta',NULL,$3)",[answer,chatId,secondQuestion])).rejects.toMatchObject({code:'22023'});
+    await expect(asUser('admin',"SELECT append_ai_message_tx(gen_random_uuid(),$1,'assistant','Resposta',NULL,$2)",[secondChatId,messageId])).rejects.toMatchObject({code:'42501'});
+    const result=await asUser<{result:{messages:{id:string;replyTo:string|null}[]}}>('admin','SELECT get_ai_conversation_history($1) AS result',[chatId]);
+    expect(result.rows[0].result.messages.find(m=>m.id===answer)?.replyTo).toBe(messageId);
+  }));
 });

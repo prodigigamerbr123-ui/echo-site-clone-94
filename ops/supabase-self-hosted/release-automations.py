@@ -4,18 +4,22 @@ import datetime, hashlib, json, os, pathlib, shutil, subprocess, sys, time
 
 CONTRACTS = '--contracts' in sys.argv
 DASHBOARD = '--dashboard' in sys.argv
-if CONTRACTS and DASHBOARD:
+CHAT = '--chat' in sys.argv
+if sum([CONTRACTS,DASHBOARD,CHAT])>1:
     raise RuntimeError('Choose one release kind')
 if CONTRACTS:
     sys.argv.remove('--contracts')
 if DASHBOARD:
     sys.argv.remove('--dashboard')
-ROOT = pathlib.Path('/opt/workout-releases/20261013-dashboard' if DASHBOARD else
+if CHAT:
+    sys.argv.remove('--chat')
+ROOT = pathlib.Path('/opt/workout-releases/20261013-chat' if CHAT else '/opt/workout-releases/20261013-dashboard' if DASHBOARD else
                     '/opt/workout-releases/20261013-contracts' if CONTRACTS else '/opt/workout-releases/20261013-automations')
 STACK = pathlib.Path('/opt/workout-supabase')
 DB = 'workout-supabase-db'
-VERSION = '20261013020000' if DASHBOARD else '20261013010000'
-FILES = (['_shared/database.types.ts', '_shared/messageTemplates.ts', '_shared/templateResolver.ts',
+VERSION = '20261013030000' if CHAT else '20261013020000' if DASHBOARD else '20261013010000'
+FILES = (['_shared/database.types.ts','_shared/aiChatContracts.ts','ai-assistant/index.ts'] if CHAT else
+         ['_shared/database.types.ts', '_shared/messageTemplates.ts', '_shared/templateResolver.ts',
           '_shared/dashboardContracts.ts', '_shared/contracts.ts', '_shared/aiContracts.ts', 'daily-briefing/index.ts'] if DASHBOARD else
          ['_shared/database.types.ts', '_shared/evaluations.ts', '_shared/evolution.ts',
           '_shared/messageTemplates.ts', '_shared/aiContracts.ts', '_shared/contracts.ts',
@@ -71,10 +75,12 @@ if phase == 'preflight':
     if sql("SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261012010000'") != '1':
         raise RuntimeError('Required previous migration absent')
     history_missing = sql("SELECT to_regclass('public.automation_runs') IS NULL") == 't'
-    if history_missing == (CONTRACTS or DASHBOARD):
+    if history_missing == (CONTRACTS or DASHBOARD or CHAT):
         raise RuntimeError('Unexpected automation history schema; inspect release state')
-    if (CONTRACTS or DASHBOARD) and sql("SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261013010000'") != '1':
+    if (CONTRACTS or DASHBOARD or CHAT) and sql("SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261013010000'") != '1':
         raise RuntimeError('Required automation history migration absent')
+    if CHAT and sql("SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version='20261013020000'") != '1':
+        raise RuntimeError('Required dashboard migration absent')
     for name in FILES:
         target = STACK/'volumes/functions'/name
         before = target.read_bytes().replace(b'\r\n', b'\n') if target.exists() else None
@@ -95,7 +101,7 @@ elif phase == 'prepare':
     if not jobs or len(jobs) != 2:
         raise RuntimeError('Unexpected cron configuration')
     state = {'phase': 'pausing', 'jobs': jobs,
-             'release_kind': 'dashboard' if DASHBOARD else 'contracts' if CONTRACTS else 'automation_history',
+             'release_kind': 'chat' if CHAT else 'dashboard' if DASHBOARD else 'contracts' if CONTRACTS else 'automation_history',
              'new_files': [],
              'prepared_utc': datetime.datetime.now(datetime.timezone.utc).isoformat()}
     save(state)
@@ -144,9 +150,9 @@ elif phase == 'apply':
         raise RuntimeError('Independent backup verification missing')
     verify_package()
     if not CONTRACTS:
-        migration = (ROOT/('dashboard.sql' if DASHBOARD else 'automation-history.sql')).read_text()
+        migration = (ROOT/('chat.sql' if CHAT else 'dashboard.sql' if DASHBOARD else 'automation-history.sql')).read_text()
         migration = migration.replace('BEGIN;', 'BEGIN;\nSET LOCAL ROLE postgres;', 1)
-        migration_name = 'dashboard_snapshot' if DASHBOARD else 'automation_run_history'
+        migration_name = 'durable_ai_chat' if CHAT else 'dashboard_snapshot' if DASHBOARD else 'automation_run_history'
         migration = migration.replace('COMMIT;', "RESET ROLE;\nINSERT INTO supabase_migrations.schema_migrations(version,name) VALUES ('"+VERSION+"','"+migration_name+"');\nCOMMIT;")
         sql(migration)
         state['phase'] = 'migration_applied'

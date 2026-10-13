@@ -39,13 +39,15 @@ export type Database = {
         Relationships: []
       }
       ai_pending_actions: {
-        Row: { id: string; owner_id: string; tool: string; args: Json; state: string; result: Json | null; created_at: string; expires_at: string }
-        Insert: { id?: string; owner_id: string; tool: string; args: Json; state?: string; result?: Json | null; created_at?: string; expires_at?: string }
+        Row: { id: string; owner_id: string; conversation_id: string | null; description: string; tool: string; args: Json; state: string; result: Json | null; created_at: string; expires_at: string }
+        Insert: { id?: string; owner_id: string; conversation_id?: string | null; description?: string; tool: string; args: Json; state?: string; result?: Json | null; created_at?: string; expires_at?: string }
         Update: { id?: string; owner_id?: string; tool?: string; args?: Json; state?: string; result?: Json | null; created_at?: string; expires_at?: string }
         Relationships: []
       }
       ai_messages: {
         Row: {
+          action_id: string | null
+          reply_to: string | null
           content: string
           conversation_id: string
           created_at: string
@@ -53,6 +55,8 @@ export type Database = {
           role: string
         }
         Insert: {
+          action_id?: string | null
+          reply_to?: string | null
           content: string
           conversation_id: string
           created_at?: string
@@ -60,6 +64,8 @@ export type Database = {
           role: string
         }
         Update: {
+          action_id?: string | null
+          reply_to?: string | null
           content?: string
           conversation_id?: string
           created_at?: string
@@ -403,6 +409,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+    append_ai_message_tx: { Args: { _id: string; _conversation_id: string; _role: string; _content: string; _action_id?: string | null; _reply_to?: string | null }; Returns: string }
+    get_ai_conversation_history: { Args: { _conversation_id: string }; Returns: Json }
+    reject_ai_action_tx: { Args: { _id: string; _owner_id: string }; Returns: Json }
     get_workout_dashboard: { Args: Record<PropertyKey, never>; Returns: Json }
       claim_ai_action_tx: { Args: { _id: string; _owner_id: string }; Returns: Json }
       finish_ai_action_tx: { Args: { _id: string; _owner_id: string; _result: Json; _failed?: boolean }; Returns: undefined }
