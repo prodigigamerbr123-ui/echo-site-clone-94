@@ -27,3 +27,14 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Local audit captures and generated reports (keep Markdown and SQL visible)
+docs/auditoria-*/*.jpg
+docs/auditoria-*/*.png
+docs/auditoria-*/*.json
+__pycache__/
+*.pyc
+
+# Local deployment and staging leftovers
+*.tmp
+*.bak

@@ -155,8 +155,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in ai-database-actions function:', error);
     return new Response(JSON.stringify({
-      error: 'Erro interno do servidor',
-      details: error instanceof Error ? error.message : String(error)
+      error: 'Erro interno do servidor'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -3,6 +3,23 @@
  * No production environment files are loaded. SQL/RLS is covered separately.
  */
 import { assertEquals, assert } from "https://deno.land/std@0.190.0/testing/asserts.ts";
+import { requireCronSecret } from "../functions/_shared/auth.ts";
+
+Deno.test("cron secrets are accepted only in headers", () => {
+  const previous = Deno.env.get("CRON_SECRET");
+  try {
+    Deno.env.set("CRON_SECRET", "isolated-cron-secret");
+    assertEquals(requireCronSecret(new Request("http://localhost/?cron_secret=isolated-cron-secret"))?.status, 401);
+    assertEquals(requireCronSecret(new Request("http://localhost/", { headers: { "x-cron-secret": "wrong" } }))?.status, 401);
+    assertEquals(requireCronSecret(new Request("http://localhost/"))?.status, 401);
+    assertEquals(requireCronSecret(new Request("http://localhost/", { headers: { "x-cron-secret": "isolated-cron-secret" } })), null);
+    Deno.env.delete("CRON_SECRET");
+    assertEquals(requireCronSecret(new Request("http://localhost/"))?.status, 500);
+  } finally {
+    if (previous === undefined) Deno.env.delete("CRON_SECRET");
+    else Deno.env.set("CRON_SECRET", previous);
+  }
+});
 
 const studentId = "00000000-0000-4000-8000-000000000020";
 const evaluationId = "00000000-0000-4000-8000-000000000030";
@@ -10,6 +27,7 @@ const roles = new Map<string, string | null>();
 const tokens = new Map<string, string>();
 const requests: { path: string; method: string; body: unknown; role: string | null }[] = [];
 let roleServiceUnavailable = false;
+let databaseUnavailable = false;
 const env = {
   SUPABASE_URL: "http://127.0.0.1:18081",
   SUPABASE_ANON_KEY: "staging-public-placeholder",
@@ -41,7 +59,8 @@ async function upstream(req: Request): Promise<Response> {
   if (url.pathname === "/rest/v1/rpc/current_staff_role") return roleServiceUnavailable ? json({ message: "Fixture unavailable" }, 500) : json(role);
   if (url.pathname === "/rest/v1/students") return json([{ id: studentId, name: "Aluno fictício" }]);
   if (url.pathname === "/rest/v1/scheduled_messages") return json(null, 201);
-  if (url.pathname === "/rest/v1/rpc/complete_evaluation_tx") return json(null);
+  if (url.pathname === "/rest/v1/rpc/complete_evaluation_tx") return databaseUnavailable
+    ? json({ message: "private-db-detail-marker", details: "private-schema-marker" }, 500) : json(null);
   if (url.pathname === "/instance/status") return json({ data: { connected: true, loggedIn: true, state: "open" } });
   if (url.pathname === "/instance/qr") return json({ data: { code: null } });
   return json({ error: "Unimplemented fixture route" }, 404);
@@ -132,6 +151,12 @@ Deno.test("staff HTTP authorization and compatibility endpoints", async (t) => {
         assertEquals(result.status, 200);
         assertEquals(requests.slice(before).find(r => r.path === "/rest/v1/rpc/complete_evaluation_tx")?.body, { _evaluation_id: evaluationId });
         assert(!requests.slice(before).some(r => r.path === "/rest/v1/students"));
+        databaseUnavailable = true;
+        try {
+          const failure = await call(admin, { action: "update_student_evaluation", userConfirmation: true, params: { evaluation_id: evaluationId } });
+          assertEquals(failure.status, 500);
+          assertEquals(failure.data, { error: "Erro interno do servidor" });
+        } finally { databaseUnavailable = false; }
       } finally { await stop(); }
     });
     await t.step("WhatsApp: staff can read status, only admin can consult QR or disconnect", async () => {

@@ -31,7 +31,7 @@ serve(async (req: Request) => {
   } catch (error: unknown) {
     console.error("whatsapp-diagnostic error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Internal error" }),
+      JSON.stringify({ error: "Não foi possível consultar o diagnóstico do WhatsApp" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
