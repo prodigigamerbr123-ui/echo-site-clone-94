@@ -50,6 +50,8 @@ Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e age
 
 ## Evidências atuais
 
+Segurança da infraestrutura posterior: `docs/auditoria-2026-10-11/storage-seguranca-2026-10-14.md`. Storage security2 publicado, zero críticos/altos na varredura, 25 médios, 31 checks de homologação e serviços conferidos. Backup `20261014T182248Z` com quatro arquivos e dois arquivos privados de release copiados/hashes comparados. Rollback de imagem/compose em `ops/supabase-self-hosted/storage-security/dependencies/release.py`; estado privado na VM. Não executar scripts de release anteriores contra a imagem nova.
+
 Conferência mais recente: `docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md`, com 306 testes, homologação integrada e publicação de `892bb88` pelo workflow `38611036898`, concluído com sucesso. Backup `20261014T175538Z`, quatro arquivos e SHA256 local/remoto conferidos. Dashboard, agenda e histórico conferidos por leitura em produção.
 
 - Agenda/histórico: correções locais documentadas em `docs/auditoria-2026-10-11/agenda-recuperacao-local-2026-10-14.md`, com lint, tipos, build e 298 testes em 35 arquivos. Ainda sem publicação desse lote.
