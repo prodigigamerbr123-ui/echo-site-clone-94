@@ -68,3 +68,7 @@ Evidências técnicas locais: `C:/Users/pejon/.codex/ssh-workout04/workout-gatew
 Storage e os demais containers ainda têm alertas pendentes. Atualização de banco e migrações deve ter validação própria. Um exercício completo de restauração e testes de carga prolongada continuam pendentes.
 
 Referências: [avisos Nginx](https://nginx.org/en/security_advisories.html), [versões Envoy](https://github.com/envoyproxy/envoy/releases), [versões Storage](https://github.com/supabase/storage/releases).
+
+## Atualização posterior: Storage
+
+O primeiro lote do Storage foi publicado depois deste relatório: zero alertas críticos e 41 altos, preservando aplicação e esquema do banco. Os detalhes e limites estão em [storage-seguranca-2026-10-13.md](storage-seguranca-2026-10-13.md). Os demais serviços continuam pendentes.
