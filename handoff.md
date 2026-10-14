@@ -6,9 +6,9 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 ## Estado atual e regras de continuidade
 
-> Pooler: candidata com nove bibliotecas corrigidas e Finch ajustado, dez versões únicas conferidas; **21 verificações isoladas passaram**. Consulta Hex: 61 → seis registros, 12 → quatro pacotes; os demais locks Hex/Git foram preservados. Imagem candidata mantém zero críticos/48 altos de sistema operacional; **publicação bloqueada**. Produção continua na imagem original saudável, com 26 críticos/731 altos na varredura de 14/10. Ver [correções, evidências e pendências](docs/auditoria-2026-10-11/pooler-dependencias-2026-10-14.md).
+> Pooler publicado: `workout-supavisor:2.9.12-security1`, imagem `1f3562efb570…`, saudável, com nove bibliotecas corrigidas + Finch, execução sem root, rootfs somente para leitura e sem capabilities. **32 verificações isoladas e 12 pós-publicação passaram**. Zero críticos e 48 ocorrências altas (10 CVEs revisados); seis registros Hex residuais continuam abertos. Backup ampliado para cinco arquivos, restore dos metadados comprovado e imagem copiada para fora da VM. Ver [publicação e riscos restantes](docs/auditoria-2026-10-11/pooler-publicacao-2026-10-14.md).
 
-> Segurança da VM atualizada: nova varredura das 15 imagens/16 containers e publicação do Storage security2, imagem `8117cb0357a0…`, com zero críticos/altos e 25 médios. Passaram 31 verificações isoladas; backup `20261014T182248Z` e seis arquivos privados conferidos. Somente Storage foi recriado; dados e migrações preservados. Ver [varredura](docs/auditoria-2026-10-11/runtime-seguranca-2026-10-14.md) e [entrega Storage](docs/auditoria-2026-10-11/storage-seguranca-2026-10-14.md). Outros containers continuam com achados; prioridade seguinte inclui pooler Debian 11 fora do LTS. Esta atualização de infraestrutura não mudou o frontend.
+> Segurança da VM atualizada: nova varredura das 15 imagens/16 containers e publicação do Storage security2, imagem `8117cb0357a0…`, com zero críticos/altos e 25 médios. Passaram 31 verificações isoladas; backup `20261014T182248Z` e seis arquivos privados conferidos. Naquela entrega, somente Storage foi recriado; dados e migrações preservados. Ver [varredura](docs/auditoria-2026-10-11/runtime-seguranca-2026-10-14.md) e [entrega Storage](docs/auditoria-2026-10-11/storage-seguranca-2026-10-14.md). Outros containers continuam com achados; o pooler foi atualizado posteriormente conforme o relatório acima. Esta atualização de infraestrutura não mudou o frontend.
 
 > Entrega publicada: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`, [workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso. Homologação integrada de criação, remarcação, histórico e edição/conflito de notas; 306 testes em 36 arquivos. Backup `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Dashboard, agenda e histórico conferidos em produção sem escrita. Ver [relatório da entrega](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md). Execução diária natural também confirmada no item 35.
 
@@ -60,7 +60,7 @@ Os números desta seção vêm das últimas varreduras documentadas. Não repres
 | --- | --- | --- | --- |
 | 20 | Inventário atualizado dos containers | Concluído para o snapshot de 14/10 | Varredura de 15 imagens/16 containers, IDs imutáveis e evidência privada copiada. Manter atualização periódica. |
 | 21 | Dependências vulneráveis do Storage | Altos corrigidos e publicação concluída | security2: zero críticos/altos, 25 médios; 31 checks isolados e produção saudável. Tratar os médios em lote próprio. |
-| 22 | Outros containers do Supabase | Pooler com dependências corrigidas na candidata; publicação bloqueada | Nove bibliotecas + Finch, 21 checks, Hex 61 → seis registros em quatro pacotes. Triar residuais, 48 altos do Debian, privilégios, metadados restaurados e carga; produção permanece no Debian 11 original. Revisar também Auth, Realtime, Studio, Meta, PostgREST, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
+| 22 | Outros containers do Supabase | Pooler corrigido e endurecido em produção; residuais abertos | security1: zero críticos/48 altos revisados, 32 checks isolados e 12 pós-troca. Resolver dependências residuais e reduzir privilégios de banco; revisar Auth, Realtime, Studio, Meta, PostgREST, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
 | 23 | Alertas residuais da Evolution | Acompanhamento pendente | Revisar alerta médio relacionado a RabbitMQ e aviso de situação desconhecida em OpenPGP; verificar antes de habilitar AMQP. |
 | 24 | Atualizações futuras da Evolution | Processo pendente de consolidação | Preservar licença, sessão e ajustes necessários; validar compatibilidade e retorno. |
 | 25 | Alertas médios/baixos dos gateways | Não encerrado | Avaliar os restantes e atualizar a varredura de Nginx/Envoy. |
@@ -76,9 +76,9 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
-| 31 | Restauração completa em ambiente isolado | Pendente | Restaurar banco, Auth, arquivos e funções e verificar funcionamento integrado. |
-| 32 | Funcionamento atual dos backups automáticos | Configurado anteriormente | Conferir execuções recentes, falhas e integridade das cópias. |
-| 33 | Independência e retenção das cópias | Revisão pendente | Avaliar cópias fora da VM, dependência do computador local, retenção e preservação externa das imagens customizadas necessárias à recuperação. |
+| 31 | Restauração completa em ambiente isolado | Parcial; metadados do pooler restaurados | Dump de `_supabase` restaurado isoladamente, contagens/migrações/hashes conferidos. Falta restauração integrada de banco principal, Auth, arquivos e funções, com RTO/RPO. |
+| 32 | Funcionamento atual dos backups automáticos | Timer ativo; cobertura ampliada e validada manualmente | Último automático 14/10 06:03 UTC, sucesso. Dois novos backups manuais incluem `pooler.dump` e configurações pooler/Envoy; cinco arquivos copiados e conferidos. Observar primeira execução automática com a nova cobertura. |
+| 33 | Independência e retenção das cópias | Cópias locais verificadas; independência externa pendente | Imagem do pooler exportada e 14 blobs OCI verificados fora da VM. Preservar outras imagens customizadas, armazenamento externo independente e política de retenção; hoje são 14 snapshots completos, não dias. |
 | 34 | Tempo e perda máxima de recuperação | Não definidos formalmente | Medir o restore e registrar RTO/RPO compatíveis com a academia. |
 | 35 | Primeira execução diária natural das automações | Confirmada em produção por leitura | Execução de 14/10 às 08:00 de Brasília: success, sem erro, zero candidatos e zero mensagens. Ver conferência operacional de 14/10; acompanhar ciclos seguintes e cenários com candidatos. |
 | 36 | Estabilidade prolongada da fila | Validação parcial | Observar operação contínua, reconexões, latência, falhas e recuperação. |
@@ -97,7 +97,7 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 | 44 | Performance real do frontend | Bundle e carregamento por rotas melhoraram | Medir carregamento em celular/rede lenta, navegação e consumo de recursos. |
 | 45 | Consultas que carregam todos os registros | Ainda existem | Avaliar paginação e filtros no servidor conforme o volume crescer. |
 | 46 | README completo | Iniciado pelo outro chat | Completar configuração, execução local, arquitetura e referências operacionais. |
-| 47 | Runbook operacional | Criado, ainda parcial | Detalhar comandos e procedimentos comprovados de publicação, backup, restore, retorno e incidentes. |
+| 47 | Runbook operacional | Atualizado; recuperação completa pendente | Backup de cinco arquivos, restore de metadados e publicação/retorno do pooler documentados. Completar recuperação integrada, incidentes e armazenamento externo. |
 | 48 | Deploy de frontend e backend | Processos existentes | Documentar dependências, ordem de migrações e compatibilidade entre versões. |
 | 49 | Organização das evidências | Muitos relatórios disponíveis | Criar índice consolidado e indicar quais relatórios substituem os anteriores. |
 | 50 | Arquivos locais não rastreados | Existem documentos e scripts | Revisar o que deve entrar no Git e manter material privado fora dele. |

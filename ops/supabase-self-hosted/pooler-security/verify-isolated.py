@@ -27,12 +27,14 @@ def run(args, data=None):
 def main():
     global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--candidate', choices=['baseline', 'dependencies'], default='baseline')
+    parser.add_argument('--candidate', choices=['baseline', 'dependencies', 'hardened'], default='baseline')
     parser.add_argument('--functional-only', action='store_true',
                         help='Test this private fixture even when the image scan blocks production promotion')
     args = parser.parse_args()
     if args.candidate == 'dependencies':
         ROOT = pathlib.Path('/home/ubuntu/workout-pooler-dependencies-20261014')
+    elif args.candidate == 'hardened':
+        ROOT = pathlib.Path('/home/ubuntu/workout-pooler-runtime-20261014')
     state = json.loads((ROOT / 'build-state.json').read_text())
     assert state['phase'] == 'scanned'
     image_scan_clear = state['counts'].get('CRITICAL', 0) == 0 and state['counts'].get('HIGH', 0) == 0
@@ -67,6 +69,8 @@ def main():
               'API_JWT_SECRET': secrets.token_hex(32), 'METRICS_JWT_SECRET': secrets.token_hex(32),
               'REGION': 'local', 'CLUSTER_POSTGRES': 'true', 'ERL_AFLAGS': '-proto_dist inet_tcp',
               'ERL_FLAGS': '+S 2:2', 'ECTO_IPV6': 'false', 'NODE_IP': '127.0.0.1'}
+    if args.candidate == 'hardened':
+        values['RELEASE_TMP'] = '/tmp/release'
     env = ROOT / 'fixture.env'
     env.write_text('\n'.join(k + '=' + v for k, v in values.items()) + '\n')
     config = ROOT / 'fixture.exs'
@@ -83,11 +87,20 @@ if !Supavisor.Tenants.get_tenant_by_external_id("audit") do
   {:ok, _} = Supavisor.Tenants.create_tenant(params)
 end
 ''')
+    if args.candidate == 'hardened':
+        # This file contains fixture code and environment lookups, never secrets.
+        config.chmod(0o644)
 
-    def start_pool():
+    def start_pool(selected_image=None):
+        selected_image = selected_image or image
+        restrictions = []
+        if args.candidate == 'hardened' and selected_image == image:
+            restrictions = ['--read-only', '--cap-drop', 'ALL', '--security-opt',
+                            'no-new-privileges=true', '--pids-limit', '256',
+                            '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777']
         run(['docker', 'run', '-d', '--name', POOL, '--network', NET, '--network-alias', 'pool',
              '--memory', '768m', '--cpus', '1', '--env-file', str(env),
-             '-v', str(config) + ':/etc/pooler/pooler.exs:ro', image, '/bin/sh', '-c',
+             *restrictions, '-v', str(config) + ':/etc/pooler/pooler.exs:ro', selected_image, '/bin/sh', '-c',
              '/app/bin/migrate && /app/bin/supavisor eval "$(cat /etc/pooler/pooler.exs)" && /app/bin/server'])
         for _ in range(90):
             result = subprocess.run(['docker', 'exec', POOL, 'curl', '-fsS', '--max-time', '2',
@@ -118,10 +131,41 @@ end
             "REVOKE ALL ON FUNCTION pgbouncer.get_auth(text) FROM PUBLIC; GRANT EXECUTE ON FUNCTION pgbouncer.get_auth(text) TO pgbouncer;"
             "CREATE TABLE public.pool_fixture(id integer primary key); GRANT SELECT,INSERT ON public.pool_fixture TO fixture_workout;")
         created.append(POOL)
+        if args.candidate == 'hardened':
+            old = 'sha256:464b93a60ba8c96bc06dad7f241562d6613b2a994922307717b05f432ae415c2'
+            start_pool(old)
+            for _ in range(20):
+                try:
+                    if client('SELECT 1;') == '1':
+                        break
+                except RuntimeError:
+                    pass
+                time.sleep(1)
+            else:
+                raise RuntimeError('Original image did not become SQL-ready')
+            old_migrations = sql("SELECT md5(string_agg(version::text,',' ORDER BY version)) FROM _supavisor.schema_migrations;", '_supabase')
+            old_users = sql("SELECT md5(string_agg(row_to_json(u)::text,'|' ORDER BY id)) FROM _supavisor.users u;", '_supabase')
+            run(['docker', 'rm', '-f', POOL])
         start_pool()
         inspected = json.loads(run(['docker', 'inspect', POOL]))[0]
         check('immutable_image', inspected['Image'] == image)
         check('no_published_ports', not inspected['HostConfig'].get('PortBindings'))
+        if args.candidate == 'hardened':
+            check('non_root_uid', run(['docker', 'exec', POOL, 'id', '-u']) == '65534')
+            check('root_filesystem_readonly', inspected['HostConfig']['ReadonlyRootfs'])
+            check('capabilities_dropped', inspected['HostConfig']['CapDrop'] == ['ALL'])
+            check('pids_bounded', inspected['HostConfig']['PidsLimit'] == 256)
+            status = run(['docker', 'exec', POOL, 'cat', '/proc/1/status'])
+            fields = dict(line.split(':', 1) for line in status.splitlines() if ':' in line)
+            check('effective_capabilities_zero', int(fields['CapEff'].strip(), 16) == 0)
+            check('no_new_privileges_active', fields['NoNewPrivs'].strip() == '1')
+            check('seccomp_filter_active', fields['Seccomp'].strip() == '2')
+            rejected = subprocess.run(['docker', 'exec', POOL, 'touch', '/app/.audit-write-probe'], capture_output=True)
+            check('application_write_rejected', rejected.returncode != 0)
+            run(['docker', 'exec', POOL, 'sh', '-c', 'touch /tmp/.audit-write-probe && rm /tmp/.audit-write-probe'])
+            check('temporary_write_allowed', True)
+            check('upgrade_migrations_unchanged', old_migrations == sql("SELECT md5(string_agg(version::text,',' ORDER BY version)) FROM _supavisor.schema_migrations;", '_supabase'))
+            check('upgrade_encrypted_users_preserved', old_users == sql("SELECT md5(string_agg(row_to_json(u)::text,'|' ORDER BY id)) FROM _supavisor.users u;", '_supabase'))
         # Wait for the SQL endpoint as well as the HTTP health endpoint.
         for attempt in range(20):
             try:
@@ -152,7 +196,7 @@ end
             check('privileged_catalog_denied', True)
         else:
             check('privileged_catalog_denied', False)
-        if args.candidate == 'dependencies':
+        if args.candidate in ('dependencies', 'hardened'):
             # Plug adapter keeps the real Req/JIT helper entirely inside this fixture.
             code = '''
 adapter = fn status, body -> fn conn ->

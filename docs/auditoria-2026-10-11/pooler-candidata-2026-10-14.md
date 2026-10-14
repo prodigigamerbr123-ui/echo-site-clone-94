@@ -1,5 +1,7 @@
 # Pooler: reconstrução, testes e bloqueios — 14/10/2026
 
+> Atualização posterior: pooler security1 publicado após revisão dos alertas residuais, endurecimento do runtime, 32 verificações isoladas, backup e restauração de metadados. Ver [publicação de 14/10](pooler-publicacao-2026-10-14.md). Os estados de candidata/bloqueio abaixo preservam a fotografia anterior.
+
 > Continuidade: uma candidata posterior corrigiu nove bibliotecas e ajustou Finch, passou em 21 verificações e reduziu a consulta Hex para seis registros em quatro pacotes. Ainda não publicada. Ver [correções de dependências](pooler-dependencias-2026-10-14.md). Os resultados abaixo preservam a etapa anterior.
 
 ## Resultado e produção

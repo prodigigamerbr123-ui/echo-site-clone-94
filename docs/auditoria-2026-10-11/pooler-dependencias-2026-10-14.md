@@ -1,5 +1,7 @@
 # Pooler: correções das dependências — 14/10/2026
 
+> Atualização posterior: pooler security1 publicado após revisão dos alertas residuais, endurecimento do runtime, 32 verificações isoladas, backup e restauração de metadados. Ver [publicação de 14/10](pooler-publicacao-2026-10-14.md). Os estados de candidata/bloqueio abaixo preservam a fotografia anterior.
+
 ## Resultado
 
 Candidata construída e validada, **não publicada**:

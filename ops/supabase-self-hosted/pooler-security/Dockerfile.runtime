@@ -1,0 +1,7 @@
+# build-runtime.py checks this local parent by immutable image ID.
+FROM workout-supavisor:2.9.12-dependencies-candidate3
+USER root
+# None of the application paths require setuid/setgid tools.
+RUN find / -xdev -type f \( -perm -4000 -o -perm -2000 \) -exec chmod a-s {} +
+ENV RELEASE_TMP=/tmp/release
+USER 65534:65534

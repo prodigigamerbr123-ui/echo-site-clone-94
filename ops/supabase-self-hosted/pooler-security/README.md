@@ -1,8 +1,9 @@
 # Supavisor candidate on a supported Debian runtime
 
-This is a candidate build and isolated validation procedure, not a production
-deployment command. Production still requires a fresh verified backup, immutable
-image checks, metadata compatibility checks and an explicit rollback procedure.
+Current deployment: `workout-supavisor:2.9.12-security1` is published and healthy.
+See [the release evidence](../../../docs/auditoria-2026-10-11/pooler-publicacao-2026-10-14.md).
+The candidate sections below preserve earlier gates and rejected attempts.
+Residual package warnings remain open; this is not an audit completion claim.
 
 ## Recipe
 
@@ -73,8 +74,8 @@ that obsolete copies are absent. Preserve these parent images; a different
 builder after VM recovery requires review and validation of its provenance.
 
 The candidate reduced OSV records from 61 across 12 packages to six across four
-packages. The OS image still has 48 high findings and production promotion is
-blocked. No deployment tool is provided by this procedure.
+packages. At that stage, the OS image still had 48 high findings and promotion
+was blocked pending review. The subsequent hardened release is documented below.
 
 Run `verify-isolated.py --candidate dependencies --functional-only` for the
 disposable validation. Its 21 checks include the original SQL tests, six cases
@@ -88,3 +89,41 @@ Audit the actual generated lock using
 Without `--lockfile`, the tool continues to audit the original upstream source.
 See `docs/auditoria-2026-10-11/pooler-dependencias-2026-10-14.md` for exact image,
 versions, residual advisory conditions and evidence hashes.
+
+## Hardened runtime and reviewed release
+
+`build-runtime.py` and `Dockerfile.runtime` inherit the exact reviewed dependency
+image, remove setuid/setgid bits and run as UID/GID 65534. They preserve package
+metadata and scan results. Copy both files to the private runtime directory
+`/home/ubuntu/workout-pooler-runtime-20261014`; run with root on the intended VM.
+The builder refuses to overwrite existing evidence.
+
+`verify-isolated.py --candidate hardened --functional-only` performs 32 checks,
+including upgrading the old image on fresh fixture metadata, unchanged encrypted
+users/migrations, SQL/JIT behavior, non-root execution, read-only rootfs, dropped
+capabilities, PID limits, temporary writes and restart. It does not deploy.
+The strict zero-high scan gate remains false; functional success alone is not a
+promotion decision.
+
+`restore-metadata.py BACKUP_STAMP` restores only pooler.dump in a disposable,
+networkless PostgreSQL. It compares tenant/user hashes and migration history with
+read-only production evidence. Unlike the functional fixture, this procedure
+reads private production metadata; never expose its artifacts or start workers.
+It does not prove full Workout recovery.
+
+`release-runtime.py` requires Python 3 and PyYAML on the VM. Its fixed private
+release directory is `/home/ubuntu/workout-pooler-runtime-release-20261014`:
+
+- `prepare`: verify immutable images, exact reviewed residual CVEs, 32 checks,
+  restored metadata, fresh complete backup and healthy production; preserve state.
+- `apply /private/independent-proof.json`: require independently copied hashes of
+  five backup files, previous compose/inspection and exported image; replace only
+  supavisor and require unchanged inventory plus 12 post-publication checks.
+- `rollback`: verify current compose hash and old image before restoring the
+  previous compose and recreating only the pooler. No database restore is needed.
+
+These are date-specific guarded procedures, not a general deployment CLI. Review
+all paths and existing state before reuse. Production applies read_only, cap_drop
+ALL, no-new-privileges, tmpfs and PID limits in compose. NODE_IP loopback is valid
+for the reviewed single-node installation only. Database role privileges and
+residual Decimal/Cloak/Cowlib and OS advisories remain separate work.
