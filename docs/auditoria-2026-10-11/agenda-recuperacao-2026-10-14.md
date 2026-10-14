@@ -34,3 +34,13 @@ A fase rollback restaura runtime, gateway e flags anteriores dos jobs. A consult
 ## Continuação da auditoria
 
 Este bloco não encerra a auditoria geral. Permanecem a revisão completa das datas exibidas na agenda/histórico para navegadores em outros fusos, a persistência de tentativas de criação de avaliações após falha de rede, a revisão de cache e a atualização consolidada dos demais itens do relatório.
+
+## Publicação concluída
+
+Código publicado: 24056d2b68a88278e3fe17ac2a9ef2530297d394. [Workflow 38574717758](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38574717758) concluído com success.
+
+Conferidos em produção os 26 hashes de runtime e o corpo SQL da consulta, proprietário postgres, SECURITY DEFINER, configuração de timezone/search_path, permissão autenticada e bloqueio anônimo. As flags dos dois jobs coincidem com o estado anterior à manutenção.
+
+A aba autenticada foi recarregada após o sucesso do pipeline. Dashboard e agenda abriram; dados e controles carregaram. Nenhuma avaliação foi criada, remarcada ou encerrada e nenhuma mensagem foi enviada. A aba foi devolvida ao Dashboard. A falha de importação e sua recuperação foram simuladas nos testes de React, sem provocar falhas artificiais no site em produção.
+
+Scanner anterior ao commit: 367 arquivos sem padrões de credenciais detectados. Esta atualização final altera apenas documentação.
