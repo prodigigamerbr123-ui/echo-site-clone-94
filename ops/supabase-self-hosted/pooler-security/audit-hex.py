@@ -21,10 +21,11 @@ def request(url, data=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=pathlib.Path, required=True, help='New private evidence file outside Git')
+    parser.add_argument('--lockfile', type=pathlib.Path, help='Resolved candidate lockfile; defaults to pinned upstream source')
     args = parser.parse_args()
     if args.output.exists():
         raise RuntimeError('Preserve existing evidence instead of overwriting it')
-    lock = request('https://raw.githubusercontent.com/supabase/supavisor/' + COMMIT + '/mix.lock')
+    lock = args.lockfile.read_bytes() if args.lockfile else request('https://raw.githubusercontent.com/supabase/supavisor/' + COMMIT + '/mix.lock')
     packages = re.findall(r'"([^"\n]+)": \{:hex, :([^,]+), "([^"\n]+)"', lock.decode())
     assert packages, 'No Hex packages parsed'
     queries = [{'package': {'name': name, 'ecosystem': 'Hex'}, 'version': version}
@@ -42,6 +43,7 @@ def main():
         details = list(executor.map(detail, ids))
     evidence = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 'source_commit': COMMIT, 'lock_sha256': hashlib.sha256(lock).hexdigest(),
+                'lock_origin': 'resolved candidate' if args.lockfile else 'pinned upstream',
                 'packages_queried': len(packages), 'results': rows, 'details': details,
                 'limitations': ['Lockfile includes development dependencies.',
                                 'Git dependencies are excluded from this Hex query.',

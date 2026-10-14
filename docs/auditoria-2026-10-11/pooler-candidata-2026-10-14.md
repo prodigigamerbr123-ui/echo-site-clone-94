@@ -1,5 +1,7 @@
 # Pooler: reconstrução, testes e bloqueios — 14/10/2026
 
+> Continuidade: uma candidata posterior corrigiu nove bibliotecas e ajustou Finch, passou em 21 verificações e reduziu a consulta Hex para seis registros em quatro pacotes. Ainda não publicada. Ver [correções de dependências](pooler-dependencias-2026-10-14.md). Os resultados abaixo preservam a etapa anterior.
+
 ## Resultado e produção
 
 **Nenhuma troca em produção.** Supavisor 2.9.12 continua saudável na imagem

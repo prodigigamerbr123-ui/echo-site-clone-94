@@ -60,3 +60,31 @@ Passing the image scan and connection tests does not authorize promoting this
 candidate while application dependency triage remains open. For example, the
 Cloak AES-CTR advisory must be compared with the configured AES-GCM cipher, and
 the Phoenix long-poll advisory requires checking whether that transport is used.
+
+## Dependency candidate
+
+`build-dependencies.py` prepares a separate workspace at
+`/home/ubuntu/workout-pooler-dependencies-20261014`. Copy it and
+`Dockerfile.dependencies` there. It requires the previously reviewed local
+builder/runtime images by immutable ID, then patches only declared version pins.
+It unlocks the nine correction targets plus Finch, retains every other Hex
+version and Git lock entry, replaces the assembled release in full and checks
+that obsolete copies are absent. Preserve these parent images; a different
+builder after VM recovery requires review and validation of its provenance.
+
+The candidate reduced OSV records from 61 across 12 packages to six across four
+packages. The OS image still has 48 high findings and production promotion is
+blocked. No deployment tool is provided by this procedure.
+
+Run `verify-isolated.py --candidate dependencies --functional-only` for the
+disposable validation. Its 21 checks include the original SQL tests, six cases
+of the real Supavisor JIT authorization helper through Req's Plug adapter, and
+a loopback Cowboy listener rejecting a CRLF response header. No external auth
+provider is called. Node RPC uses explicit loopback addressing only in this
+fixture. Cleanup is verified before the result is marked functional_passed.
+
+Audit the actual generated lock using
+`audit-hex.py --lockfile resolved-mix.lock --output /private/path/hex-audit.json`.
+Without `--lockfile`, the tool continues to audit the original upstream source.
+See `docs/auditoria-2026-10-11/pooler-dependencias-2026-10-14.md` for exact image,
+versions, residual advisory conditions and evidence hashes.

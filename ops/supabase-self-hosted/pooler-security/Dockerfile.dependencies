@@ -1,0 +1,16 @@
+# Local parents are verified by immutable ID in build-dependencies.py.
+FROM workout-pooler-builder:2.9.12-reviewed AS builder
+COPY mix.exs /app/mix.exs
+RUN mix deps.unlock cowboy cowlib hpax mint phoenix phoenix_live_view plug req tesla finch \
+    && mix deps.get --only prod \
+    && mix deps.compile && mix compile \
+    && rm -rf /app/_build/prod/rel/supavisor && mix release supavisor
+
+FROM workout-supavisor:2.9.12-trixie-candidate1
+# Replace the release in full, avoiding obsolete library versions left by merging.
+RUN rm -rf /app && mkdir /app && chown nobody /app
+WORKDIR /app
+COPY --from=builder --chown=nobody:root /app/_build/prod/rel/supavisor ./
+COPY --from=builder /app/mix.lock /app/release-mix.lock
+COPY limits.sh /app/limits.sh
+RUN chmod 755 /app/limits.sh

@@ -1,7 +1,7 @@
 # Workout — transferência completa da auditoria
 
 
-> Continuidade de infraestrutura: pooler com candidata Debian 13 testada (14 verificações), **não publicada**. Permanecem 48 altos na imagem e triagem de advisories Hex em 12 pacotes instalados. Produção saudável e inalterada. Ver [pooler-candidata-2026-10-14.md](auditoria-2026-10-11/pooler-candidata-2026-10-14.md) e o item 22 do handoff principal.
+> Continuidade de infraestrutura: pooler com nove bibliotecas corrigidas + Finch na candidata, dez versões únicas e 21 verificações isoladas. Hex caiu de 61 para seis registros em quatro pacotes; permanecem 48 altos de sistema operacional. **Não publicado**; produção original saudável. Ver [pooler-dependencias-2026-10-14.md](auditoria-2026-10-11/pooler-dependencias-2026-10-14.md) e o item 22 do handoff principal.
 > Matriz consolidada de continuidade: [handoff.md](../handoff.md), na raiz do repositório, contém os 63 itens discutidos, estados, pendências e ordem de retomada. Este documento preserva o histórico detalhado.
 
 > Segurança posterior: varredura atual das 15 imagens e publicação do Storage security2 (`8117cb0357a0…`), zero críticos/altos e 25 médios, 31 checks isolados, backup `20261014T182248Z` e hashes locais/remotos conferidos. Ver `runtime-seguranca-2026-10-14.md` e `storage-seguranca-2026-10-14.md` na pasta da auditoria. O número anterior de 41 altos do Storage foi superado; outros containers, incluindo pooler fora do LTS, continuam pendentes. Frontend permanece no lote 892bb88.

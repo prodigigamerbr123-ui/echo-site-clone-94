@@ -25,10 +25,14 @@ def run(args, data=None):
 
 
 def main():
+    global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--candidate', choices=['baseline', 'dependencies'], default='baseline')
     parser.add_argument('--functional-only', action='store_true',
                         help='Test this private fixture even when the image scan blocks production promotion')
     args = parser.parse_args()
+    if args.candidate == 'dependencies':
+        ROOT = pathlib.Path('/home/ubuntu/workout-pooler-dependencies-20261014')
     state = json.loads((ROOT / 'build-state.json').read_text())
     assert state['phase'] == 'scanned'
     image_scan_clear = state['counts'].get('CRITICAL', 0) == 0 and state['counts'].get('HIGH', 0) == 0
@@ -62,7 +66,7 @@ def main():
               'SECRET_KEY_BASE': secrets.token_hex(64), 'VAULT_ENC_KEY': secrets.token_hex(16),
               'API_JWT_SECRET': secrets.token_hex(32), 'METRICS_JWT_SECRET': secrets.token_hex(32),
               'REGION': 'local', 'CLUSTER_POSTGRES': 'true', 'ERL_AFLAGS': '-proto_dist inet_tcp',
-              'ERL_FLAGS': '+S 2:2', 'ECTO_IPV6': 'false'}
+              'ERL_FLAGS': '+S 2:2', 'ECTO_IPV6': 'false', 'NODE_IP': '127.0.0.1'}
     env = ROOT / 'fixture.env'
     env.write_text('\n'.join(k + '=' + v for k, v in values.items()) + '\n')
     config = ROOT / 'fixture.exs'
@@ -148,6 +152,51 @@ end
             check('privileged_catalog_denied', True)
         else:
             check('privileged_catalog_denied', False)
+        if args.candidate == 'dependencies':
+            # Plug adapter keeps the real Req/JIT helper entirely inside this fixture.
+            code = '''
+adapter = fn status, body -> fn conn ->
+  ["Bearer fixture-token"] = Plug.Conn.get_req_header(conn, "authorization")
+  {:ok, input, conn} = Plug.Conn.read_body(conn)
+  %{"role" => "postgres", "rhost" => "127.0.0.1"} = Jason.decode!(input)
+  conn |> Plug.Conn.put_resp_content_type("application/json") |> Plug.Conn.send_resp(status, Jason.encode!(body))
+end end
+call = fn status, body ->
+  Supavisor.Helpers.check_user_has_jit_role("http://fixture.invalid", "fixture-token", "postgres", "127.0.0.1", plug: adapter.(status, body), retry: false)
+end
+tests = %{
+  "jit_allowed" => call.(200, %{"user_role" => %{"role" => "postgres"}}) == {:ok, true},
+  "jit_wrong_role" => call.(200, %{"user_role" => %{"role" => "other"}}) == {:ok, false},
+  "jit_bad_body" => match?({:error, {:invalid_response_format, _}}, call.(200, %{})),
+  "jit_unauthorized" => call.(401, %{}) == {:error, :unauthorized_or_forbidden},
+  "jit_forbidden" => call.(403, %{}) == {:error, :unauthorized_or_forbidden},
+  "jit_server_error" => call.(500, %{}) == {:error, {:unexpected_status, 500}}
+}
+defmodule WorkoutHeaderFixture do
+  def init(req, mode) do
+    headers = if mode == :invalid, do: %{"x-audit" => "ok\\r\\nx-injected: yes"}, else: %{"x-audit" => "ok"}
+    {:ok, :cowboy_req.reply(200, headers, "ok", req), mode}
+  end
+end
+dispatch = :cowboy_router.compile([{:_, [{"/valid", WorkoutHeaderFixture, :valid}, {"/invalid", WorkoutHeaderFixture, :invalid}]}])
+{:ok, _} = :cowboy.start_clear(:workout_header_fixture, %{socket_opts: [{:ip, {127, 0, 0, 1}}, {:port, 8088}]}, %{env: %{dispatch: dispatch}})
+header_safe = try do
+  {:ok, %Req.Response{status: 200}} = Req.get("http://127.0.0.1:8088/valid", retry: false)
+  case Req.get("http://127.0.0.1:8088/invalid", retry: false) do
+    {:ok, response} -> response.status in [400, 500] and not Map.has_key?(response.headers, "x-injected")
+    {:error, %Req.TransportError{reason: reason}} -> reason in [:closed, :econnreset]
+    _ -> false
+  end
+after
+  :cowboy.stop_listener(:workout_header_fixture)
+end
+tests = Map.put(tests, "cowboy_rejects_header_injection", header_safe)
+IO.puts("WORKOUT_JIT_CHECKS=" <> Jason.encode!(tests))
+'''
+            output = run(['docker', 'exec', POOL, '/app/bin/supavisor', 'rpc', code])
+            line = next(line for line in output.splitlines() if line.startswith('WORKOUT_JIT_CHECKS='))
+            for name, passed in json.loads(line.split('=', 1)[1]).items():
+                check(name, passed)
         migrations = sql('SELECT md5(string_agg(version::text,\',\' ORDER BY version)) FROM _supavisor.schema_migrations;', '_supabase')
         run(['docker', 'rm', '-f', POOL])
         start_pool()
