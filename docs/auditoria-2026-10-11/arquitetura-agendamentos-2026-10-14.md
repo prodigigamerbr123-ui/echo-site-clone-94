@@ -14,7 +14,7 @@
 - 209 testes Vitest em 27 arquivos, incluindo 34 novos casos de calendário, fuso, personalização, recorrência e política das avaliações.
 - Lint, TypeScript da aplicação, build e Deno check dos dois consumidores das avaliações aprovados.
 - Suíte HTTP Deno: dois testes principais e 14 passos aprovados, sem serviços externos reais.
-- Scanner de segredos: 347 arquivos, nenhum padrão detectado; isso não garante ausência absoluta de segredos.
+- Scanner de segredos: 349 arquivos, nenhum padrão detectado; isso não garante ausência absoluta de segredos.
 - Pacote com 24 módulos validado na homologação isolada da VM. Novos módulos carregaram; quotas e autenticação preservadas; conta de teste removida e arquivos anteriores restaurados. Essa validação usa Auth/PostgREST reais, mas não executa conversas pagas nem entrega de WhatsApp.
 
 ## Publicação do servidor
@@ -32,3 +32,12 @@ A arquitetura geral ainda está em andamento. O planejador do compositor é uma 
 O próximo bloco deve criar uma operação transacional no servidor para enfileiramento: resolver destinatários cadastrados, validar intenção de agendamento, aplicar quota e guardar chave de idempotência vinculada ao conteúdo. Migrar todos os chamadores antes de retirar o INSERT direto. A trava de clique atual não impede duplicação após resposta de rede perdida ou atualização da página.
 
 Também permanecem: eliminar a duplicação das consultas de conflitos da agenda, revisar paginação dos caminhos legados e recuperar automaticamente chunks antigos após publicações. Não marcar a auditoria ou a arquitetura inteira como concluídas por esta entrega.
+
+## Frontend publicado e conferência visual
+
+Commit de código: f6afc15. Workflow 38568031555 concluído com success:
+https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38568031555
+
+Após a conclusão do pipeline, a aba autenticada foi recarregada. O compositor de agendamento carregou alunos, modelos e controles de horário; a alternância para personalizado exibiu data, horário e recorrência. A agenda de avaliações também carregou seus dados e controles. Nenhum destinatário foi selecionado, nenhuma avaliação foi alterada e nenhum envio foi submetido. A aba foi devolvida ao Dashboard.
+
+Os hashes dos 24 módulos em produção e as flags originais dos dois jobs foram conferidos novamente após a publicação. Este registro final altera apenas documentação.
