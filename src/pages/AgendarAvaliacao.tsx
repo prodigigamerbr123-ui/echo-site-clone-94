@@ -1,7 +1,7 @@
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { fetchAutomationSettings } from "@/lib/automationSettings";
 import { errorMessage } from "@/lib/errorMessage";
-import { finishEvaluationWithMessages, saveEvaluationWithMessages } from "@/lib/evaluationActions";
+import { checkEvaluationSchedule, finishEvaluationWithMessages, saveEvaluationWithMessages } from "@/lib/evaluationActions";
 import { elapsedEvaluationDays, evaluationDaysOverdue, needsEvaluation } from "@/lib/evaluationDue";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,7 +26,7 @@ import { useSearchParams } from "react-router-dom";
 import { confirm as askConfirm } from "@/components/ui/confirm-dialog-store";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
+import { fmtDateISOSP, fmtDateSP, fmtTimeSP, spDate, spParts } from "@/lib/spTime";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -196,21 +196,11 @@ export default function AgendarAvaliacao() {
   }
 
   async function scheduleFor(student: Student, whenIso: string, notesText: string, ignoreEvaluationId?: string) {
-    // Consulta FRESCA no banco (não confia no cache do React Query) — evita
-    // duplicidades geradas por duplo clique ou por dados desatualizados.
-    const startOfTodayIso = startOfDay(new Date()).toISOString();
-    const futureEvals = await fetchAllPages((from, to) => supabase
-      .from("evaluations")
-      .select("id, student_id, scheduled_at, students(name)", { count: "exact" })
-      .eq("status", "scheduled")
-      .gte("scheduled_at", startOfTodayIso).order("id").range(from, to));
-
-    const others = (futureEvals ?? []).filter((e) => e.id !== ignoreEvaluationId);
-
-    // (a) mesmo aluno já tem avaliação futura → BLOQUEIA
-    const dup = others.find((e) => e.student_id === student.id);
+    // A fresh server lookup shares the transaction's timezone and conflict window.
+    const check = await checkEvaluationSchedule(student.id, whenIso, ignoreEvaluationId);
+    const dup = check.duplicate;
     if (dup) {
-      const w = format(new Date(dup.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR });
+      const w = `${fmtDateSP(new Date(dup.scheduled_at))} às ${fmtTimeSP(new Date(dup.scheduled_at))}`;
       toast({
         title: "Aluno já possui avaliação agendada",
         description: `Este aluno já tem uma avaliação agendada para ${w}. Cancele ou remarque antes de criar outra.`,
@@ -220,37 +210,17 @@ export default function AgendarAvaliacao() {
     }
 
     let allowConflict = false;
-    // (b) outro aluno no mesmo horário exato → PEDE confirmação
-    const target = new Date(whenIso).getTime();
-    const sameSlot = others.find(
-      (e) => e.student_id !== student.id && new Date(e.scheduled_at).getTime() === target,
-    );
-    if (sameSlot) {
-      const other = sameSlot.students?.name ?? "outro aluno";
+    if (check.conflict) {
+      const conflict = check.conflict;
+      const exact = Date.parse(conflict.scheduled_at) === Date.parse(whenIso);
+      const timeLabel = fmtTimeSP(new Date(conflict.scheduled_at));
       const ok = await askConfirm({
-        title: "Horário já ocupado",
-        description: `Já existe avaliação de ${other} exatamente neste horário. Deseja agendar assim mesmo?`,
+        title: exact ? "Horário já ocupado" : "Conflito de horário",
+        description: `Já existe avaliação de ${conflict.student_name} às ${timeLabel}${exact ? " exatamente neste horário" : " (raio de 30 min)"}. Deseja agendar assim mesmo?`,
         confirmLabel: "Agendar mesmo assim",
       });
       if (!ok) return null;
       allowConflict = true;
-    } else {
-      // Conflito próximo (30 min) — mantém o aviso original, sem bloquear
-      const near = others.find((e) => {
-        const d = new Date(e.scheduled_at).getTime();
-        return Math.abs(d - target) < 30 * 60 * 1000 && e.student_id !== student.id;
-      });
-      if (near) {
-        const w = format(new Date(near.scheduled_at), "HH:mm");
-        const other = near.students?.name ?? "outro aluno";
-        const ok = await askConfirm({
-          title: "Conflito de horário",
-          description: `Já existe avaliação de ${other} às ${w} (raio de 30 min). Prosseguir?`,
-          confirmLabel: "Agendar mesmo assim",
-        });
-        if (!ok) return null;
-        allowConflict = true;
-      }
     }
 
     const result = await saveEvaluationWithMessages(student.id, student.name, new Date(whenIso), notesText || null, ignoreEvaluationId, allowConflict);

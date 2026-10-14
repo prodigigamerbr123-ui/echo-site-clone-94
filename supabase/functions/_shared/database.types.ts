@@ -417,6 +417,10 @@ export type Database = {
       finish_ai_action_tx: { Args: { _id: string; _owner_id: string; _result: Json; _failed?: boolean }; Returns: undefined }
       current_staff_role: { Args: Record<PropertyKey, never>; Returns: string | null }
       has_staff_role: { Args: { _roles: string[] }; Returns: boolean }
+      evaluation_schedule_conflicts: {
+        Args: { _student_id: string; _scheduled_at: string; _ignore_evaluation_id?: string };
+        Returns: Json;
+      }
       enqueue_messages_tx: {
         Args: { _request_id: string; _student_ids: string[]; _content: string; _schedule: Json };
         Returns: Json;

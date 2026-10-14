@@ -1,3 +1,4 @@
+import { scheduleConflictResult, type ScheduleConflictCheck } from "./evaluationConflicts.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { Database, Json } from "./database.types.ts";
 import { evaluationResult } from "./contracts.ts";
@@ -56,57 +57,14 @@ export function settingParam<T>(
 
 // -------- Travas de pré-agendamento --------
 
-export interface ScheduleConflictCheck {
-  duplicate?: {
-    evaluation_id: string;
-    scheduled_at: string;
-  };
-  conflict?: {
-    evaluation_id: string;
-    student_name: string;
-    scheduled_at: string;
-  };
-}
-
 export async function checkScheduleConflicts(
-  supabase: SupabaseClient<Database>,
-  studentId: string,
-  scheduledAt: Date,
+  supabase: SupabaseClient<Database>, studentId: string, scheduledAt: Date,
 ): Promise<ScheduleConflictCheck> {
-  // Meia-noite de "hoje" em America/Sao_Paulo (UTC-3), não UTC do runtime
-  const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
-  const nowSp = new Date(Date.now() + SP_OFFSET_MS);
-  const startOfToday = new Date(
-    Date.UTC(nowSp.getUTCFullYear(), nowSp.getUTCMonth(), nowSp.getUTCDate(), 0, 0) - SP_OFFSET_MS,
-  );
-
-  const { data: futureEvals, error } = await supabase
-    .from("evaluations")
-    .select("id, student_id, scheduled_at, students(name)")
-    .eq("status", "scheduled")
-    .gte("scheduled_at", startOfToday.toISOString());
-
+  const { data, error } = await supabase.rpc("evaluation_schedule_conflicts", {
+    _student_id: studentId, _scheduled_at: scheduledAt.toISOString(),
+  });
   if (error) throw error;
-  const res: ScheduleConflictCheck = {};
-  const target = scheduledAt.getTime();
-
-  for (const ev of futureEvals || []) {
-    if (ev.student_id === studentId) {
-      // Preserva a duplicata mais antiga (menor scheduled_at) para mensagem consistente
-      if (!res.duplicate || new Date(ev.scheduled_at).getTime() < new Date(res.duplicate.scheduled_at).getTime()) {
-        res.duplicate = { evaluation_id: ev.id, scheduled_at: ev.scheduled_at };
-      }
-    }
-    const d = new Date(ev.scheduled_at).getTime();
-    if (Math.abs(d - target) < 30 * 60 * 1000 && ev.student_id !== studentId) {
-      res.conflict = {
-        evaluation_id: ev.id,
-        student_name: ev.students?.name ?? "outro aluno",
-        scheduled_at: ev.scheduled_at,
-      };
-    }
-  }
-  return res;
+  return scheduleConflictResult(data);
 }
 
 // -------- Ações principais --------

@@ -1,3 +1,4 @@
+import { scheduleConflictResult } from "../../supabase/functions/_shared/evaluationConflicts";
 import { evaluationResult, type EvaluationResult } from "../../supabase/functions/_shared/contracts";
 import { supabase } from "@/integrations/supabase/client";
 import { buildEvaluationMessages, applyLinkedEvaluationTemplates } from "./evaluationMessages";
@@ -46,4 +47,12 @@ export async function finishEvaluationWithMessages(
   });
   if (error) throw error;
   return evaluationResult(data);
+}
+
+export async function checkEvaluationSchedule(studentId: string, scheduledAt: string, ignoreEvaluationId?: string) {
+  const { data, error } = await supabase.rpc("evaluation_schedule_conflicts", {
+    _student_id: studentId, _scheduled_at: scheduledAt, _ignore_evaluation_id: ignoreEvaluationId,
+  });
+  if (error) throw error;
+  return scheduleConflictResult(data);
 }
