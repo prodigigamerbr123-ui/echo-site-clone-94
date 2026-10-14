@@ -38,7 +38,15 @@ Este lote muda o frontend; não exige nova migração de produção ou troca das
 
 ## Publicação
 
-Preparada para publicação após homologação e backup. Registrar abaixo o commit, workflow e verificação da versão servida quando concluídos. O sucesso do build local não comprova publicação.
+Código publicado: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`. [Workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso para esse SHA.
+
+O site público serviu `assets/index-7i7UasPL.js` e os módulos atuais de agenda/histórico. Conferidos por HTTP: agenda SHA256 `1b033c28caf99e5e15eaa2af8210ee8b5e7132c1d526f22654ee28ab8ebc8fad`, histórico `9692e945f12992a4c9620bd8d65cebb389b305b9299a5a3b11d547bba59759a6`; o texto novo de proteção contra conflito está no módulo servido.
+
+A sessão autenticada preexistente abriu Dashboard, Agenda e Histórico após o deploy; dados, controles, datas e descrição atualizada carregaram. Nenhuma avaliação ou nota de produção foi modificada e nenhuma mensagem foi enviada. As abas temporárias de verificação foram fechadas.
+
+Scanner imediatamente antes do commit: 386 arquivos sem padrões de credenciais detectados. A atualização posterior altera somente documentação.
+
+Ver também `conferencia-operacional-2026-10-14.md`: primeira execução diária natural confirmada por leitura, com status success, sem candidatos ou mensagens no ciclo observado.
 
 ## Pendências preservadas
 

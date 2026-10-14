@@ -6,12 +6,12 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 ## Estado atual e regras de continuidade
 
-> Atualização posterior: homologação integrada concluída para criação, remarcação, histórico, edição normal e conflito de notas; 306 testes em 36 arquivos. Backup novo `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Ver [relatório da homologação/publicação](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md) para o estado final da entrega; as linhas históricas abaixo descrevem a preparação anterior.
+> Entrega publicada: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`, [workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso. Homologação integrada de criação, remarcação, histórico e edição/conflito de notas; 306 testes em 36 arquivos. Backup `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Dashboard, agenda e histórico conferidos em produção sem escrita. Ver [relatório da entrega](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md). Execução diária natural também confirmada no item 35.
 
-- Última rodada implementada localmente: recuperação de criação de avaliação após perda de resposta; recibo separado por identidade; trava síncrona; calendário de Brasília; atualização das métricas; paginação e erro explícito no histórico.
-- Validação registrada: **298 testes em 35 arquivos, sendo 24 novos; lint, tipos e build aprovados**. Os nove testes de calendário passaram também em UTC+14 e Los Angeles. Scanner: 381 arquivos, sem padrões de credenciais detectados.
-- Essas mudanças ainda estão **sem commit e sem publicação**. Não confundir arquivos locais com a versão servida ao cliente.
-- Último código publicado documentado: `24056d2`; documentação posterior: `a92f387`. Não houve nova inspeção de produção para escrever este arquivo.
+- Última rodada publicada: recuperação de criação após perda de resposta, recibo por identidade, trava síncrona, calendário de Brasília, métricas, paginação/erro no histórico e edição de notas com comparação de versão.
+- Validação registrada: **306 testes em 36 arquivos; lint, tipos e build aprovados**, incluindo 24 testes da rodada anterior e oito de notas. Os nove testes de calendário passaram também em UTC+14 e Los Angeles. Scanner pré-publicação: 386 arquivos, sem padrões detectados.
+- As mudanças desse lote estão commitadas e publicadas. Permanecem arquivos históricos independentes não rastreados; preservá-los.
+- Último código publicado: `892bb88`. A entrega anterior era `24056d2`, com documentação em `a92f387`. Verificação atual inclui leitura do histórico operacional e navegação autenticada em produção.
 - Preservar as alterações dos outros chats e os arquivos não rastreados. Revisar antes de adicionar ao Git; não usar reset ou limpeza geral.
 - Manter o login compartilhado por decisão do cliente. Contas individuais e separação por funcionário não são requisitos pendentes.
 - Usar fixtures isoladas. Não enviar WhatsApp real nem fazer chamadas pagas de IA em testes automatizados.
@@ -23,21 +23,21 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
-| 1 | Recuperação de agendamento após perda de resposta | Implementado e testado localmente | Validar o fluxo integrado na interface antes de publicar. |
-| 2 | Proteção contra cliques e operações simultâneas | Implementado e testado localmente | Conferir comportamento visual durante consultas e confirmações. |
-| 3 | Datas de Brasília na agenda e no histórico | Implementado e testado localmente | Conferir apresentação nas telas com dados de homologação. |
-| 4 | Atualização das métricas na virada do dia | Implementado e testado localmente | Validação integrada da tela aberta por período prolongado. |
-| 5 | Histórico completo de avaliações | Paginação e tratamento de erro implementados | Conferir interface com muitos registros e falha de carregamento. |
-| 6 | Revisão do conjunto de mudanças dos outros chats | Parcial | Selecionar arquivos relacionados e preservar alterações independentes. |
-| 7 | Commit e publicação deste bloco | Pendente | Consolidar o commit, publicar pelo fluxo adequado e verificar a versão servida. |
-| 8 | Verificação após publicação | Pendente | Conferir agenda, histórico e fluxos principais, com retorno preparado. |
+| 1 | Recuperação de agendamento após perda de resposta | Publicado; recuperação testada automaticamente | Criação integrada passou em homologação. Observar operação; perda de resposta não foi simulada no navegador. |
+| 2 | Proteção contra cliques e operações simultâneas | Publicado; testes e estados visuais conferidos | Manter cobertura e acompanhar uso. |
+| 3 | Datas de Brasília na agenda e no histórico | Publicado e conferido em homologação | Manter testes de fuso e fronteiras. |
+| 4 | Atualização das métricas na virada do dia | Publicado; virada validada por simulação | Ainda falta observação prolongada da tela em uma virada real. |
+| 5 | Histórico completo de avaliações | Publicado; consulta de 1.201 registros e falha parcial testadas | Interface e consulta normal conferidas; carga prolongada segue no item 38. |
+| 6 | Revisão do conjunto de mudanças dos outros chats | Concluída para este lote | Arquivos relacionados publicados; históricos independentes preservados. |
+| 7 | Commit e publicação deste bloco | Concluído | Commit 892bb88; workflow 38611036898 com sucesso. |
+| 8 | Verificação após publicação | Concluída para leitura e carregamento | Dashboard, agenda, histórico e assets atuais conferidos. Sem operações de escrita em produção neste teste. |
 
 ## 2. Código, arquitetura e experiência de uso
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
 | 9 | Separação completa da tela de agenda | Parcial | Consultas, métricas e ações foram extraídas; ainda separar formulário, diálogos e componentes maiores. |
-| 10 | Edição de observações no histórico | Corrigido, testado e validado em homologação | Publicar e conferir a versão servida; conflito preserva o texto e não sobrescreve outra edição. |
+| 10 | Edição de observações no histórico | Publicado; edição normal e concorrente validadas em homologação | Proteção de versão, resposta autorizada, recibo de edição idêntica e erro persistente implementados. Manter acompanhamento. |
 | 11 | Recuperação do formulário após reload | Limitada | O recibo preserva a tentativa; os campos não são restaurados automaticamente. Definir necessidade de rascunho e proteção dos dados. |
 | 12 | Recuperação entre abas/dispositivos | Não implementada | Avaliar necessidade de recibo durável no servidor; atualmente há recuperação por aba e proteção transacional no banco. |
 | 13 | Demais telas grandes | Parcial | Revisar responsabilidades em mensagens, modelos e configurações conforme os problemas encontrados. |
@@ -76,7 +76,7 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 | 32 | Funcionamento atual dos backups automáticos | Configurado anteriormente | Conferir execuções recentes, falhas e integridade das cópias. |
 | 33 | Independência e retenção das cópias | Revisão pendente | Avaliar cópias fora da VM, dependência do computador local e política de retenção. |
 | 34 | Tempo e perda máxima de recuperação | Não definidos formalmente | Medir o restore e registrar RTO/RPO compatíveis com a academia. |
-| 35 | Primeira execução diária natural das automações | Falta evidência consolidada | Consultar o histórico já produzido e conferir resultados, sem disparar mensagens apenas para testar. |
+| 35 | Primeira execução diária natural das automações | Confirmada em produção por leitura | Execução de 14/10 às 08:00 de Brasília: success, sem erro, zero candidatos e zero mensagens. Ver conferência operacional de 14/10; acompanhar ciclos seguintes e cenários com candidatos. |
 | 36 | Estabilidade prolongada da fila | Validação parcial | Observar operação contínua, reconexões, latência, falhas e recuperação. |
 | 37 | Reconciliação de mensagens antigas falhas/incertas | Pendente de análise operacional | Conferir o ocorrido antes de decidir qualquer repetição. |
 | 38 | Testes de carga | Pendente | Medir comportamento com mais alunos, mensagens, avaliações e consultas concorrentes. |
@@ -136,7 +136,7 @@ São propostas de evolução. Nem todas foram implementadas ou aprovadas como en
 ## Ordem de retomada
 
 1. Ler `AGENTS.md`, este arquivo, o handoff detalhado e o relatório do último bloco. Conferir Git antes de alterar.
-2. Validar visualmente e consolidar a publicação das alterações locais da agenda/histórico, preservando o trabalho dos demais chats.
+2. O lote de agenda/histórico já foi publicado e verificado. Não repetir essa publicação como se estivesse pendente; preservar arquivos dos demais chats.
 3. Priorizar as pendências de risco: inventário e vulnerabilidades dos containers, restauração completa, credenciais e evidência da operação diária.
 4. Continuar qualidade, arquitetura, performance e documentação em blocos verificáveis.
 5. Tratar melhorias de produto com escopo definido pelo cliente.
