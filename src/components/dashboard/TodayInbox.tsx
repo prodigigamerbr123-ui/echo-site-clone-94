@@ -1,17 +1,15 @@
-import { finishEvaluationWithMessages } from "@/lib/evaluationActions";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { format, isToday } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Calendar, Cake, AlertTriangle, CheckCircle2, XCircle, ArrowRight, Activity } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { confirm } from "@/components/ui/confirm-dialog-store";
 import { useToast } from "@/hooks/use-toast";
-import { confirm } from "@/components/ui/confirm-dialog";
-import { spParts, spDate } from "@/lib/spTime";
-
+import { supabase } from "@/integrations/supabase/client";
+import { finishEvaluationWithMessages } from "@/lib/evaluationActions";
+import { spDate, spParts } from "@/lib/spTime";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { AlertTriangle, ArrowRight, Cake, Calendar, CheckCircle2, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface Evaluation {
   id: string;

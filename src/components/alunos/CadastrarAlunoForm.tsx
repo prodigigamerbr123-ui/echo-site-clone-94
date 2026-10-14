@@ -1,33 +1,21 @@
-import { errorMessage } from "@/lib/errorMessage";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, CheckCircle, Cake, User, UserPlus, List, ArrowRight, CreditCard, Check, X, MapPin, FileText, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { isValidCpf, maskCpf, unmaskCpf } from "@/lib/cpf";
+import { errorMessage } from "@/lib/errorMessage";
 import { formatPhoneBR } from "@/lib/phone";
 import { scheduleWelcomeIfEnabled } from "@/lib/welcomeReengagement";
-import { isValidCpf, maskCpf, unmaskCpf } from "@/lib/cpf";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, Cake, CalendarClock, Check, CheckCircle, CreditCard, FileText, List, MapPin, Phone, User, UserPlus, X } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-export const PLAN_OPTIONS = [
-  "Mensal",
-  "Trimestral",
-  "Quadrimestral",
-  "Semestral",
-  "Octomestral",
-  "Anual",
-  "12 meses",
-  "Desconto especial",
-  "Desconto especial Taekwondo",
-  "Desconto Funcionários AME",
-  "Convênio Talento confecções",
-];
+import { PLAN_OPTIONS } from "./studentPlans";
 
 export function CadastrarAlunoForm() {
   const { toast } = useToast();

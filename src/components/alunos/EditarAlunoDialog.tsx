@@ -1,19 +1,19 @@
 import { errorMessage } from "@/lib/errorMessage";
 
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Phone, Cake, CreditCard, Activity, Check, X, MapPin, FileText, CalendarClock } from "lucide-react";
-import { formatPhoneBR } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
-import { PLAN_OPTIONS } from "./CadastrarAlunoForm";
-import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
 import { isValidCpf, maskCpf, unmaskCpf } from "@/lib/cpf";
+import { formatPhoneBR } from "@/lib/phone";
+import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
+import { useQueryClient } from "@tanstack/react-query";
+import { Activity, Cake, CalendarClock, Check, CreditCard, FileText, MapPin, Phone, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { PLAN_OPTIONS } from "./studentPlans";
 
 interface Student {
   id: string;
@@ -103,10 +103,9 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
     return true;
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -141,7 +140,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
       queryClient.invalidateQueries({ queryKey: ['students-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      
+
       toast({
         title: "Aluno atualizado com sucesso!",
         description: `Os dados de ${formData.nome} foram atualizados.`,
@@ -170,7 +169,7 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
             Atualize as informações do aluno
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="edit-nome" className="text-sm font-medium">
@@ -305,16 +304,16 @@ export function EditarAlunoDialog({ student, open, onOpenChange }: EditarAlunoDi
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => onOpenChange(false)}
               className="flex-1"
             >
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isLoading || !phoneCheck.ok || !formData.nome.trim()}
               className="flex-1"
             >

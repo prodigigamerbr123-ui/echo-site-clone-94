@@ -1,51 +1,49 @@
-import { errorMessage } from "@/lib/errorMessage";
-import { fetchAllPages } from "@/lib/fetchAllPages";
-import { fetchAutomationSettings } from "@/lib/automationSettings";
-import { evaluationDaysOverdue, elapsedEvaluationDays, needsEvaluation } from "@/lib/evaluationDue";
-import { saveEvaluationWithMessages, finishEvaluationWithMessages } from "@/lib/evaluationActions";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { fetchAutomationSettings } from "@/lib/automationSettings";
+import { errorMessage } from "@/lib/errorMessage";
+import { finishEvaluationWithMessages, saveEvaluationWithMessages } from "@/lib/evaluationActions";
+import { elapsedEvaluationDays, evaluationDaysOverdue, needsEvaluation } from "@/lib/evaluationDue";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, isToday, isTomorrow, isPast, startOfDay } from "date-fns";
+import { format, isPast, isToday, isTomorrow, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  CalendarPlus,
-  Search,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  User,
   Activity,
-  CalendarClock,
   AlertTriangle,
-  Trash2,
+  CalendarClock,
+  CalendarPlus,
+  CheckCircle2,
+  Clock,
   RefreshCw,
+  Search,
+  Trash2,
+  User,
+  XCircle,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
-import { supabase } from "@/integrations/supabase/client";
+import { confirm as askConfirm } from "@/components/ui/confirm-dialog-store";
 import { useToast } from "@/hooks/use-toast";
-import { confirm as askConfirm } from "@/components/ui/confirm-dialog";
+import { supabase } from "@/integrations/supabase/client";
 import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
 
-
+import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Student {
   id: string;

@@ -1,22 +1,23 @@
-import { fetchAllPages } from "@/lib/fetchAllPages";
-import { useCallback, useEffect, useState } from "react";
-import { Clock, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MessageFilters from "@/components/agendarmensagem/MessageFilters";
+import MessagesList from "@/components/agendarmensagem/MessagesList";
+import { filterScheduledMessages, getFilteredMessagesCount } from "@/components/agendarmensagem/scheduledMessageFilters";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { spDate, fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
-import MessageFilters from "@/components/agendarmensagem/MessageFilters";
-import MessagesList, { filterScheduledMessages, getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
+import { fetchAllPages } from "@/lib/fetchAllPages";
+import { fmtDateISOSP, fmtTimeSP, spDate } from "@/lib/spTime";
+import { Clock, Filter } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 interface ScheduledMessage {
   id: string;

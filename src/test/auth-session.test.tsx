@@ -1,7 +1,8 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { AuthProvider } from "@/components/providers/auth-provider";
+import { useAuth } from "@/hooks/useAuth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 type FixtureSession = { user: { id: string }; access_token: string };
 

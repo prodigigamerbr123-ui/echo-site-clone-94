@@ -1,18 +1,7 @@
+import { filterSentMessages, type Message } from "./sentMessageFilters";
 
-import { MessageCircle, Calendar, User, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-interface Message {
-  id: string;
-  content: string;
-  status: string;
-  sent_at: string;
-  student_id: string;
-  students?: {
-    name: string;
-    phone: string;
-  };
-}
+import { Calendar, MessageCircle, Phone, User } from "lucide-react";
 
 interface MessagesListProps {
   messages: Message[];
@@ -45,61 +34,8 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const filterMessagesByDate = (messages: Message[], dateFilter: string, customDateRange: { from?: Date; to?: Date }) => {
-  if (dateFilter === "all") return messages;
-  
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  
-  return messages.filter((message) => {
-    const messageDate = new Date(message.sent_at);
-    
-    if (dateFilter === "today") {
-      return messageDate >= today;
-    } else if (dateFilter === "this-month") {
-      return messageDate >= thisMonth;
-    } else if (dateFilter === "custom" && customDateRange.from) {
-      const fromDate = new Date(customDateRange.from.getFullYear(), customDateRange.from.getMonth(), customDateRange.from.getDate());
-      const toDate = customDateRange.to 
-        ? new Date(customDateRange.to.getFullYear(), customDateRange.to.getMonth(), customDateRange.to.getDate(), 23, 59, 59)
-        : new Date(customDateRange.from.getFullYear(), customDateRange.from.getMonth(), customDateRange.from.getDate(), 23, 59, 59);
-      
-      return messageDate >= fromDate && messageDate <= toDate;
-    }
-    
-    return true;
-  });
-};
-
-export const getFilteredMessagesCount = (messages: Message[], searchTerm: string, dateFilter: string, customDateRange: { from?: Date; to?: Date }, selectedStudents: string[] = []) => {
-  const filteredBySearch = messages.filter((message) => {
-    const matchesSearch = 
-      message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.phone.includes(searchTerm);
-    
-    const matchesStudentFilter = selectedStudents.length === 0 || selectedStudents.includes(message.student_id);
-    
-    return matchesSearch && matchesStudentFilter;
-  });
-
-  return filterMessagesByDate(filteredBySearch, dateFilter, customDateRange).length;
-};
-
 export default function MessagesList({ messages, searchTerm, dateFilter, customDateRange, selectedStudents = [] }: MessagesListProps) {
-  const filteredMessages = messages.filter((message) => {
-    const matchesSearch = 
-      message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.phone.includes(searchTerm);
-    
-    const matchesStudentFilter = selectedStudents.length === 0 || selectedStudents.includes(message.student_id);
-    
-    return matchesSearch && matchesStudentFilter;
-  });
-
-  const dateFilteredMessages = filterMessagesByDate(filteredMessages, dateFilter, customDateRange);
+  const dateFilteredMessages = filterSentMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
 
   if (dateFilteredMessages.length === 0) {
     return (
@@ -107,7 +43,7 @@ export default function MessagesList({ messages, searchTerm, dateFilter, customD
         <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <p className="text-muted-foreground">
           {searchTerm || dateFilter !== "all" || selectedStudents.length > 0
-            ? "Nenhuma mensagem encontrada com os filtros aplicados." 
+            ? "Nenhuma mensagem encontrada com os filtros aplicados."
             : "Nenhuma mensagem encontrada."}
         </p>
       </div>
@@ -133,17 +69,17 @@ export default function MessagesList({ messages, searchTerm, dateFilter, customD
                   <span className="text-sm">{message.students?.phone}</span>
                 </div>
               </div>
-              
+
               <p className="text-foreground bg-muted/50 p-3 rounded-md">
                 {message.content}
               </p>
-              
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 {formatDate(message.sent_at)}
               </div>
             </div>
-            
+
             <div className="flex flex-col items-end gap-2">
               {getStatusBadge(message.status)}
             </div>

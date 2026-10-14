@@ -1,16 +1,16 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { lazy, Suspense } from "react";
-import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AppLayout } from "./components/layout/AppLayout";
-import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { GlobalNotifier } from "@/components/layout/GlobalNotifier";
-import { ADMIN_ONLY, FRONT_DESK, ALL_STAFF, type StaffRole } from "@/lib/staffRoles";
+import { AuthProvider } from "@/components/providers/auth-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ADMIN_ONLY, ALL_STAFF, FRONT_DESK, type StaffRole } from "@/lib/staffRoles";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AppLayout } from "./components/layout/AppLayout";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Alunos = lazy(() => import("./pages/Alunos"));

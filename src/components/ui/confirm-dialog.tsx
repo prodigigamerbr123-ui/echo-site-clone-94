@@ -1,31 +1,9 @@
-import { useEffect, useState } from "react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface ConfirmOpts {
-  title: string;
-  description?: string;
-  confirmLabel?: string;
-  destructive?: boolean;
-}
-
-interface State extends ConfirmOpts {
-  open: boolean;
-  resolve?: (v: boolean) => void;
-}
-
-const listeners = new Set<(s: State) => void>();
-let current: State = { open: false, title: "" };
-const setState = (s: State) => { current = s; listeners.forEach((l) => l(s)); };
-
-export const confirm = (opts: ConfirmOpts): Promise<boolean> =>
-  new Promise<boolean>((resolve) => {
-    setState({ open: true, ...opts, resolve });
-  });
-
-export const useConfirm = () => confirm;
+import { useEffect, useState } from "react";
+import { current, listeners, setState, type State } from "./confirm-dialog-store";
 
 export function ConfirmDialogHost() {
   const [s, set] = useState<State>(current);

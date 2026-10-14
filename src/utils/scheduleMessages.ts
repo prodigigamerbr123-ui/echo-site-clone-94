@@ -8,7 +8,7 @@ export interface StudentData {
 
 export const scheduleAutomaticMessages = async (student: StudentData) => {
   const now = new Date();
-  
+
   const messagesToSchedule = [
     {
       student_id: student.id,
@@ -42,7 +42,6 @@ export const scheduleAutomaticMessages = async (student: StudentData) => {
       throw error;
     }
 
-    console.log(`Scheduled ${messagesToSchedule.length} automatic messages for ${student.name}`);
     return true;
   } catch (error) {
     console.error('Error scheduling messages:', error);

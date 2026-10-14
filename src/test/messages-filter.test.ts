@@ -1,5 +1,5 @@
+import { filterScheduledMessages } from "@/components/agendarmensagem/scheduledMessageFilters";
 import { describe, expect, it } from "vitest";
-import { filterScheduledMessages } from "@/components/agendarmensagem/MessagesList";
 
 const messages = [
   {

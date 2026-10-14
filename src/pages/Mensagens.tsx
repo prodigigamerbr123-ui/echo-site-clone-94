@@ -1,32 +1,30 @@
-import type { Database } from "@/integrations/supabase/types";
-import { errorMessage } from "@/lib/errorMessage";
-import { buildMessageSeries } from "@/lib/recurrence";
-import { fetchAllPages } from "@/lib/fetchAllPages";
-import { usePageTitle } from "@/hooks/usePageTitle";
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Search, Send, Users, MessageSquare, CalendarClock, Trash2, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { MessageRecipientPicker } from "@/components/mensagens/MessageRecipientPicker";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
+import { useToast } from "@/hooks/use-toast";
+import { useMessageComposerData } from "@/hooks/useMessageComposerData";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import { errorMessage } from "@/lib/errorMessage";
+import { toggleVisibleRecipients } from "@/lib/messageRecipients";
 import { hasNameVar, replaceNameVar } from "@/lib/phone";
-import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+import { buildMessageSeries } from "@/lib/recurrence";
 import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
+import { CalendarClock, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
-interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
-interface PredefinedMessage { id: string; title: string; content: string; }
 interface Interval { id: string; days: number; count: number; }
 
 type Mode = "now" | "schedule";
@@ -37,13 +35,11 @@ export default function Mensagens() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [students, setStudents] = useState<Student[]>([]);
-  const [predefinedMessages, setPredefinedMessages] = useState<PredefinedMessage[]>([]);
+  const { students, predefinedMessages, loading, loadError, refetch } = useMessageComposerData();
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState("");
   const [selectedPredefined, setSelectedPredefined] = useState("");
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -68,24 +64,12 @@ export default function Mensagens() {
   const [recurrence, setRecurrence] = useState(false);
   const [intervals, setIntervals] = useState<Interval[]>([{ id: crypto.randomUUID(), days: 7, count: 4 }]);
 
+  const preselectedId = searchParams.get("aluno");
   useEffect(() => {
-    (async () => {
-      const [s, p, autoIds] = await Promise.all([
-        fetchAllPages((from, to) => supabase.from("students").select("id, name, phone, had_evaluation", { count: "exact" }).order("name").order("id").range(from, to)),
-        fetchAllPages((from, to) => supabase.from("predefined_messages").select("*", { count: "exact" }).order("title").order("id").range(from, to)),
-        fetchAutomationTemplateIds(),
-      ]);
-      setStudents(s || []);
-      setPredefinedMessages(p.filter((m) => !autoIds.has(m.id)));
-    })().catch(() => {
-      toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar todos os alunos e modelos. Atualize a página para tentar novamente.", variant: "destructive" });
-    }).finally(() => setLoading(false));
-  }, [toast]);
-
-  useEffect(() => {
-    const pre = searchParams.get("aluno");
-    if (pre && students.length) setSelectedStudents([pre]);
-  }, [students, searchParams]);
+    if (preselectedId && students.some((student) => student.id === preselectedId)) {
+      setSelectedStudents([preselectedId]);
+    }
+  }, [students, preselectedId]);
 
   const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.phone.includes(searchTerm)
@@ -94,8 +78,9 @@ export default function Mensagens() {
   const handleStudentToggle = (id: string) =>
     setSelectedStudents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
+  const allVisibleSelected = filteredStudents.length > 0 && filteredStudents.every((student) => selectedStudents.includes(student.id));
   const handleSelectAll = () =>
-    setSelectedStudents(selectedStudents.length === filteredStudents.length ? [] : filteredStudents.map(s => s.id));
+    setSelectedStudents((previous) => toggleVisibleRecipients(previous, filteredStudents.map((student) => student.id)));
 
   const handlePredefinedSelect = (id: string) => {
     const m = predefinedMessages.find(x => x.id === id);
@@ -238,6 +223,15 @@ export default function Mensagens() {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   }
 
+  if (loadError) {
+    return (
+      <Card><CardContent className="pt-6" role="alert">
+        <p>Não foi possível carregar os alunos e modelos de mensagem.</p>
+        <Button variant="outline" onClick={() => void refetch()}>Tentar novamente</Button>
+      </CardContent></Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -251,45 +245,15 @@ export default function Mensagens() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Selecionar Alunos ({selectedStudents.length})
-            </CardTitle>
-            <div className="flex gap-2 pt-2">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
-              </div>
-              <Button variant="outline" onClick={handleSelectAll} className="shrink-0">
-                {selectedStudents.length === filteredStudents.length ? "Desmarcar" : "Todos"}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-            {filteredStudents.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">Nenhum aluno.</p>
-            ) : (
-              filteredStudents.map(s => (
-                <div
-                  key={s.id}
-                  className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 cursor-pointer ${
-                    selectedStudents.includes(s.id) ? "bg-accent/50 border-primary/50" : "border-border"
-                  }`}
-                  onClick={() => handleStudentToggle(s.id)}
-                >
-                  <Checkbox checked={selectedStudents.includes(s.id)} className="pointer-events-none" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium">{s.name}</p>
-                    <p className="text-sm text-muted-foreground">{s.phone}</p>
-                  </div>
-                  {s.had_evaluation && <Badge variant="secondary" className="text-xs">Avaliado</Badge>}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+        <MessageRecipientPicker
+          filteredStudents={filteredStudents}
+          selectedStudents={selectedStudents}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          allVisibleSelected={allVisibleSelected}
+          handleSelectAll={handleSelectAll}
+          handleStudentToggle={handleStudentToggle}
+        />
 
         <Card>
           <CardHeader>

@@ -1,23 +1,23 @@
-import { usePageTitle } from "@/hooks/usePageTitle";
-import { useState, useEffect } from "react";
-import { Clock, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MessageFilters from "@/components/agendarmensagem/MessageFilters";
+import MessagesList from "@/components/agendarmensagem/MessagesList";
+import { filterScheduledMessages, getFilteredMessagesCount } from "@/components/agendarmensagem/scheduledMessageFilters";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { supabase } from "@/integrations/supabase/client";
-import { spDate, fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
-import MessageFilters from "@/components/agendarmensagem/MessageFilters";
-import MessagesList, { filterScheduledMessages, getFilteredMessagesCount } from "@/components/agendarmensagem/MessagesList";
-
+import { fmtDateISOSP, fmtTimeSP, spDate } from "@/lib/spTime";
+import { Clock, Filter } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ScheduledMessage {
   id: string;
@@ -71,7 +71,6 @@ export default function MensagensAgendadas() {
     setStudents(s || []);
     setLoading(false);
   };
-
 
   const openEdit = (m: ScheduledMessage) => {
     if (m.evaluation_id) {
@@ -190,7 +189,7 @@ export default function MensagensAgendadas() {
             <div className="text-center py-12">
               <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">Nenhuma mensagem agendada.</p>
-              
+
             </div>
           ) : (
             <MessagesList
@@ -209,7 +208,6 @@ export default function MensagensAgendadas() {
           )}
         </CardContent>
       </Card>
-
 
       {/* Edit */}
       <Dialog open={!!editingMessage} onOpenChange={(o) => !o && setEditingMessage(null)}>

@@ -1,13 +1,14 @@
 import { fetchAllPages } from "@/lib/fetchAllPages";
 
-import { useState, useEffect, useCallback } from "react";
-import { MessageCircle, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Filter, MessageCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import MessageFilters from "./MessageFilters";
-import MessagesList, { getFilteredMessagesCount } from "./MessagesList";
+import MessagesList from "./MessagesList";
+import { getFilteredMessagesCount } from "./sentMessageFilters";
 
 interface Message {
   id: string;

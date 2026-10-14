@@ -1,28 +1,12 @@
-import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AUTO_EVAL_MESSAGE_TYPES } from "@/lib/evaluationMessages";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, Calendar, Clock, User, MessageSquare, Bot, Hand, RotateCcw, AlertCircle } from "lucide-react";
-import { AUTO_EVAL_MESSAGE_TYPES } from "@/lib/evaluationMessages";
-import { spDate, spParts } from "@/lib/spTime";
-
-interface ScheduledMessage {
-  id: string;
-  content: string;
-  scheduled_for: string;
-  status: string;
-  message_type: string;
-  created_at: string;
-  student_id: string;
-  failure_reason?: string | null;
-  retry_count?: number | null;
-  evaluation_id?: string | null;
-  recurrence_parent_id?: string | null;
-  dispatch_started_at?: string | null;
-  students?: { name: string; phone: string; };
-}
+import { AlertCircle, Bot, Calendar, Clock, Edit2, Hand, MessageSquare, RotateCcw, Trash2, User } from "lucide-react";
+import { useState } from "react";
+import { filterScheduledMessages, type ScheduledMessage } from "./scheduledMessageFilters";
 
 interface Props {
   messages: ScheduledMessage[];
@@ -88,46 +72,6 @@ const getStatusBadge = (status: string) => {
     default: return <Badge variant="outline">{status}</Badge>;
   }
 };
-
-export function filterScheduledMessages(
-  messages: ScheduledMessage[],
-  searchTerm: string,
-  dateFilter: string,
-  customDateRange: { from?: Date; to?: Date },
-  selectedStudents: string[],
-) {
-  return messages.filter((m) => {
-    const matchS = m.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.students?.phone.includes(searchTerm);
-    const md = new Date(m.scheduled_for);
-    const nowSP = spParts(new Date());
-    const startToday = spDate(nowSP.y, nowSP.mo, nowSP.d, 0, 0);
-    const startMonth = spDate(nowSP.y, nowSP.mo, 1, 0, 0);
-    let matchD = true;
-    if (dateFilter === "today") {
-      const end = spDate(nowSP.y, nowSP.mo, nowSP.d + 1, 0, 0);
-      matchD = md >= startToday && md < end;
-    } else if (dateFilter === "this-month") {
-      const end = spDate(nowSP.y, nowSP.mo + 1, 1, 0, 0);
-      matchD = md >= startMonth && md < end;
-    } else if (dateFilter === "custom") {
-      if (customDateRange.from && customDateRange.to) {
-        const to = new Date(customDateRange.to); to.setHours(23, 59, 59, 999);
-        matchD = md >= new Date(customDateRange.from) && md <= to;
-      } else if (customDateRange.from) {
-        matchD = md >= new Date(customDateRange.from);
-      }
-    }
-    const matchU = selectedStudents.length === 0 || selectedStudents.includes(m.student_id);
-    return matchS && matchD && matchU;
-  });
-}
-
-export const getFilteredMessagesCount = (
-  messages: ScheduledMessage[], searchTerm: string, dateFilter: string,
-  customDateRange: { from?: Date; to?: Date }, selectedStudents: string[],
-) => filterScheduledMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents).length;
 
 export default function MessagesList({
   messages, searchTerm, dateFilter, customDateRange, selectedStudents,

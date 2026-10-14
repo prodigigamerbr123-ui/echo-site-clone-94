@@ -1,21 +1,21 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { useSidebar } from "@/components/ui/sidebar-context";
 import { useAuth } from "@/hooks/useAuth";
 import { canVisit } from "@/lib/staffRoles";
+import { NavLink, useLocation } from "react-router-dom";
 
 import {
-  Users,
-  FileText,
-  Send,
-  LayoutDashboard,
   Bot,
   CalendarClock,
-  History,
   CalendarPlus,
+  FileText,
+  History,
+  LayoutDashboard,
   MessageCircle,
-  Zap,
+  Send,
   Settings,
+  Users,
+  Zap,
 } from "lucide-react";
-
 
 import {
   Sidebar,
@@ -26,7 +26,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 
 const menuGroups = [
@@ -67,7 +66,6 @@ const menuGroups = [
     ],
   },
 ];
-
 
 export function AppSidebar() {
   const location = useLocation();

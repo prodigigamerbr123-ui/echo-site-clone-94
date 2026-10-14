@@ -1,23 +1,21 @@
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Phone, Calendar, Activity, CalendarPlus, Send, MessageSquare, FileText, CalendarClock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
-import { maskCpf } from "@/lib/cpf";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { maskCpf } from "@/lib/cpf";
 import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
+import { scheduleReengagementIfEnabled } from "@/lib/welcomeReengagement";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Activity, CalendarClock, CalendarPlus, FileText, MessageSquare, Phone, Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Student {
   id: string; name: string; phone: string;
@@ -144,7 +142,6 @@ export function StudentSheet({ student, open, onOpenChange }: Props) {
               <span>{format(new Date(student.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
             </div>
           </div>
-
 
           <div className="rounded-lg border p-3 space-y-2 text-sm">
             <div className="flex items-center gap-2 font-medium">
