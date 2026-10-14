@@ -36,3 +36,22 @@ export function fmtDateISOSP(d: Date) {
   const p = spParts(d);
   return `${p.y}-${pad(p.mo + 1)}-${pad(p.d)}`;
 }
+
+export function spDateKey(d: Date) {
+  return fmtDateISOSP(d);
+}
+
+export function spStartOfDay(d = new Date()) {
+  const p = spParts(d);
+  return spDate(p.y, p.mo, p.d, 0, 0);
+}
+
+export function spIsToday(d: Date, now = new Date()) {
+  return spDateKey(d) === spDateKey(now);
+}
+
+export function spIsTomorrow(d: Date, now = new Date()) {
+  const p = spParts(now);
+  const tomorrow = spDate(p.y, p.mo, p.d + 1, 12, 0);
+  return spDateKey(d) === spDateKey(tomorrow);
+}

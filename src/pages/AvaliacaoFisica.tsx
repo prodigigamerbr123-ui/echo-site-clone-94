@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { evaluationDateLabel } from "@/lib/evaluationAgendaDates";
+import { fetchEvaluationHistory } from "@/lib/evaluationHistory";
 import { useNavigate } from "react-router-dom";
 import { History, Search, CheckCircle2, XCircle, CalendarPlus, Ban, CalendarClock } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { saveEvaluationNotes } from "@/lib/evaluationNotes";
+import { errorMessage } from "@/lib/errorMessage";
 import { useToast } from "@/hooks/use-toast";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,23 +42,19 @@ const statusBadge = (s: string) => {
 export default function AvaliacaoFisica() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("history");
   const [editing, setEditing] = useState<Evaluation | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const savingRef = useRef(false);
 
-  const { data: evaluations, isLoading, refetch } = useQuery({
+  const { data: evaluations, isLoading, isError, refetch } = useQuery({
     queryKey: ["evaluations-history"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("evaluations")
-        .select("id, student_id, scheduled_at, status, notes, completed_at, students(name, phone)")
-        .order("scheduled_at", { ascending: false });
-      if (error) throw error;
-      return data as Evaluation[];
-    },
+    queryFn: fetchEvaluationHistory,
   });
 
   const filtered = (evaluations || []).filter((e) => {
@@ -78,17 +75,31 @@ export default function AvaliacaoFisica() {
   };
 
   const saveNotes = async () => {
-    if (!editing) return;
+    if (!editing || savingRef.current) return;
+    savingRef.current = true;
+    setNotesError(null);
     setSaving(true);
-    const { error } = await supabase.from("evaluations").update({ notes }).eq("id", editing.id);
-    setSaving(false);
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    toast({ title: "Observações salvas" });
-    setEditing(null);
-    refetch();
+    try {
+      await saveEvaluationNotes(editing.id, editing.notes, notes);
+      void queryClient.invalidateQueries({ queryKey: ["evaluations-history"] });
+      void queryClient.invalidateQueries({ queryKey: ["evaluations-list"] });
+      toast({ title: "Observações salvas" });
+      setEditing(null);
+    } catch (error) {
+      const message = errorMessage(error);
+      setNotesError(message);
+      toast({ title: "Erro ao salvar observações", description: message, variant: "destructive" });
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
+  if (isError) return <div role="alert" className="space-y-3">
+    <p>Não foi possível carregar o histórico completo de avaliações.</p>
+    <Button onClick={() => void refetch()}>Tentar novamente</Button>
+  </div>;
 
   return (
     <div className="space-y-6">
@@ -97,7 +108,7 @@ export default function AvaliacaoFisica() {
           <div className="p-2 bg-primary rounded-lg"><History className="h-6 w-6 text-primary-foreground" /></div>
           <div>
             <h1 className="text-3xl font-bold">Histórico de Avaliações</h1>
-            <p className="text-muted-foreground">Somente leitura. Para agendar ou fechar, use a Agenda.</p>
+            <p className="text-muted-foreground">Consulte o histórico e edite observações. Para agendar ou fechar, use a Agenda.</p>
           </div>
         </div>
         <Button onClick={() => navigate("/agendar-avaliacao")} className="gap-2">
@@ -122,7 +133,7 @@ export default function AvaliacaoFisica() {
                 <CalendarClock className="h-5 w-5 text-primary" />
                 Avaliações agendadas ({upcoming.length})
               </CardTitle>
-              <CardDescription>Compromissos ainda em aberto na Agenda.</CardDescription>
+              <CardDescription>Compromissos ainda em aberto na Agenda. Exibindo os primeiros {Math.min(20, upcoming.length)} de {upcoming.length}.</CardDescription>
             </CardHeader>
             <CardContent>
               {upcoming.length === 0 ? (
@@ -146,7 +157,7 @@ export default function AvaliacaoFisica() {
                               <p className="text-xs text-muted-foreground">{ev.students?.phone}</p>
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{format(new Date(ev.scheduled_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>
+                          <TableCell className="text-sm">{evaluationDateLabel(ev.scheduled_at)}</TableCell>
                           <TableCell className="text-right">
                             <Button size="sm" variant="ghost" onClick={() => navigate("/agendar-avaliacao")}>Abrir Agenda</Button>
                           </TableCell>
@@ -208,14 +219,14 @@ export default function AvaliacaoFisica() {
                           <p className="text-xs text-muted-foreground">{ev.students?.phone}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm">{format(new Date(ev.scheduled_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>
+                      <TableCell className="text-sm">{evaluationDateLabel(ev.scheduled_at)}</TableCell>
                       <TableCell>{statusBadge(ev.status)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {ev.completed_at ? format(new Date(ev.completed_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                        {ev.completed_at ? evaluationDateLabel(ev.completed_at, false) : "—"}
                       </TableCell>
                       <TableCell className="text-sm max-w-xs truncate">{ev.notes || "—"}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" onClick={() => { setEditing(ev); setNotes(ev.notes || ""); }}>Editar obs.</Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setNotesError(null); setEditing(ev); setNotes(ev.notes || ""); }}>Editar obs.</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -226,18 +237,19 @@ export default function AvaliacaoFisica() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+      <Dialog open={!!editing} onOpenChange={(o) => { if (!o && !savingRef.current) setEditing(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Observações da avaliação</DialogTitle>
-            <DialogDescription>{editing?.students?.name} — {editing && format(new Date(editing.scheduled_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</DialogDescription>
+            <DialogDescription>{editing?.students?.name} — {editing && evaluationDateLabel(editing.scheduled_at)}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Notas</Label>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={5} placeholder="Peso, medidas, objetivos, observações..." />
+            {notesError && <p role="alert" className="text-sm text-destructive">{notesError}</p>}
+            <Label htmlFor="evaluation-notes">Notas</Label>
+            <Textarea id="evaluation-notes" disabled={saving} value={notes} onChange={e => setNotes(e.target.value)} rows={5} placeholder="Peso, medidas, objetivos, observações..." />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>Cancelar</Button>
             <Button onClick={saveNotes} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
           </DialogFooter>
         </DialogContent>

@@ -1,12 +1,9 @@
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { fetchAutomationSettings } from "@/lib/automationSettings";
+import { useEvaluationAgendaMetrics } from "@/hooks/useEvaluationAgendaMetrics";
 import { errorMessage } from "@/lib/errorMessage";
-import { checkEvaluationSchedule, finishEvaluationWithMessages, saveEvaluationWithMessages } from "@/lib/evaluationActions";
 import { elapsedEvaluationDays, evaluationDaysOverdue, needsEvaluation } from "@/lib/evaluationDue";
-import { fetchAllPages } from "@/lib/fetchAllPages";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, isPast, isToday, isTomorrow, startOfDay } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useAgendaClock } from "@/hooks/useAgendaClock";
+import { evaluationDayLabel } from "@/lib/evaluationAgendaDates";
 import {
   Activity,
   AlertTriangle,
@@ -25,8 +22,9 @@ import { useSearchParams } from "react-router-dom";
 
 import { confirm as askConfirm } from "@/components/ui/confirm-dialog-store";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { fmtDateISOSP, fmtDateSP, fmtTimeSP, spDate, spParts } from "@/lib/spTime";
+import { useEvaluationAgendaQueries } from "@/hooks/useEvaluationAgendaQueries";
+import { useEvaluationAgendaActions } from "@/hooks/useEvaluationAgendaActions";
+import { fmtDateISOSP, fmtDateSP, fmtTimeSP, spDate, spDateKey, spIsToday, spParts, spStartOfDay } from "@/lib/spTime";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -76,7 +74,7 @@ function isValidCalendarDate(value: string): boolean {
 export default function AgendarAvaliacao() {
   usePageTitle("Agendar Avaliação");
   const { toast } = useToast();
-  const qc = useQueryClient();
+  const { saving, schedule, finish, invalidate } = useEvaluationAgendaActions();
   const [searchParams] = useSearchParams();
 
   // form
@@ -86,43 +84,23 @@ export default function AgendarAvaliacao() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
   const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
 
   // remarcar dialog
   const [rescheduleTarget, setRescheduleTarget] = useState<Evaluation | null>(null);
   const [rDate, setRDate] = useState("");
   const [rTime, setRTime] = useState("09:00");
 
-  const { data: students, error: studentsError } = useQuery({
-    queryKey: ["students-evaluation-agenda"],
-    queryFn: async () => {
-      return fetchAllPages((from, to) => supabase
-        .from("students")
-        .select("id,name,phone,status,had_evaluation,last_evaluation_date,created_at", { count: "exact" })
-        .order("name").order("id").range(from, to));
-    },
-  });
+  const agendaQueries = useEvaluationAgendaQueries();
+  const { data: students, error: studentsError } = agendaQueries.students;
 
   useEffect(() => {
     const pre = searchParams.get("aluno");
     if (pre && students?.some((s) => s.id === pre)) setStudentId(pre);
   }, [students, searchParams]);
 
-  const { data: evaluations, error: evaluationsError } = useQuery({
-    queryKey: ["evaluations-list"],
-    queryFn: async () => {
-      const data = await fetchAllPages((from, to) => supabase
-        .from("evaluations")
-        .select("id,student_id,scheduled_at,status,notes,completed_at,students(name,phone)", { count: "exact" })
-        .order("scheduled_at", { ascending: true }).order("id").range(from, to));
-      return data as Evaluation[];
-    },
-  });
+  const { data: evaluations, error: evaluationsError } = agendaQueries.evaluations;
 
-  const settingsQuery = useQuery({
-    queryKey: ["automation-settings"],
-    queryFn: fetchAutomationSettings,
-  });
+  const settingsQuery = agendaQueries.settings;
   let daysOverdue: number | null = null;
   let deadlineError: unknown = settingsQuery.error;
   if (!deadlineError && settingsQuery.data) {
@@ -131,7 +109,7 @@ export default function AgendarAvaliacao() {
   }
   const dueError = deadlineError || studentsError || evaluationsError;
   const dueReady = !dueError && daysOverdue !== null && students !== undefined && evaluations !== undefined;
-  const now = Date.now();
+  const now = useAgendaClock();
   const futureStudentIds = new Set((evaluations ?? []).filter(e =>
     e.status === "scheduled" && Date.parse(e.scheduled_at) >= now).map(e => e.student_id));
   const dueStudents = dueReady ? students.filter(s =>
@@ -144,22 +122,12 @@ export default function AgendarAvaliacao() {
 
   const scheduledFuture = useMemo(
     () => (evaluations || []).filter(
-      (e) => e.status === "scheduled" && new Date(e.scheduled_at) >= startOfDay(new Date()),
+      (e) => e.status === "scheduled" && new Date(e.scheduled_at) >= spStartOfDay(new Date(now)),
     ),
-    [evaluations],
+    [evaluations, now],
   );
 
-  const stats = useMemo(() => {
-    const scheduled = scheduledFuture.length;
-    const today = (evaluations || []).filter(
-      (e) => e.status === "scheduled" && isToday(new Date(e.scheduled_at)),
-    ).length;
-    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
-    const noShowMonth = (evaluations || []).filter(
-      (e) => e.status === "no_show" && new Date(e.scheduled_at) >= monthStart,
-    ).length;
-    return { scheduled, today, noShowMonth };
-  }, [evaluations, scheduledFuture]);
+  const stats = useEvaluationAgendaMetrics(evaluations, now);
 
   // fila de vencidos (top 20 mais antigos, excluindo quem já tem avaliação futura)
   const overdueQueue = dueStudents
@@ -174,7 +142,7 @@ export default function AgendarAvaliacao() {
   const grouped = useMemo(() => {
     const groups: Record<string, Evaluation[]> = {};
     for (const ev of scheduledFuture) {
-      const key = format(new Date(ev.scheduled_at), "yyyy-MM-dd");
+      const key = spDateKey(new Date(ev.scheduled_at));
       (groups[key] ||= []).push(ev);
     }
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
@@ -183,48 +151,41 @@ export default function AgendarAvaliacao() {
   // avaliações "para fechar" (hoje ou já passaram, ainda scheduled)
   const pendingClose = useMemo(
     () => (evaluations || []).filter(
-      (e) => e.status === "scheduled" && new Date(e.scheduled_at) < new Date() && !isToday(new Date(e.scheduled_at)),
+      (e) => e.status === "scheduled" && Date.parse(e.scheduled_at) < now && !spIsToday(new Date(e.scheduled_at), new Date(now)),
     ),
-    [evaluations],
+    [evaluations, now],
   );
 
-  function dayLabel(dateStr: string) {
-    const d = new Date(`${dateStr}T12:00:00`);
-    if (isToday(d)) return "Hoje";
-    if (isTomorrow(d)) return "Amanhã";
-    return format(d, "EEEE, dd 'de' MMMM", { locale: ptBR });
-  }
-
   async function scheduleFor(student: Student, whenIso: string, notesText: string, ignoreEvaluationId?: string) {
-    // A fresh server lookup shares the transaction's timezone and conflict window.
-    const check = await checkEvaluationSchedule(student.id, whenIso, ignoreEvaluationId);
-    const dup = check.duplicate;
-    if (dup) {
-      const w = `${fmtDateSP(new Date(dup.scheduled_at))} às ${fmtTimeSP(new Date(dup.scheduled_at))}`;
-      toast({
-        title: "Aluno já possui avaliação agendada",
-        description: `Este aluno já tem uma avaliação agendada para ${w}. Cancele ou remarque antes de criar outra.`,
-        variant: "destructive",
-      });
-      return null;
-    }
+    const result = await schedule(student.id, student.name, new Date(whenIso), notesText || null, ignoreEvaluationId, async (check) => {
+      const dup = check.duplicate;
+      if (dup) {
+        const w = `${fmtDateSP(new Date(dup.scheduled_at))} às ${fmtTimeSP(new Date(dup.scheduled_at))}`;
+        toast({
+          title: "Aluno já possui avaliação agendada",
+          description: `Este aluno já tem uma avaliação agendada para ${w}. Cancele ou remarque antes de criar outra.`,
+          variant: "destructive",
+        });
+        return null;
+      }
 
-    let allowConflict = false;
-    if (check.conflict) {
-      const conflict = check.conflict;
-      const exact = Date.parse(conflict.scheduled_at) === Date.parse(whenIso);
-      const timeLabel = fmtTimeSP(new Date(conflict.scheduled_at));
-      const ok = await askConfirm({
-        title: exact ? "Horário já ocupado" : "Conflito de horário",
-        description: `Já existe avaliação de ${conflict.student_name} às ${timeLabel}${exact ? " exatamente neste horário" : " (raio de 30 min)"}. Deseja agendar assim mesmo?`,
-        confirmLabel: "Agendar mesmo assim",
-      });
-      if (!ok) return null;
-      allowConflict = true;
-    }
+      let allowConflict = false;
+      if (check.conflict) {
+        const conflict = check.conflict;
+        const exact = Date.parse(conflict.scheduled_at) === Date.parse(whenIso);
+        const timeLabel = fmtTimeSP(new Date(conflict.scheduled_at));
+        const ok = await askConfirm({
+          title: exact ? "Horário já ocupado" : "Conflito de horário",
+          description: `Já existe avaliação de ${conflict.student_name} às ${timeLabel}${exact ? " exatamente neste horário" : " (raio de 30 min)"}. Deseja agendar assim mesmo?`,
+          confirmLabel: "Agendar mesmo assim",
+        });
+        if (!ok) return null;
+        allowConflict = true;
+      }
 
-    const result = await saveEvaluationWithMessages(student.id, student.name, new Date(whenIso), notesText || null, ignoreEvaluationId, allowConflict);
-    return result.messages_created;
+      return allowConflict;
+    });
+    return result?.messages_created ?? null;
   }
 
   const handleCreate = async () => {
@@ -239,14 +200,10 @@ export default function AgendarAvaliacao() {
     const [cy, cmo, cd] = date.split("-").map(Number);
     const [ch, cmi] = time.split(":").map(Number);
     const when = spDate(cy, cmo - 1, cd, ch, cmi);
-    if (when <= new Date()) {
-      return toast({ title: "Data inválida", description: "Deve ser no futuro.", variant: "destructive" });
-    }
-    setSaving(true);
     try {
       const messagesCreated = await scheduleFor(selected, when.toISOString(), notes);
       if (messagesCreated === null) return; // cancelado pelo usuário / bloqueado
-      const whenLabel = format(when, "dd/MM 'às' HH:mm", { locale: ptBR });
+      const whenLabel = `${fmtDateSP(when)} às ${fmtTimeSP(when)}`;
       toast({
         title: "Avaliação agendada",
         description: messagesCreated > 0
@@ -255,14 +212,8 @@ export default function AgendarAvaliacao() {
       });
 
       setStudentId(""); setDate(""); setTime("09:00"); setNotes("");
-      qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
     } catch (e: unknown) {
       toast({ title: "Erro ao agendar", description: errorMessage(e), variant: "destructive" });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -274,17 +225,12 @@ export default function AgendarAvaliacao() {
       destructive: true,
     });
     if (!ok) return;
-    setSaving(true);
     try {
-      const result = await finishEvaluationWithMessages(ev.id, ev.students?.name ?? "aluno", "cancel");
-      qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
-      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      const result = await finish(ev.id, ev.students?.name ?? "aluno", "cancel");
       toast({ title: "Avaliação cancelada", description: result.in_flight ? "Há envio já iniciado; ele pode chegar ao aluno. Confira no WhatsApp." : "Lembretes ainda não enviados foram cancelados." });
     } catch (e) {
       toast({ title: "Erro ao cancelar", description: errorMessage(e), variant: "destructive" });
-    } finally { setSaving(false); }
+    }
   };
 
   const openReschedule = (ev: Evaluation) => {
@@ -310,43 +256,28 @@ export default function AgendarAvaliacao() {
     if (when <= new Date()) {
       return toast({ title: "Data inválida", variant: "destructive" });
     }
-    setSaving(true);
     try {
       const student = students?.find((s) => s.id === rescheduleTarget.student_id);
       if (!student) throw new Error("Aluno não encontrado");
       const created = await scheduleFor(student, when.toISOString(), rescheduleTarget.notes ?? "", rescheduleTarget.id);
       if (created === null) return;
-      qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
-      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({ title: "Avaliação remarcada", description: "Lembretes substituídos. Um envio já iniciado pode chegar ao aluno; confira no WhatsApp." });
       setRescheduleTarget(null);
     } catch (e: unknown) {
       toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleDone = async (ev: Evaluation) => {
-    setSaving(true);
     try {
-      const result = await finishEvaluationWithMessages(ev.id, ev.students?.name ?? "aluno", "completed");
+      const result = await finish(ev.id, ev.students?.name ?? "aluno", "completed");
       const followupScheduled = result.messages_created > 0;
-      qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
-      qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
-      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Avaliação marcada como realizada",
         description: followupScheduled ? "Follow-up agendado." : "Follow-up não agendado (automação desligada ou já existente).",
       });
     } catch (e: unknown) {
       toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -358,26 +289,19 @@ export default function AgendarAvaliacao() {
       destructive: true,
     });
     if (!ok) return;
-    setSaving(true);
     try {
-      const result = await finishEvaluationWithMessages(ev.id, ev.students?.name ?? "aluno", "no_show");
+      const result = await finish(ev.id, ev.students?.name ?? "aluno", "no_show");
       const rescheduled = result.messages_created > 0;
-      qc.invalidateQueries({ queryKey: ["evaluations-list"] });
-      qc.invalidateQueries({ queryKey: ["evaluations-history"] });
-      qc.invalidateQueries({ queryKey: ["today-evaluations"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Falta registrada",
         description: rescheduled ? "Mensagem de remarcação agendada." : "Remarcação automática desligada.",
       });
     } catch (e: unknown) {
       toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
-    } finally {
-      setSaving(false);
     }
   };
 
-  const today = fmtDateISOSP(new Date());
+  const today = fmtDateISOSP(new Date(now));
 
   return (
     <div className="space-y-6">
@@ -437,7 +361,7 @@ export default function AgendarAvaliacao() {
                 <div className="min-w-0 break-words">
                   <p className="font-medium">{ev.students?.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(ev.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR })} • {ev.students?.phone}
+                    {fmtDateSP(new Date(ev.scheduled_at))} às {fmtTimeSP(new Date(ev.scheduled_at))} • {ev.students?.phone}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -554,9 +478,7 @@ export default function AgendarAvaliacao() {
                 <div role="alert" className="space-y-2 text-sm text-destructive">
                   <p>Não foi possível calcular quem precisa de avaliação. {errorMessage(dueError)}</p>
                   <Button variant="outline" size="sm" onClick={() => {
-                    void qc.invalidateQueries({ queryKey: ["automation-settings"] });
-                    void qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] });
-                    void qc.invalidateQueries({ queryKey: ["evaluations-list"] });
+                    invalidate();
                   }}>Tentar novamente</Button>
                 </div>
               ) : !dueReady ? (
@@ -615,19 +537,19 @@ export default function AgendarAvaliacao() {
                 {grouped.map(([day, items]) => (
                   <div key={day}>
                     <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                      {dayLabel(day)}
+                      {evaluationDayLabel(day, new Date(now))}
                     </h3>
                     <div className="space-y-2">
                       {items.map((ev) => {
                         const when = new Date(ev.scheduled_at);
-                        const canClose = isToday(when) || isPast(when);
+                        const canClose = spIsToday(when, new Date(now)) || when.getTime() < now;
                         return (
                           <div key={ev.id} className="rounded-lg border p-3 hover:bg-accent/40 transition-colors">
                             <div className="flex items-start justify-between gap-3 flex-wrap">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <Clock className="h-4 w-4 text-primary" />
-                                  <span className="font-semibold">{format(when, "HH:mm")}</span>
+                                  <span className="font-semibold">{fmtTimeSP(when)}</span>
                                   <span className="font-medium">{ev.students?.name}</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -667,7 +589,7 @@ export default function AgendarAvaliacao() {
       </div>
 
       {/* Dialog Remarcar */}
-      <Dialog open={!!rescheduleTarget} onOpenChange={(o) => !o && setRescheduleTarget(null)}>
+      <Dialog open={!!rescheduleTarget} onOpenChange={(o) => { if (!o && !saving) setRescheduleTarget(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remarcar avaliação</DialogTitle>
@@ -677,16 +599,16 @@ export default function AgendarAvaliacao() {
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 py-2">
             <div className="space-y-1.5">
-              <Label>Data</Label>
-              <Input type="date" value={rDate} min={today} onChange={(e) => setRDate(e.target.value)} />
+              <Label htmlFor="reschedule-date">Data</Label>
+              <Input id="reschedule-date" type="date" disabled={saving} value={rDate} min={today} onChange={(e) => setRDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Horário</Label>
-              <Input type="time" value={rTime} onChange={(e) => setRTime(e.target.value)} />
+              <Label htmlFor="reschedule-time">Horário</Label>
+              <Input id="reschedule-time" type="time" disabled={saving} value={rTime} onChange={(e) => setRTime(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRescheduleTarget(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setRescheduleTarget(null)} disabled={saving}>Cancelar</Button>
             <Button onClick={confirmReschedule} disabled={saving}>
               {saving ? "Salvando..." : "Confirmar"}
             </Button>
