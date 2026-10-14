@@ -22,3 +22,9 @@ Limites: não verifica assinatura JWT contra Auth real nem RLS via PostgREST rea
 O envio avulso é exercitado somente contra a Evolution simulada. A suíte verifica segredo de cron, métodos, entradas inválidas, limites do corpo e remoção dos dados brutos do provedor. As rotas de IA e envio também são exercitadas com quota esgotada/indisponível; nesses cenários não podem consultar dados nem chamar o provedor.
 
 A aplicação da quota em SQL, isolamento por conta/operação, reinício das janelas e proteção contra alterações dos contadores são cobertos em src/test/staff-authorization.test.ts com a migração de 14/10/2026. Isso complementa a simulação HTTP da RPC.
+
+## Enfileiramento transacional
+
+O endpoint send-whatsapp agora exige request_id e encaminha IDs/texto/intenção para enqueue_messages_tx. A fixture HTTP verifica que não há leitura de nomes nem INSERT direto pelo handler e preserva as respostas 429/503 sem detalhes internos. A semântica de nomes, recorrências, permissão e repetição de requests é coberta por src/test/message-enqueue-database.test.ts. A persistência da chave no navegador é coberta por src/test/message-queue-client.test.ts.
+
+A verificação em Auth/PostgREST/Edge reais, concorrência e bloqueio do INSERT direto está em ops/supabase-self-hosted/verify-stage-message-enqueue.py, exclusivamente para o ambiente isolado documentado. Não executar o fixture contra produção.

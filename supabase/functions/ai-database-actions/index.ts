@@ -1,3 +1,4 @@
+import { enqueueResult } from "../_shared/messageQueueContracts.ts";
 import { requireRequestQuota } from "../_shared/requestQuota.ts";
 import { inputErrorResponse, readJsonObject } from "../_shared/httpInput.ts";
 import { isRecord, record } from "../_shared/contracts.ts";
@@ -68,16 +69,15 @@ Deno.serve(async (req) => {
         break;
 
       case 'schedule_message':
-        result = await supabase
-          .from('scheduled_messages')
-          .insert({
-            student_id: params.student_id,
-            content: params.content,
-            scheduled_for: params.scheduled_for,
-            message_type: params.message_type || 'manual'
-          })
-          .select()
-          .single();
+        if (typeof body.request_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.request_id)) {
+          return new Response(JSON.stringify({ error: 'Identificador da solicitação obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        result = await supabase.rpc("enqueue_messages_tx", {
+          _request_id: body.request_id,
+          _student_ids: [params.student_id], _content: params.content,
+          _schedule: { kind: "at", scheduled_for: params.scheduled_for, message_type: "manual" },
+        });
+        if (!result.error) result = { data: enqueueResult(result.data), error: null };
         break;
 
       case 'update_student_evaluation':
@@ -114,23 +114,15 @@ Deno.serve(async (req) => {
       }
 
       case 'send_whatsapp_message': {
-        // Buscar dados dos alunos se apenas IDs foram fornecidos
-        let students = params.students;
-        if (Array.isArray(params.student_ids) && params.student_ids.length > 0) {
-          const { data: studentsData, error: studentsError } = await supabase
-            .from('students')
-            .select('id, name, phone')
-            .in('id', params.student_ids);
-
-          if (studentsError) throw studentsError;
-          students = studentsData;
-        }
+        const students = Array.isArray(params.student_ids)
+          ? params.student_ids.map((id: unknown) => ({ id })) : params.students;
 
         // Chamar a função send-whatsapp
         const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke('send-whatsapp', {
           body: {
             students: students,
-            message: params.message
+            message: params.message,
+            request_id: body.request_id
           }
         });
 

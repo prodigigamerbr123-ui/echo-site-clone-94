@@ -62,6 +62,11 @@ async function upstream(req: Request): Promise<Response> {
   }
   if (url.pathname === "/rest/v1/rpc/current_staff_role") return roleServiceUnavailable ? json({ message: "Fixture unavailable" }, 500) : json(role);
   if (url.pathname === "/rest/v1/rpc/consume_staff_request_quota") return quotaUnavailable ? json({ message: "private-quota-marker" }, 500) : json(quotaRetryAfter);
+  if (url.pathname === "/rest/v1/rpc/enqueue_messages_tx") {
+    if (quotaUnavailable) return json({ message: "private-quota-marker", code: "P0001" }, 500);
+    if (quotaRetryAfter) return json({ message: "Limit", code: "PT429", details: String(quotaRetryAfter) }, 429);
+    return json({ request_id: body._request_id, queued: 1, replayed: false });
+  }
   if (url.pathname === "/rest/v1/students") return json([{ id: studentId, name: "Aluno fictício" }]);
   if (url.pathname === "/rest/v1/scheduled_messages") return json(null, 201);
   if (url.pathname === "/rest/v1/rpc/complete_evaluation_tx") return databaseUnavailable
@@ -130,12 +135,13 @@ Deno.test("staff HTTP authorization and compatibility endpoints", async (t) => {
       const stop = await launch("send-whatsapp");
       try {
         const before = requests.length;
-        const result = await call(reception, { message: "Olá {nome}", students: [{ id: studentId, name: "Forged", phone: "00000000000" }] });
+        const result = await call(reception, { request_id: studentId, message: "Olá {nome}", students: [{ id: studentId, name: "Forged", phone: "00000000000" }] });
         assertEquals(result.status, 200); assertEquals(result.data.summary.queued, 1);
-        const insert = requests.slice(before).find(r => r.path === "/rest/v1/scheduled_messages");
-        assert(insert); const rows = insert.body as Record<string, unknown>[];
-        assertEquals(rows[0].student_id, studentId); assertEquals(rows[0].content, "Olá Aluno fictício");
-        assertEquals(rows[0].status, "pending"); assert(!("phone" in rows[0]));
+        const operation = requests.slice(before).find(r => r.path === "/rest/v1/rpc/enqueue_messages_tx");
+        assert(operation);
+        assertEquals(operation.body, { _request_id: studentId, _student_ids: [studentId], _content: "Olá {nome}", _schedule: { kind: "now" } });
+        assert(!requests.slice(before).some(r => r.path === "/rest/v1/scheduled_messages" || r.path === "/rest/v1/students"));
+        assertEquals((await call(reception, { message: "Oi", students: [{ id: studentId }] })).status, 400);
         assertEquals((await call(reception, { message: "Test", students: [{ id: "invalid" }] })).status, 400);
         assertEquals((await call(reception, null)).status, 400);
         assertEquals((await call(reception, [])).status, 400);
@@ -143,14 +149,14 @@ Deno.test("staff HTTP authorization and compatibility endpoints", async (t) => {
         const beforeLimit = requests.length;
         quotaRetryAfter = 600;
         try {
-          const blocked = await call(reception, { message: "Teste", students: [{ id: studentId }] });
+          const blocked = await call(reception, { request_id: studentId, message: "Teste", students: [{ id: studentId }] });
           assertEquals(blocked.status, 429);
           assertEquals(blocked.data.retryAfter, 600);
           assert(!requests.slice(beforeLimit).some((request) => request.path === "/rest/v1/students" || request.path === "/rest/v1/scheduled_messages"));
         } finally { quotaRetryAfter = 0; }
         quotaUnavailable = true;
         try {
-          const unavailable = await call(reception, { message: "Teste", students: [{ id: studentId }] });
+          const unavailable = await call(reception, { request_id: studentId, message: "Teste", students: [{ id: studentId }] });
           assertEquals(unavailable.status, 503);
           assert(!JSON.stringify(unavailable.data).includes("private-quota-marker"));
         } finally { quotaUnavailable = false; }

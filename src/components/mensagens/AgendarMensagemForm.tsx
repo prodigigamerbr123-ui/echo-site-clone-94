@@ -1,9 +1,8 @@
 import { errorMessage } from "@/lib/errorMessage";
-import { planMessageBatch } from "@/lib/messageSchedule";
 import { useMessageComposerData } from "@/hooks/useMessageComposerData";
 import { useMemo, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { enqueueMessages } from "@/lib/messageQueue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,10 +61,8 @@ export function AgendarMensagemForm({ onSaved }: Props) {
       const schedule = mode === "quick"
         ? { kind: "quick" as const, when: quickWhen, repeat: quickRepeat, days: quick, time: quickTime }
         : { kind: "custom" as const, date, time, intervals: recurrence ? intervals : [] };
-      const rows = planMessageBatch([selected], content, schedule);
-      const { error } = await supabase.from("scheduled_messages").insert(rows);
-      if (error) throw error;
-      toast({ title: `${rows.length} mensagem(ns) agendada(s)` });
+      const result = await enqueueMessages([selected.id], content, schedule, "schedule-sheet");
+      toast({ title: `${result.queued} mensagem(ns) agendada(s)` });
       onSaved();
     } catch (e: unknown) {
       toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });

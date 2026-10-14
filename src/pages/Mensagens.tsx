@@ -14,11 +14,11 @@ import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { useToast } from "@/hooks/use-toast";
 import { useMessageComposerData } from "@/hooks/useMessageComposerData";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { supabase } from "@/integrations/supabase/client";
+import { enqueueMessages } from "@/lib/messageQueue";
 import { errorMessage } from "@/lib/errorMessage";
 import { toggleVisibleRecipients } from "@/lib/messageRecipients";
 import { hasNameVar } from "@/lib/phone";
-import { deliverySpread, planMessageBatch } from "@/lib/messageSchedule";
+import { deliverySpread } from "@/lib/messageSchedule";
 import { fmtDateISOSP } from "@/lib/spTime";
 import { CalendarClock, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -108,11 +108,9 @@ export default function Mensagens() {
       const schedule = immediate ? { kind: "now" as const } : schedType === "quick"
         ? { kind: "quick" as const, when: quickWhen, repeat: quickRepeat, days: quick, time: quickTime }
         : { kind: "custom" as const, date: customDate, time: customTime, intervals: recurrence ? intervals : [] };
-      const rows = planMessageBatch(selected, message, schedule);
-      const { error } = await supabase.from("scheduled_messages").insert(rows);
-      if (error) throw error;
+      const result = await enqueueMessages(selected.map(student => student.id), message, schedule, "composer");
       toast({
-        title: immediate ? `${rows.length} mensagem(ns) na fila` : `${rows.length} mensagem(ns) agendada(s)`,
+        title: immediate ? `${result.queued} mensagem(ns) na fila` : `${result.queued} mensagem(ns) agendada(s)`,
         description: immediate ? (spreadInfo.spread
           ? `Serão enviadas de forma gradual ao longo de ~${spreadInfo.minutes} min.`
           : "Serão enviadas nos próximos minutos.") : undefined,

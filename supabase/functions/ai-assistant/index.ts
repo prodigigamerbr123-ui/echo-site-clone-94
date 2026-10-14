@@ -1,3 +1,4 @@
+import { enqueueResult } from "../_shared/messageQueueContracts.ts";
 import { requireRequestQuota } from "../_shared/requestQuota.ts";
 import { inputErrorResponse, readJsonObject } from "../_shared/httpInput.ts";
 import {
@@ -329,6 +330,7 @@ async function executeTool(
   name: string,
   rawArgs: unknown,
   supabase: SupabaseClient<Database>,
+  requestId?: string,
 ): Promise<Json> {
   const { tool, args } = parseToolAction(name, rawArgs);
   console.log(`[tool] ${tool}`);
@@ -461,56 +463,16 @@ async function executeTool(
       return { success: true, student: data };
     }
     case "schedule_message": {
-      const ids: string[] = args.student_ids || [];
-      if (!ids.length) return { success: false, error: "student_ids vazio" };
-      const base = args.scheduled_for
-        ? new Date(args.scheduled_for)
-        : new Date(Date.now() + 2 * 60 * 1000);
-      if (isNaN(base.getTime()) || base.getTime() <= Date.now())
-        return { success: false, error: "scheduled_for deve ser futuro" };
-      const spread = ids.length > 20;
-      const spanMs = spread ? 60 * 60 * 1000 : 0;
-
-      // Buscar nomes para substituir {nome} — mesmo comportamento de replaceNameVar
-      // em src/pages/EnviarMensagem.tsx
-      const { data: studentsForNames, error: studentsError } = await supabase
-        .from("students")
-        .select("id, name")
-        .in("id", ids);
-      if (studentsError) throw studentsError;
-      if (studentsForNames?.length !== ids.length)
-        throw new ToolValidationError(
-          "Um ou mais alunos não foram encontrados.",
-        );
-      const nameById = new Map<string, string>(
-        (studentsForNames || []).map((s) => [s.id, s.name || "aluno"]),
-      );
-
-      const rawContent: string = args.content || "";
-      const rows = ids.map((sid, i) => {
-        const offset = spread
-          ? Math.floor((spanMs / (ids.length - 1)) * i) +
-            Math.floor(Math.random() * 30000)
-          : ids.length > 1
-            ? Math.floor(Math.random() * (i + 1) * 60 * 1000)
-            : 0;
-        const nome = nameById.get(sid) || "aluno";
-        const content = rawContent.replace(/\{nome\}/gi, nome);
-        return {
-          student_id: sid,
-          content,
-          scheduled_for: new Date(base.getTime() + offset).toISOString(),
-          message_type: args.message_type || "manual",
-          status: "pending",
-        };
+      if (!requestId) throw new ToolValidationError("Confirme uma proposta antes de enviar.");
+      const { data, error } = await supabase.rpc("enqueue_messages_tx", {
+        _request_id: requestId, _student_ids: args.student_ids, _content: args.content,
+        _schedule: args.scheduled_for
+          ? { kind: "at", scheduled_for: args.scheduled_for, message_type: "manual" }
+          : { kind: "now" },
       });
-      const { error } = await supabase.from("scheduled_messages").insert(rows);
       if (error) throw error;
-      return {
-        success: true,
-        enqueued: rows.length,
-        spread_over_minutes: spread ? 60 : 0,
-      };
+      const result = enqueueResult(data);
+      return { success: true, enqueued: result.queued, replayed: result.replayed };
     }
 
     case "delete_scheduled_message": {
@@ -839,7 +801,7 @@ Deno.serve(async (req) => {
       try {
         if (typeof action.tool !== "string" || !WRITE_TOOLS.has(action.tool))
           throw new Error("Ação inválida");
-        result = await executeTool(action.tool, action.args, supabase);
+        result = await executeTool(action.tool, action.args, supabase, confirmedAction.id);
       } catch (e: unknown) {
         await confirmations.rpc("finish_ai_action_tx", {
           _id: confirmedAction.id,

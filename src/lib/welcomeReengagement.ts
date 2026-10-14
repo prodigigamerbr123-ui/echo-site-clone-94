@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { enqueueMessages } from "@/lib/messageQueue";
 import { fetchAutomationSettings, isAutomationEnabled, getAutomationParam } from "@/lib/automationSettings";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
 
@@ -29,14 +29,7 @@ export async function scheduleWelcomeIfEnabled(studentId: string, name: string):
       { nome: name },
       settings,
     );
-    const { error } = await supabase.from("scheduled_messages").insert({
-      student_id: studentId,
-      content,
-      scheduled_for: when.toISOString(),
-      message_type: "welcome",
-      status: "pending",
-    });
-    if (error) console.error("scheduleWelcomeIfEnabled insert error:", error);
+    await enqueueMessages([studentId], content, { kind: "at", scheduled_for: when.toISOString(), message_type: "welcome" }, "welcome");
   } catch (e) {
     console.error("scheduleWelcomeIfEnabled error:", e);
   }
@@ -47,16 +40,8 @@ export async function scheduleReengagementIfEnabled(studentId: string, name: str
     const settings = await fetchAutomationSettings();
     if (!isAutomationEnabled(settings, "reengagement")) return;
 
-    const { data: existing } = await supabase
-      .from("scheduled_messages")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("message_type", "reengagement")
-      .eq("status", "pending")
-      .limit(1);
-    if (existing && existing.length > 0) return;
-
     const daysAfter = Number(getAutomationParam(settings, "reengagement", "days_after", 20));
+    if (!Number.isInteger(daysAfter) || daysAfter < 1 || daysAfter > 365) throw new Error("Intervalo de reativação inválido");
     const when = new Date(Date.now() + daysAfter * 86400000);
     // 09-12h Brasília = 12-15h UTC
     when.setUTCHours(12 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0);
@@ -70,14 +55,7 @@ export async function scheduleReengagementIfEnabled(studentId: string, name: str
       settings,
     );
 
-    const { error } = await supabase.from("scheduled_messages").insert({
-      student_id: studentId,
-      content,
-      scheduled_for: when.toISOString(),
-      message_type: "reengagement",
-      status: "pending",
-    });
-    if (error) console.error("scheduleReengagementIfEnabled insert error:", error);
+    await enqueueMessages([studentId], content, { kind: "at", scheduled_for: when.toISOString(), message_type: "reengagement" }, "reengagement");
   } catch (e) {
     console.error("scheduleReengagementIfEnabled error:", e);
   }
