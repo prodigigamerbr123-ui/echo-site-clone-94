@@ -1,9 +1,9 @@
 import { evaluationResult, type EvaluationResult } from "../../supabase/functions/_shared/contracts";
 import { supabase } from "@/integrations/supabase/client";
-import { buildEvaluationMessages, applyLinkedEvaluationTemplates, buildFollowup, buildReschedule } from "./evaluationMessages";
+import { buildEvaluationMessages, applyLinkedEvaluationTemplates } from "./evaluationMessages";
 import { fetchAutomationSettings, isAutomationEnabled, getAutomationParam } from "./automationSettings";
 import { resolveAutomationMessage } from "./messageTemplates";
-import { spParts, spDate } from "./spTime";
+import { planEvaluationFollowup } from "../../supabase/functions/_shared/evaluationPolicy";
 
 export type EvaluationActionResult = EvaluationResult;
 
@@ -37,15 +37,12 @@ export async function finishEvaluationWithMessages(
   if (isAutomationEnabled(settings, key)) {
     // Follow-up starts at completion, including when closing an old appointment.
     const days = outcome === "completed" ? Number(getAutomationParam(settings, key, "days_after", 7)) : 1;
-    if (!Number.isInteger(days) || days < 1 || days > 365) throw new Error("Intervalo de acompanhamento inválido");
-    const p = spParts(new Date(Date.now() + days * 86400000));
-    const when = spDate(p.y, p.mo, p.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
-    const type = outcome === "completed" ? "evaluation_followup" : "evaluation_reschedule";
-    const content = await resolveAutomationMessage(key, type, outcome === "completed" ? buildFollowup(name) : buildReschedule(name), { nome: name }, settings);
-    messages.push({ content, scheduled_for: when.toISOString(), message_type: type });
+    const message = planEvaluationFollowup(name, outcome, days);
+    message.content = await resolveAutomationMessage(key, message.message_type, message.content, { nome: name }, settings);
+    messages.push(message);
   }
   const { data, error } = await supabase.rpc("mutate_evaluation_tx", {
-    _action: outcome, _evaluation_id: evaluationId, _messages: messages,
+    _action: outcome, _evaluation_id: evaluationId, _messages: messages.map(message => ({ ...message })),
   });
   if (error) throw error;
   return evaluationResult(data);

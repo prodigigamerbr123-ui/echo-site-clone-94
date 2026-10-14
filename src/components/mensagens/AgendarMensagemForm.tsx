@@ -1,8 +1,7 @@
-import type { Database } from "@/integrations/supabase/types";
 import { errorMessage } from "@/lib/errorMessage";
-import { buildMessageSeries } from "@/lib/recurrence";
-import { fetchAllPages } from "@/lib/fetchAllPages";
-import { useEffect, useMemo, useState } from "react";
+import { planMessageBatch } from "@/lib/messageSchedule";
+import { useMessageComposerData } from "@/hooks/useMessageComposerData";
+import { useMemo, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,12 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus, ChevronsUpDown } from "lucide-react";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
-import { replaceNameVar } from "@/lib/phone";
-import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
-import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
+import { fmtDateISOSP } from "@/lib/spTime";
 
-interface Student { id: string; name: string; phone: string; }
-interface PredefinedMessage { id: string; title: string; content: string; }
 interface Interval { id: string; days: number; count: number; }
 
 interface Props {
@@ -34,8 +29,8 @@ interface Props {
  */
 export function AgendarMensagemForm({ onSaved }: Props) {
   const { toast } = useToast();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [predefined, setPredefined] = useState<PredefinedMessage[]>([]);
+  const { students, predefinedMessages: predefined, loading, loadError, refetch } = useMessageComposerData();
+  const submitting = useRef(false);
   const [studentId, setStudentId] = useState("");
   const [studentOpen, setStudentOpen] = useState(false);
   const [content, setContent] = useState("");
@@ -50,70 +45,24 @@ export function AgendarMensagemForm({ onSaved }: Props) {
   const [intervals, setIntervals] = useState<Interval[]>([{ id: crypto.randomUUID(), days: 7, count: 4 }]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const s = await fetchAllPages((from, to) => supabase.from("students").select("id, name, phone", { count: "exact" }).order("name").order("id").range(from, to));
-      const [p, autoIds] = await Promise.all([
-        fetchAllPages((from, to) => supabase.from("predefined_messages").select("*", { count: "exact" }).order("title").order("id").range(from, to)),
-        fetchAutomationTemplateIds(),
-      ]);
-      setStudents(s);
-      setPredefined(p.filter((m) => !autoIds.has(m.id)));
-    })().catch(() => {
-      toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar todos os alunos e modelos. Reabra o formulário para tentar novamente.", variant: "destructive" });
-    });
-  }, [toast]);
-
   const selected = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
 
   const insertName = () => setContent(prev => prev + (prev.endsWith(" ") || prev.length === 0 ? "" : " ") + "{nome}");
 
   const handleSave = async () => {
+    if (submitting.current) return;
     if (!studentId || !content.trim()) {
       toast({ title: "Preencha aluno e mensagem", variant: "destructive" });
       return;
     }
+    submitting.current = true;
     setSaving(true);
     try {
-      const rows: Database["public"]["Tables"]["scheduled_messages"]["Insert"][] = [];
-      const finalContent = replaceNameVar(content.trim(), selected?.name ?? "");
-      if (mode === "quick") {
-        const [h, m] = quickTime.split(":").map(Number);
-        const now = new Date();
-        const makeDate = (daysFromNow: number) => {
-          const base = new Date(now.getTime() + daysFromNow * 86400000);
-          const p = spParts(base);
-          return spDate(p.y, p.mo, p.d, h, m);
-        };
-
-        if (quickWhen === "today") {
-          const dt = makeDate(0);
-          if (dt <= now) throw new Error("Horário de hoje já passou");
-          rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: "manual", status: "pending" });
-        }
-
-        if (quickWhen === "later" || quickRepeat) {
-          const opts: [boolean, number, string][] = [
-            [quick.days7, 7, "7_day_followup"],
-            [quick.days21, 21, "21_day_followup"],
-            [quick.days45, 45, "45_day_followup"],
-          ];
-          for (const [on, d, type] of opts) {
-            if (!on) continue;
-            const dt = makeDate(d);
-            rows.push({ student_id: studentId, content: finalContent, scheduled_for: dt.toISOString(), message_type: type, status: "pending" });
-          }
-        }
-
-        if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
-      } else {
-        if (!date || !time) throw new Error("Preencha data e horário");
-        const [dy, dmo, dd] = date.split("-").map(Number);
-        const [th, tmi] = time.split(":").map(Number);
-        const base = spDate(dy, dmo - 1, dd, th, tmi);
-        if (base <= new Date()) throw new Error("Data deve ser futura");
-        rows.push(...buildMessageSeries(studentId, finalContent, base, recurrence ? intervals : []));
-      }
+      if (!selected) throw new Error("Selecione um aluno cadastrado");
+      const schedule = mode === "quick"
+        ? { kind: "quick" as const, when: quickWhen, repeat: quickRepeat, days: quick, time: quickTime }
+        : { kind: "custom" as const, date, time, intervals: recurrence ? intervals : [] };
+      const rows = planMessageBatch([selected], content, schedule);
       const { error } = await supabase.from("scheduled_messages").insert(rows);
       if (error) throw error;
       toast({ title: `${rows.length} mensagem(ns) agendada(s)` });
@@ -121,9 +70,18 @@ export function AgendarMensagemForm({ onSaved }: Props) {
     } catch (e: unknown) {
       toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
     } finally {
+      submitting.current = false;
       setSaving(false);
     }
   };
+
+  if (loading) return <p role="status">Carregando alunos e modelos...</p>;
+  if (loadError) return (
+    <div role="alert" className="space-y-3">
+      <p>Não foi possível carregar os alunos e modelos.</p>
+      <Button variant="outline" onClick={() => void refetch()}>Tentar novamente</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-4">

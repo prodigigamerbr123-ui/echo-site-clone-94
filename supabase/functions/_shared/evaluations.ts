@@ -1,141 +1,11 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { Database, Json } from "./database.types.ts";
 import { evaluationResult } from "./contracts.ts";
-// Lógica compartilhada de avaliações físicas — precisa ficar em paridade
-// exata com src/lib/evaluationMessages.ts e src/pages/AgendarAvaliacao.tsx.
-//
-// Regras replicadas:
-//  - createEvaluationWithMessages: cria evaluation + até 3 mensagens
-//    (confirmação agora+2min, véspera 18:00 SP, dia -3h).
-//  - Trava de duplicidade: aluno com evaluation 'scheduled' futura.
-//  - Trava de conflito: outra evaluation em raio de 30 min.
-//  - completeEvaluation: atualiza had_evaluation + last_evaluation_date,
-//    deleta mensagens pendentes vinculadas, agenda follow-up 7d (sem dup).
-//  - noShowEvaluation: status no_show, deleta pendentes, agenda remarcação
-//    para amanhã 09-12h.
-
 import { resolveAutomationMessage } from "./messageTemplates.ts";
-
-// Brasil (sem DST) = UTC-3. Fixo para manter paridade com o browser em SP.
-const SP_OFFSET_MS = -3 * 60 * 60 * 1000;
-
-
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
-function spParts(d: Date) {
-  const s = new Date(d.getTime() + SP_OFFSET_MS);
-  return {
-    y: s.getUTCFullYear(),
-    mo: s.getUTCMonth(),
-    d: s.getUTCDate(),
-    h: s.getUTCHours(),
-    mi: s.getUTCMinutes(),
-  };
-}
-function spDate(y: number, mo: number, d: number, h: number, mi: number) {
-  // Data UTC que representa (y-mo-d h:mi) horário SP
-  return new Date(Date.UTC(y, mo, d, h, mi) - SP_OFFSET_MS);
-}
-function fmtDateSP(d: Date) {
-  const p = spParts(d);
-  return `${pad(p.d)}/${pad(p.mo + 1)}`;
-}
-function fmtTimeSP(d: Date) {
-  const p = spParts(d);
-  return `${pad(p.h)}:${pad(p.mi)}`;
-}
-function fmtDateISOSP(d: Date) {
-  const p = spParts(d);
-  return `${p.y}-${pad(p.mo + 1)}-${pad(p.d)}`;
-}
-
-type Tpl = (n: string, w: Date) => string;
-
-const CONFIRMATION_TEMPLATES: Tpl[] = [
-  (n, w) => `Olá ${n}! ✅ Sua avaliação física está marcada para ${fmtDateSP(w)} às ${fmtTimeSP(w)}. Qualquer imprevisto, é só me avisar!`,
-  (n, w) => `Oi ${n}! 📅 Confirmado: avaliação física em ${fmtDateSP(w)} às ${fmtTimeSP(w)}. Te espero! 💪`,
-  (n, w) => `${n}, tudo certo! ✅ Sua avaliação está agendada pra ${fmtDateSP(w)} às ${fmtTimeSP(w)}. Se precisar remarcar é só falar.`,
-];
-const REMINDER_1D_TEMPLATES: Tpl[] = [
-  (n, w) => `Oi ${n}! 👋 Passando pra lembrar da sua avaliação física amanhã às ${fmtTimeSP(w)}. Bora acompanhar sua evolução!`,
-  (n, w) => `${n}, amanhã é dia! 📋 Sua avaliação física está marcada pra ${fmtTimeSP(w)}. Te vejo lá! 💪`,
-  (n, w) => `Lembrete rápido, ${n}: amanhã tem avaliação física às ${fmtTimeSP(w)}. Qualquer coisa é só me chamar. ✅`,
-];
-const REMINDER_DAY_TEMPLATES: Tpl[] = [
-  (n, w) => `Oi ${n}! ⏰ Sua avaliação física é hoje às ${fmtTimeSP(w)}. Já já te vejo! 💪`,
-  (n, w) => `${n}, tá chegando a hora! 🏋️ Avaliação física hoje às ${fmtTimeSP(w)}. Te espero!`,
-  (n, w) => `Lembrete de hoje, ${n}: avaliação física às ${fmtTimeSP(w)}. Se precisar remarcar, me avisa!`,
-];
-const FOLLOWUP_TEMPLATES = [
-  (n: string) => `Olá ${n}! 📈 Como foi sua avaliação física? Vamos acompanhar sua evolução juntos! 💪`,
-  (n: string) => `E aí ${n}! Passando pra saber como você está depois da avaliação. Bora ajustar o que precisar! 🏋️`,
-  (n: string) => `${n}, tudo certo? Já se passou uma semana da sua avaliação — conta pra gente como está o treino! 💪`,
-];
-const RESCHEDULE_TEMPLATES = [
-  (n: string) => `Oi ${n}! Sentimos sua falta na avaliação ontem 😊 Vamos remarcar? Me fala qual dia fica melhor pra você!`,
-  (n: string) => `${n}, notamos que você não conseguiu vir na avaliação. 📅 Sem problema — quando podemos remarcar?`,
-  (n: string) => `E aí ${n}! Ficamos com saudades ontem. Bora reagendar sua avaliação física? Me diz o melhor dia!`,
-];
-
-const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-
-export interface EvaluationAutoMessage {
-  scheduled_for: string;
-  message_type: string;
-  content: string;
-}
-
-export function buildEvaluationMessages(
-  studentName: string,
-  scheduledAt: Date,
-): EvaluationAutoMessage[] {
-  const now = new Date();
-  const msgs: EvaluationAutoMessage[] = [];
-
-  // 1) Confirmação: agora + 2 min
-  const confirmAt = new Date(now.getTime() + 2 * 60 * 1000);
-  msgs.push({
-    scheduled_for: confirmAt.toISOString(),
-    message_type: "evaluation_confirmation",
-    content: pick(CONFIRMATION_TEMPLATES)(studentName, scheduledAt),
-  });
-
-  // 2) Véspera 18:00 SP
-  const p = spParts(scheduledAt);
-  // "dia anterior em SP" — construímos via Date UTC para lidar com virada de mês
-  const eveTmp = new Date(Date.UTC(p.y, p.mo, p.d - 1)); // meia-noite UTC (irrelevante)
-  const eveParts = {
-    y: eveTmp.getUTCFullYear(),
-    mo: eveTmp.getUTCMonth(),
-    d: eveTmp.getUTCDate(),
-  };
-  const eve = spDate(eveParts.y, eveParts.mo, eveParts.d, 18, 0);
-  const eveInFuture = eve.getTime() > now.getTime();
-
-  // 3) Dia -3h
-  const dayOf = new Date(scheduledAt.getTime() - 3 * 60 * 60 * 1000);
-  const dayOfInFuture = dayOf.getTime() > now.getTime();
-
-  const collision = dayOf.getTime() - eve.getTime() < 12 * 60 * 60 * 1000;
-
-  if (eveInFuture && !collision) {
-    msgs.push({
-      scheduled_for: eve.toISOString(),
-      message_type: "evaluation_reminder_1d",
-      content: pick(REMINDER_1D_TEMPLATES)(studentName, scheduledAt),
-    });
-  }
-  if (dayOfInFuture) {
-    msgs.push({
-      scheduled_for: dayOf.toISOString(),
-      message_type: "evaluation_reminder_day",
-      content: pick(REMINDER_DAY_TEMPLATES)(studentName, scheduledAt),
-    });
-  }
-
-  return msgs;
-}
+import { fmtDateSP, fmtTimeSP } from "./spTime.ts";
+import { buildEvaluationMessages, planEvaluationFollowup } from "./evaluationPolicy.ts";
+export { buildEvaluationMessages } from "./evaluationPolicy.ts";
+export type { EvaluationMessage as EvaluationAutoMessage } from "./evaluationPolicy.ts";
 
 export const AUTO_EVAL_MESSAGE_TYPES = [
   "evaluation_confirmation",
@@ -274,17 +144,13 @@ async function finishEvaluationOutcome(supabase: SupabaseClient<Database>, evalu
   const messages = [];
   if (settingEnabled(settings, key)) {
     const days = outcome === "completed" ? Number(settingParam(settings, key, "days_after", 7)) : 1;
-    if (!Number.isInteger(days) || days < 1 || days > 365) throw new Error("Intervalo de acompanhamento inválido");
-    const p = spParts(new Date(Date.now() + days * 86400000));
-    const when = spDate(p.y, p.mo, p.d, 9 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
     const name = ev.students?.name ?? "aluno";
-    const type = outcome === "completed" ? "evaluation_followup" : "evaluation_reschedule";
-    const fallback = outcome === "completed" ? pick(FOLLOWUP_TEMPLATES)(name) : pick(RESCHEDULE_TEMPLATES)(name);
-    const content = await resolveAutomationMessage(supabase, settings, key, type, fallback, { nome: name });
-    messages.push({ content, scheduled_for: when.toISOString(), message_type: type });
+    const message = planEvaluationFollowup(name, outcome, days);
+    message.content = await resolveAutomationMessage(supabase, settings, key, message.message_type, message.content, { nome: name });
+    messages.push(message);
   }
   const { data, error: actionError } = await supabase.rpc("mutate_evaluation_tx", {
-    _action: outcome, _evaluation_id: evaluationId, _messages: messages,
+    _action: outcome, _evaluation_id: evaluationId, _messages: messages.map(message => ({ ...message })),
   });
   if (actionError) throw actionError;
   return evaluationResult(data);

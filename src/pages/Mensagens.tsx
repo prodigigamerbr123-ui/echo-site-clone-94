@@ -15,14 +15,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useMessageComposerData } from "@/hooks/useMessageComposerData";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 import { errorMessage } from "@/lib/errorMessage";
 import { toggleVisibleRecipients } from "@/lib/messageRecipients";
-import { hasNameVar, replaceNameVar } from "@/lib/phone";
-import { buildMessageSeries } from "@/lib/recurrence";
-import { fmtDateISOSP, spDate, spParts } from "@/lib/spTime";
+import { hasNameVar } from "@/lib/phone";
+import { deliverySpread, planMessageBatch } from "@/lib/messageSchedule";
+import { fmtDateISOSP } from "@/lib/spTime";
 import { CalendarClock, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 interface Interval { id: string; days: number; count: number; }
@@ -41,6 +40,7 @@ export default function Mensagens() {
   const [message, setMessage] = useState("");
   const [selectedPredefined, setSelectedPredefined] = useState("");
   const [sending, setSending] = useState(false);
+  const submitting = useRef(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // The URL is the source of truth, including links opened from the dashboard.
@@ -90,108 +90,38 @@ export default function Mensagens() {
   const insertNameVar = () =>
     setMessage(prev => prev + (prev.endsWith(" ") || prev.length === 0 ? "" : " ") + "{nome}");
 
-  const spreadInfo = useMemo(() => {
-    const n = selectedStudents.length;
-    if (n <= 5) return { spread: false, minutes: 0 };
-    if (n <= 20) return { spread: true, minutes: Math.min(30, n * 2) };
-    if (n <= 100) return { spread: true, minutes: 60 };
-    return { spread: true, minutes: Math.ceil(n * 0.6) };
-  }, [selectedStudents.length]);
+  const spreadInfo = deliverySpread(selectedStudents.length);
 
   const previewName = useMemo(() => {
     if (selectedStudents.length === 1) return students.find(s => s.id === selectedStudents[0])?.name;
     return undefined;
   }, [selectedStudents, students]);
 
-  const enqueueNow = async () => {
+  const enqueue = async (immediate: boolean) => {
+    // React state updates are asynchronous; guard clicks in the same render too.
+    if (submitting.current) return;
+    submitting.current = true;
     setSending(true);
     try {
-      const selected = students.filter(s => selectedStudents.includes(s.id));
-      const now = Date.now();
-      const spanMs = spreadInfo.spread ? spreadInfo.minutes * 60 * 1000 : 0;
-      const rows = selected.map((s, i) => {
-        const startOffset = 60 * 1000 + Math.floor(Math.random() * 2 * 60 * 1000);
-        const spreadOffset = selected.length > 1 && spanMs > 0
-          ? Math.floor((spanMs / (selected.length - 1)) * i) + Math.floor(Math.random() * 20000)
-          : 0;
-        return {
-          student_id: s.id,
-          content: replaceNameVar(message.trim(), s.name),
-          scheduled_for: new Date(now + startOffset + spreadOffset).toISOString(),
-          message_type: "manual",
-          status: "pending",
-        };
-      });
+      const selected = students.filter(student => selectedStudents.includes(student.id));
+      if (selected.length !== selectedStudents.length) throw new Error("Atualize a seleção de alunos");
+      const schedule = immediate ? { kind: "now" as const } : schedType === "quick"
+        ? { kind: "quick" as const, when: quickWhen, repeat: quickRepeat, days: quick, time: quickTime }
+        : { kind: "custom" as const, date: customDate, time: customTime, intervals: recurrence ? intervals : [] };
+      const rows = planMessageBatch(selected, message, schedule);
       const { error } = await supabase.from("scheduled_messages").insert(rows);
       if (error) throw error;
       toast({
-        title: `${rows.length} mensagem(ns) na fila`,
-        description: spreadInfo.spread
+        title: immediate ? `${rows.length} mensagem(ns) na fila` : `${rows.length} mensagem(ns) agendada(s)`,
+        description: immediate ? (spreadInfo.spread
           ? `Serão enviadas de forma gradual ao longo de ~${spreadInfo.minutes} min.`
-          : "Serão enviadas nos próximos minutos.",
+          : "Serão enviadas nos próximos minutos.") : undefined,
       });
       resetForm();
-    } catch (e: unknown) {
-      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erro", description: errorMessage(error), variant: "destructive" });
     } finally {
-      setSending(false);
-      setConfirmOpen(false);
-    }
-  };
-
-  const enqueueSchedule = async () => {
-    setSending(true);
-    try {
-      const selected = students.filter(s => selectedStudents.includes(s.id));
-      const rows: Database["public"]["Tables"]["scheduled_messages"]["Insert"][] = [];
-
-      if (schedType === "quick") {
-        const [h, m] = quickTime.split(":").map(Number);
-        const now = new Date();
-        const makeDate = (daysFromNow: number) => {
-          const base = new Date(now.getTime() + daysFromNow * 86400000);
-          const p = spParts(base);
-          return spDate(p.y, p.mo, p.d, h, m);
-        };
-        for (const stu of selected) {
-          const content = replaceNameVar(message.trim(), stu.name);
-          if (quickWhen === "today") {
-            const dt = makeDate(0);
-            if (dt <= now) throw new Error("O horário de hoje já passou");
-            rows.push({ student_id: stu.id, content, scheduled_for: dt.toISOString(), message_type: "manual", status: "pending" });
-          }
-          if (quickWhen === "later" || quickRepeat) {
-            const opts: [boolean, number, string][] = [
-              [quick.days7, 7, "7_day_followup"],
-              [quick.days21, 21, "21_day_followup"],
-              [quick.days45, 45, "45_day_followup"],
-            ];
-            for (const [on, d, type] of opts) {
-              if (!on) continue;
-              rows.push({ student_id: stu.id, content, scheduled_for: makeDate(d).toISOString(), message_type: type, status: "pending" });
-            }
-          }
-        }
-        if (!rows.length) throw new Error("Selecione pelo menos uma opção de envio");
-      } else {
-        if (!customDate || !customTime) throw new Error("Preencha data e horário");
-        const [cy, cmo, cd] = customDate.split("-").map(Number);
-        const [ch, cmi] = customTime.split(":").map(Number);
-        const base = spDate(cy, cmo - 1, cd, ch, cmi);
-        if (base <= new Date()) throw new Error("Data deve ser futura");
-        for (const stu of selected) {
-          const content = replaceNameVar(message.trim(), stu.name);
-          rows.push(...buildMessageSeries(stu.id, content, base, recurrence ? intervals : []));
-        }
-      }
-
-      const { error } = await supabase.from("scheduled_messages").insert(rows);
-      if (error) throw error;
-      toast({ title: `${rows.length} mensagem(ns) agendada(s)` });
-      resetForm();
-    } catch (e: unknown) {
-      toast({ title: "Erro", description: errorMessage(e), variant: "destructive" });
-    } finally {
+      submitting.current = false;
       setSending(false);
       setConfirmOpen(false);
     }
@@ -213,9 +143,9 @@ export default function Mensagens() {
     if (selectedStudents.length === 0) return toast({ title: "Selecione pelo menos um aluno", variant: "destructive" });
     if (mode === "now") {
       if (selectedStudents.length > 100) { setConfirmOpen(true); return; }
-      enqueueNow();
+      enqueue(true);
     } else {
-      enqueueSchedule();
+      enqueue(false);
     }
   };
 
@@ -450,7 +380,7 @@ export default function Mensagens() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={enqueueNow}>Enviar para {selectedStudents.length}</AlertDialogAction>
+            <AlertDialogAction onClick={() => void enqueue(true)}>Enviar para {selectedStudents.length}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
