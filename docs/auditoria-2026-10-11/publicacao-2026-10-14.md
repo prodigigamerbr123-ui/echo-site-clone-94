@@ -24,7 +24,24 @@ A primeira execução encontrou um módulo compartilhado ausente no pacote; o pa
 
 ## Frontend
 
-Commit de limpeza preparado: 3a0b185. O frontend será publicado pelo workflow após o commit das proteções e checks. A conclusão do workflow e a conferência do site serão registradas abaixo.
+Commits publicados: 3a0b185 (limpeza) e 95c5109 (proteções e publicação validada).
+
+[Workflow 38565471167](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38565471167) concluído com success para o commit 95c51092ceee5523bf12f9d931022508cc9017cf. O pipeline executou verificações de segredos, dependências, tipos, lint, testes, build e deploy.
+
+Na aba autenticada do site publicado foram conferidos Dashboard, lista de alunos, automações e compositor de mensagens. Dados e componentes carregaram; o compositor permaneceu sem destinatários e com envio desabilitado. Nenhum formulário de envio foi submetido. A aba foi devolvida ao Dashboard.
+
+A aba aberta antes do deploy ainda referenciou um arquivo JavaScript da publicação anterior. Após recarregar, a versão atual carregou e as navegações seguintes funcionaram. A recuperação automática de versões antigas fica registrada para a etapa de performance/resiliência, sem confundir esse erro antigo com falha do novo bundle.
+
+## Validação final
+
+- 175 testes da aplicação em 25 arquivos.
+- Suíte HTTP Deno com dois testes principais e 14 passos; cinco testes Python do scanner.
+- Tipos da aplicação, configuração Vite e cinco handlers Deno; lint e build aprovados.
+- Quota em produção exercitada sob papel authenticated com identidade de administrador, dentro de transação com ROLLBACK: passou, sem consumir permanentemente o contador.
+- Hashes de runtime e permissões conferidos após a publicação. Os jobs retornaram aos mesmos estados de antes da manutenção.
+- Credenciais, chaves, dumps e inspeções privadas permanecem fora do Git.
+
+O commit posterior deste registro altera somente documentação e dispensa nova implantação. O código em produção corresponde ao workflow de sucesso acima.
 
 ## Retorno
 
