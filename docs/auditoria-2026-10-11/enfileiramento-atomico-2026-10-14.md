@@ -9,7 +9,7 @@
 - O cliente conserva a mesma chave em falhas de rede e após recarregar a aba. sessionStorage recebe somente um hash do conteúdo e o UUID, sem texto da mensagem, nomes ou tokens. Se o armazenamento do navegador estiver indisponível, a recuperação persiste somente na memória daquela página.
 - Os dois compositores, boas-vindas, reativação, IA e endpoint de compatibilidade usam a RPC. Foi removido o utilitário legado scheduleMessages.ts, sem consumidores, que ainda fazia INSERT direto.
 - Boas-vindas/reativação também têm proteção contra dois eventos simultâneos enquanto existir envio pendente ou em processamento.
-- O INSERT direto de usuários autenticados será removido somente depois da publicação confirmada do frontend. Avaliações continuam usando suas transações autorizadas; workers usam service_role. Um trigger de INSERT rejeita mensagens só com espaços, tabulações ou quebras de linha, preservando atualizações de registros antigos.
+- O INSERT direto de usuários autenticados foi removido depois da publicação confirmada do frontend. Avaliações continuam usando suas transações autorizadas; workers usam service_role. Um trigger de INSERT rejeita mensagens só com espaços, tabulações ou quebras de linha, preservando atualizações de registros antigos.
 
 ## Contrato de integração
 
@@ -43,3 +43,13 @@ Rollback: a fase rollback restaura runtime, gateway e flags originais dos jobs. 
 Abas carregadas antes da publicação precisam ser recarregadas para usar o novo contrato; após a retirada da permissão antiga elas recebem erro em tentativas antigas, sem criar registros pela rota antiga. Recuperação automática de chunks antigos permanece na etapa de resiliência.
 
 Edição e repetição deliberada de mensagens já existentes continuam sob as permissões e guardas anteriores. Este bloco centraliza criação de lotes e não encerra toda a auditoria nem toda a revisão da agenda de avaliações.
+
+## Resultado final da publicação
+
+Código publicado: 91ffc22fbfbd2db008592a39eb0bacbf972ac8fb. [Workflow 38570773213](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38570773213) concluído com success.
+
+A fase restrict conferiu esse commit na API do GitHub e aplicou a segunda migração. A verificação final confirmou: INSERT direto revogado, trigger de conteúdo ativo, duas migrações registradas, registro de idempotência com RLS e jobs nos estados originais. Também foram conferidos os 25 hashes de runtime, corpo SQL da operação, propriedade postgres, SECURITY DEFINER, search_path vazio, TimeZone UTC, execução autenticada e ausência de execução anônima.
+
+Na aba autenticada, após recarregar a versão publicada, o compositor carregou alunos e campos de agendamento personalizado. Não foram selecionados alunos nem submetidos envios. A aba voltou ao Dashboard. O comportamento de gravação e repetição foi exercitado somente nos fixtures locais e na homologação isolada.
+
+A suíte final teve 246 testes aprovados em 29 arquivos. Scanner final antes do commit: 357 arquivos sem padrões de credenciais detectados. Este último registro altera apenas documentação.

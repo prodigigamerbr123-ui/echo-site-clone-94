@@ -41,3 +41,7 @@ https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38568031
 Após a conclusão do pipeline, a aba autenticada foi recarregada. O compositor de agendamento carregou alunos, modelos e controles de horário; a alternância para personalizado exibiu data, horário e recorrência. A agenda de avaliações também carregou seus dados e controles. Nenhum destinatário foi selecionado, nenhuma avaliação foi alterada e nenhum envio foi submetido. A aba foi devolvida ao Dashboard.
 
 Os hashes dos 24 módulos em produção e as flags originais dos dois jobs foram conferidos novamente após a publicação. Este registro final altera apenas documentação.
+
+## Atualização posterior neste mesmo dia
+
+A criação transacional da fila, a chave persistida de idempotência e a retirada do INSERT direto foram concluídas e publicadas no bloco seguinte. Ver [enfileiramento-atomico-2026-10-14.md](enfileiramento-atomico-2026-10-14.md) para validação, migrações, limitações e retorno. Permanecem os demais pontos de agenda e resiliência registrados acima.
