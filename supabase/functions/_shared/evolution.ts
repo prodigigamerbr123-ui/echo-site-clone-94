@@ -5,7 +5,6 @@ export interface EvolutionSendResult {
   httpStatus?: number;
   messageId?: string | null;
   reason?: string;
-  bodyText?: string;
 }
 
 function safeJson(text: string): unknown {
@@ -14,16 +13,6 @@ function safeJson(text: string): unknown {
   } catch (_) {
     return null;
   }
-}
-
-function extractError(value: unknown): string | null {
-  const data = record(value);
-  if (typeof data.error === "string") return data.error;
-  if (data.error && typeof data.error === "object") {
-    return typeof record(data.error).message === "string" ? String(record(data.error).message) : JSON.stringify(data.error);
-  }
-  if (typeof data.message === "string" && data.message !== "success") return data.message;
-  return null;
 }
 
 export function parseEvolutionStatus(data: unknown) {
@@ -83,7 +72,6 @@ export async function sendEvolutionText(params: {
   const data = safeJson(bodyText);
   const rawId = record(record(record(data).data).Info).ID;
   const messageId = typeof rawId === "string" && rawId.trim() ? rawId : null;
-  const apiError = extractError(data);
 
   console.log(
     `[evolution-send] http=${resp.status} messageId=${messageId || "none"} `,
@@ -94,8 +82,7 @@ export async function sendEvolutionText(params: {
       ok: false,
       httpStatus: resp.status,
       uncertain: resp.status >= 500,
-      reason: apiError || `Evolution retornou HTTP ${resp.status}`,
-      bodyText,
+      reason: `Evolution retornou HTTP ${resp.status}`,
     };
   }
 
@@ -104,10 +91,9 @@ export async function sendEvolutionText(params: {
       ok: false,
       httpStatus: resp.status,
       uncertain: true,
-      reason: apiError || "Evolution respondeu sem ID de mensagem; não confirmei o envio",
-      bodyText,
+      reason: "Evolution respondeu sem ID de mensagem; não confirmei o envio",
     };
   }
 
-  return { ok: true, httpStatus: resp.status, messageId, bodyText };
+  return { ok: true, httpStatus: resp.status, messageId };
 }

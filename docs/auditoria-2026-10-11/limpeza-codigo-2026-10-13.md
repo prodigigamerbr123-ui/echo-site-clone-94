@@ -1,5 +1,7 @@
 # Limpeza de código — 13/10/2026
 
+> Atualização: a implantação posterior está registrada em [Publicação de 14/10/2026](publicacao-2026-10-14.md).
+
 ## Escopo e resultado
 
 Lote local do item 1 da auditoria: organização do frontend, eliminação de duplicações e correções de falhas encontradas durante a refatoração. Nenhuma alteração deste lote foi publicada na VM ou no GitHub.

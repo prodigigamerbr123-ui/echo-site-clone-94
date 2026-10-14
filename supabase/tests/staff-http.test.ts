@@ -8,11 +8,11 @@ import { requireCronSecret } from "../functions/_shared/auth.ts";
 Deno.test("cron secrets are accepted only in headers", () => {
   const previous = Deno.env.get("CRON_SECRET");
   try {
-    Deno.env.set("CRON_SECRET", "isolated-cron-secret");
-    assertEquals(requireCronSecret(new Request("http://localhost/?cron_secret=isolated-cron-secret"))?.status, 401);
+    Deno.env.set("CRON_SECRET", "isolated-cron-test-secret");
+    assertEquals(requireCronSecret(new Request("http://localhost/?cron_secret=isolated-cron-test-secret"))?.status, 401);
     assertEquals(requireCronSecret(new Request("http://localhost/", { headers: { "x-cron-secret": "wrong" } }))?.status, 401);
     assertEquals(requireCronSecret(new Request("http://localhost/"))?.status, 401);
-    assertEquals(requireCronSecret(new Request("http://localhost/", { headers: { "x-cron-secret": "isolated-cron-secret" } })), null);
+    assertEquals(requireCronSecret(new Request("http://localhost/", { headers: { "x-cron-secret": "isolated-cron-test-secret" } })), null);
     Deno.env.delete("CRON_SECRET");
     assertEquals(requireCronSecret(new Request("http://localhost/"))?.status, 500);
   } finally {
@@ -28,11 +28,15 @@ const tokens = new Map<string, string>();
 const requests: { path: string; method: string; body: unknown; role: string | null }[] = [];
 let roleServiceUnavailable = false;
 let databaseUnavailable = false;
+let providerUnavailable = false;
+let quotaRetryAfter = 0;
+let quotaUnavailable = false;
 const env = {
   SUPABASE_URL: "http://127.0.0.1:18081",
   SUPABASE_ANON_KEY: "staging-public-placeholder",
   EVOLUTION_API_URL: "http://127.0.0.1:18081",
   EVOLUTION_INSTANCE_TOKEN: "staging-evolution-placeholder",
+  CRON_SECRET: "isolated-cron-test-secret",
 };
 function base64url(value: string | Uint8Array): string {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : value;
@@ -57,11 +61,15 @@ async function upstream(req: Request): Promise<Response> {
     return user ? json({ id: user, aud: "authenticated", role: "authenticated", email: "fixture@test.invalid", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" }) : json({ message: "Invalid token" }, 401);
   }
   if (url.pathname === "/rest/v1/rpc/current_staff_role") return roleServiceUnavailable ? json({ message: "Fixture unavailable" }, 500) : json(role);
+  if (url.pathname === "/rest/v1/rpc/consume_staff_request_quota") return quotaUnavailable ? json({ message: "private-quota-marker" }, 500) : json(quotaRetryAfter);
   if (url.pathname === "/rest/v1/students") return json([{ id: studentId, name: "Aluno fictício" }]);
   if (url.pathname === "/rest/v1/scheduled_messages") return json(null, 201);
   if (url.pathname === "/rest/v1/rpc/complete_evaluation_tx") return databaseUnavailable
     ? json({ message: "private-db-detail-marker", details: "private-schema-marker" }, 500) : json(null);
   if (url.pathname === "/instance/status") return json({ data: { connected: true, loggedIn: true, state: "open" } });
+  if (url.pathname === "/send/text") return providerUnavailable
+    ? json({ error: "private-provider-detail-marker" }, 503)
+    : json({ data: { Info: { ID: "fixture-message-id" }, token: "private-provider-detail-marker" } });
   if (url.pathname === "/instance/qr") return json({ data: { code: null } });
   return json({ error: "Unimplemented fixture route" }, 404);
 }
@@ -129,6 +137,23 @@ Deno.test("staff HTTP authorization and compatibility endpoints", async (t) => {
         assertEquals(rows[0].student_id, studentId); assertEquals(rows[0].content, "Olá Aluno fictício");
         assertEquals(rows[0].status, "pending"); assert(!("phone" in rows[0]));
         assertEquals((await call(reception, { message: "Test", students: [{ id: "invalid" }] })).status, 400);
+        assertEquals((await call(reception, null)).status, 400);
+        assertEquals((await call(reception, [])).status, 400);
+        assertEquals((await call(reception, { message: "x".repeat(70000) })).status, 413);
+        const beforeLimit = requests.length;
+        quotaRetryAfter = 600;
+        try {
+          const blocked = await call(reception, { message: "Teste", students: [{ id: studentId }] });
+          assertEquals(blocked.status, 429);
+          assertEquals(blocked.data.retryAfter, 600);
+          assert(!requests.slice(beforeLimit).some((request) => request.path === "/rest/v1/students" || request.path === "/rest/v1/scheduled_messages"));
+        } finally { quotaRetryAfter = 0; }
+        quotaUnavailable = true;
+        try {
+          const unavailable = await call(reception, { message: "Teste", students: [{ id: studentId }] });
+          assertEquals(unavailable.status, 503);
+          assert(!JSON.stringify(unavailable.data).includes("private-quota-marker"));
+        } finally { quotaUnavailable = false; }
         roles.set(reception, null);
         assertEquals((await call(reception, { message: "Test", students: [{ id: studentId }] })).status, 403);
         roles.set(reception, "recepcao");
@@ -137,6 +162,52 @@ Deno.test("staff HTTP authorization and compatibility endpoints", async (t) => {
         finally { roleServiceUnavailable = false; }
       } finally { await stop(); }
     });
+    await t.step("oneshot: limits input, requires cron authentication and redacts provider data", async () => {
+      const stop = await launch("send-oneshot");
+      const callInternal = async (body: unknown, secret = "isolated-cron-test-secret", method = "POST") => {
+        const response = await fetch("http://127.0.0.1:8000", {
+          method, headers: { "content-type": "application/json", "x-cron-secret": secret },
+          ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
+        });
+        return { status: response.status, data: await response.json() };
+      };
+      try {
+        const before = requests.filter((request) => request.path === "/send/text").length;
+        assertEquals((await callInternal({ phone: "43999999999", text: "Teste" }, "wrong")).status, 401);
+        assertEquals((await callInternal(null)).status, 400);
+        assertEquals((await callInternal({ phone: {}, text: "Teste" })).status, 400);
+        assertEquals((await callInternal({ phone: "43999999999", text: " " })).status, 400);
+        assertEquals((await callInternal({ phone: "43999999999", text: "x".repeat(1001) })).status, 400);
+        assertEquals((await callInternal({ phone: "43999999999", text: "x".repeat(9000) })).status, 413);
+        assertEquals((await callInternal({}, "isolated-cron-test-secret", "GET")).status, 405);
+        assertEquals(requests.filter((request) => request.path === "/send/text").length, before);
+        const success = await callInternal({ phone: "43999999999", text: "Teste local" });
+        assertEquals(success.status, 200);
+        assertEquals(success.data.messageId, "fixture-message-id");
+        assert(!("bodyText" in success.data));
+        assert(!JSON.stringify(success.data).includes("private-provider-detail-marker"));
+        providerUnavailable = true;
+        const failure = await callInternal({ phone: "43999999999", text: "Teste local" });
+        assertEquals(failure.status, 502);
+        assertEquals(failure.data.uncertain, true);
+        assert(!JSON.stringify(failure.data).includes("private-provider-detail-marker"));
+      } finally { providerUnavailable = false; await stop(); }
+    });
+    for (const name of ["ai-assistant", "daily-briefing", "ai-database-actions"]) {
+      await t.step(name + ": denies exhausted quota before data or provider access", async () => {
+        const stop = await launch(name);
+        const before = requests.length;
+        quotaRetryAfter = 600;
+        try {
+          const limited = await call(admin, { messages: [{ role: "user", content: "Teste" }],
+            action: "create_student", params: { name: "Fixture" }, userConfirmation: true });
+          assertEquals(limited.status, 429);
+          assertEquals(limited.data.retryAfter, 600);
+          assert(!requests.slice(before).some((request) => !request.path.startsWith("/auth/") &&
+            !["/rest/v1/rpc/current_staff_role", "/rest/v1/rpc/consume_staff_request_quota"].includes(request.path)));
+        } finally { quotaRetryAfter = 0; await stop(); }
+      });
+    }
     await t.step("legacy AI completion: rejects arbitrary dates and invokes atomic RPC", async () => {
       const stop = await launch("ai-database-actions");
       try {

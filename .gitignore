@@ -38,3 +38,11 @@ __pycache__/
 # Local deployment and staging leftovers
 *.tmp
 *.bak
+
+# Private keys and database exports must stay outside version control
+*.pem
+*.key
+*.p12
+*.pfx
+*.dump
+*.sql.gz

@@ -25,6 +25,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Check repository for exposed credentials
+        run: |
+          python3 -m unittest discover -s ops -p test_repository_secrets.py
+          python3 ops/check-repository-secrets.py
       - name: Install dependencies
         run: npm ci
       - name: Check dependency security

@@ -1,3 +1,4 @@
+import { requireRequestQuota } from "../_shared/requestQuota.ts";
 import type { Database } from "../_shared/database.types.ts";
 import { getAIProvider } from "../_shared/aiProvider.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -20,6 +21,13 @@ Deno.serve(async (req) => {
 
   const authFail = await requireStaffRole(req, ["admin", "recepcao"]);
   if (authFail) return authFail;
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Método não permitido" }), {
+      status: 405, headers: { ...corsHeaders, "Content-Type": "application/json", Allow: "POST, OPTIONS" },
+    });
+  }
+  const quotaFail = await requireRequestQuota(req, "daily-briefing");
+  if (quotaFail) return quotaFail;
 
   try {
     const supabase = createClient<Database>(SUPABASE_URL, getSupabasePublishableKey(), {

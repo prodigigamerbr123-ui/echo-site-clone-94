@@ -1,4 +1,6 @@
-import { record } from "../_shared/contracts.ts";
+import { requireRequestQuota } from "../_shared/requestQuota.ts";
+import { inputErrorResponse, readJsonObject } from "../_shared/httpInput.ts";
+import { isRecord, record } from "../_shared/contracts.ts";
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireStaffRole } from "../_shared/auth.ts";
@@ -18,15 +20,17 @@ Deno.serve(async (req) => {
   if (authFail) return authFail;
 
   try {
-    const body = await req.json().catch(() => null);
+    const body = await readJsonObject(req);
     if (!body || typeof body !== 'object' || Array.isArray(body) ||
         typeof body.action !== 'string' || !body.action ||
-        !body.params || typeof body.params !== 'object' || Array.isArray(body.params)) {
+        !isRecord(body.params)) {
       return new Response(JSON.stringify({ error: 'Informe uma ação e seus parâmetros válidos' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     const { action, params, userConfirmation } = body;
+    const quotaFail = await requireRequestQuota(req, "ai-database-actions");
+    if (quotaFail) return quotaFail;
 
     // Verificar se o usuário confirmou a ação
     if (userConfirmation !== true) {
@@ -112,7 +116,7 @@ Deno.serve(async (req) => {
       case 'send_whatsapp_message': {
         // Buscar dados dos alunos se apenas IDs foram fornecidos
         let students = params.students;
-        if (params.student_ids && params.student_ids.length > 0) {
+        if (Array.isArray(params.student_ids) && params.student_ids.length > 0) {
           const { data: studentsData, error: studentsError } = await supabase
             .from('students')
             .select('id, name, phone')
@@ -153,6 +157,8 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
+    const invalid = inputErrorResponse(error, corsHeaders);
+    if (invalid) return invalid;
     console.error('Error in ai-database-actions function:', error);
     return new Response(JSON.stringify({
       error: 'Erro interno do servidor'

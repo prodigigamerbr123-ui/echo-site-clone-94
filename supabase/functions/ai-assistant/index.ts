@@ -1,3 +1,5 @@
+import { requireRequestQuota } from "../_shared/requestQuota.ts";
+import { inputErrorResponse, readJsonObject } from "../_shared/httpInput.ts";
 import {
   chatUuid,
   chatHistory,
@@ -572,12 +574,9 @@ Deno.serve(async (req) => {
   if (authFail) return authFail;
 
   try {
-    const rawBody: unknown = await req.json().catch(() => {
-      throw new ToolValidationError("JSON da requisição inválido.");
-    });
-    if (!isRecord(rawBody))
-      throw new ToolValidationError("Corpo da requisição inválido.");
-    const body = rawBody;
+    const body = await readJsonObject(req, 2_097_152);
+    const quotaFail = await requireRequestQuota(req, "ai-assistant");
+    if (quotaFail) return quotaFail;
     let clientMessages = clientHistory(body.messages ?? []);
     const confirmedAction =
       body.confirmedAction === undefined
@@ -1071,6 +1070,8 @@ Deno.serve(async (req) => {
 
     return reply({ message: "Não consegui concluir a tarefa. Reformule?" });
   } catch (e: unknown) {
+    const invalid = inputErrorResponse(e, corsHeaders);
+    if (invalid) return invalid;
     console.error("ai-assistant error:", e);
     return new Response(
       JSON.stringify({

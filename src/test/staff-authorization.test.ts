@@ -68,6 +68,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(resolve("supabase/migrations/20261013010000_automation_run_history.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261013020000_dashboard_snapshot.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261013030000_durable_ai_chat.sql"), "utf8"));
+  await db.exec(readFileSync(resolve("supabase/migrations/20261014010000_staff_request_quotas.sql"), "utf8"));
   await db.query("INSERT INTO staff_members(user_id,role) VALUES ($1,'recepcao'),($2,'avaliador')", [ids.reception, ids.evaluator]);
   await db.query("INSERT INTO students(id,name,phone,status) VALUES ($1,'Aluno fictício','43999999999','active')", [ids.student]);
 }, 60_000);
@@ -499,4 +500,40 @@ describe('vínculo entre pergunta e resposta',()=> {
     const result=await asUser<{result:{messages:{id:string;replyTo:string|null}[]}}>('admin','SELECT get_ai_conversation_history($1) AS result',[chatId]);
     expect(result.rows[0].result.messages.find(m=>m.id===answer)?.replyTo).toBe(messageId);
   }));
+});
+
+describe("persistent request quotas", () => {
+  const consume = () => asUser<{ retry: number }>("admin", "SELECT consume_staff_request_quota('ai-assistant') AS retry");
+
+  it("blocks non-staff users and direct counter tampering", async () => {
+    await expect(asUser("stranger", "SELECT consume_staff_request_quota('ai-assistant')")).rejects.toMatchObject({ code: "42501" });
+    await expect(asUser("admin", "SELECT * FROM staff_request_quotas")).rejects.toMatchObject({ code: "42501" });
+    await expect(asUser("admin", "UPDATE staff_request_quotas SET request_count=1")).rejects.toMatchObject({ code: "42501" });
+    await db.exec("SET ROLE anon");
+    try {
+      await expect(db.query("SELECT consume_staff_request_quota('ai-assistant')")).rejects.toMatchObject({ code: "42501" });
+    } finally { await db.exec("RESET ROLE"); }
+  });
+
+  it("enforces the short window without creating unbounded rows", async () => {
+    await db.exec("TRUNCATE staff_request_quotas");
+    for (let i = 0; i < 20; i++) expect((await consume()).rows[0].retry).toBe(0);
+    expect((await consume()).rows[0].retry).toBeGreaterThan(0);
+    expect((await db.query<{ count: number }>("SELECT count(*)::int AS count FROM staff_request_quotas")).rows[0].count).toBe(2);
+    expect((await asUser<{ retry: number }>("reception", "SELECT consume_staff_request_quota('ai-assistant') AS retry")).rows[0].retry).toBe(0);
+    expect((await asUser<{ retry: number }>("admin", "SELECT consume_staff_request_quota('send-whatsapp') AS retry")).rows[0].retry).toBe(0);
+  });
+
+  it("resets an expired window and enforces the daily budget", async () => {
+    await db.exec("TRUNCATE staff_request_quotas");
+    await consume();
+    await db.exec("UPDATE staff_request_quotas SET window_started_at=window_started_at-interval '1 day',request_count=20 WHERE window_seconds=600");
+    expect((await consume()).rows[0].retry).toBe(0);
+    await db.exec("UPDATE staff_request_quotas SET request_count=200 WHERE window_seconds=86400");
+    expect((await consume()).rows[0].retry).toBeGreaterThan(0);
+  });
+
+  it("rejects arbitrary scope names instead of granting an unlimited bucket", async () => {
+    await expect(asUser("admin", "SELECT consume_staff_request_quota('unlimited')")).rejects.toMatchObject({ code: "22023" });
+  });
 });
