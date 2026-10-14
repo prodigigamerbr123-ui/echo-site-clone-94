@@ -6,6 +6,8 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 ## Estado atual e regras de continuidade
 
+> Pooler revisado em 14/10: candidata Debian 13 construída e aprovada em 14 verificações funcionais isoladas, mas **publicação bloqueada**. Mesma base Trivy: produção 26 críticos/731 altos; candidata zero críticos/48 altos, sem versão corrigida indicada para esses altos. Consulta Hex encontrou 61 registros em 12 pacotes instalados, ainda em triagem. Produção permaneceu saudável e inalterada. Ver [relatório e próximos passos](docs/auditoria-2026-10-11/pooler-candidata-2026-10-14.md).
+
 > Segurança da VM atualizada: nova varredura das 15 imagens/16 containers e publicação do Storage security2, imagem `8117cb0357a0…`, com zero críticos/altos e 25 médios. Passaram 31 verificações isoladas; backup `20261014T182248Z` e seis arquivos privados conferidos. Somente Storage foi recriado; dados e migrações preservados. Ver [varredura](docs/auditoria-2026-10-11/runtime-seguranca-2026-10-14.md) e [entrega Storage](docs/auditoria-2026-10-11/storage-seguranca-2026-10-14.md). Outros containers continuam com achados; prioridade seguinte inclui pooler Debian 11 fora do LTS. Esta atualização de infraestrutura não mudou o frontend.
 
 > Entrega publicada: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`, [workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso. Homologação integrada de criação, remarcação, histórico e edição/conflito de notas; 306 testes em 36 arquivos. Backup `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Dashboard, agenda e histórico conferidos em produção sem escrita. Ver [relatório da entrega](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md). Execução diária natural também confirmada no item 35.
@@ -58,7 +60,7 @@ Os números desta seção vêm das últimas varreduras documentadas. Não repres
 | --- | --- | --- | --- |
 | 20 | Inventário atualizado dos containers | Concluído para o snapshot de 14/10 | Varredura de 15 imagens/16 containers, IDs imutáveis e evidência privada copiada. Manter atualização periódica. |
 | 21 | Dependências vulneráveis do Storage | Altos corrigidos e publicação concluída | security2: zero críticos/altos, 25 médios; 31 checks isolados e produção saudável. Tratar os médios em lote próprio. |
-| 22 | Outros containers do Supabase | Inventário/scan atualizados; correções pendentes | Revisar Auth, Realtime, Studio, Meta, Supavisor, PostgREST, PostgreSQL e auxiliares. Pooler tem base Debian 11 fora do LTS; não atualizar banco automaticamente. |
+| 22 | Outros containers do Supabase | Pooler com candidata funcional; publicação bloqueada | Produção Debian 11: 26 críticos/731 altos; candidata Debian 13: zero críticos/48 altos, 14 checks funcionais. Triar 61 registros Hex em 12 pacotes, alcance, runtime e metadados restaurados antes da troca. Revisar também Auth, Realtime, Studio, Meta, PostgREST, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
 | 23 | Alertas residuais da Evolution | Acompanhamento pendente | Revisar alerta médio relacionado a RabbitMQ e aviso de situação desconhecida em OpenPGP; verificar antes de habilitar AMQP. |
 | 24 | Atualizações futuras da Evolution | Processo pendente de consolidação | Preservar licença, sessão e ajustes necessários; validar compatibilidade e retorno. |
 | 25 | Alertas médios/baixos dos gateways | Não encerrado | Avaliar os restantes e atualizar a varredura de Nginx/Envoy. |

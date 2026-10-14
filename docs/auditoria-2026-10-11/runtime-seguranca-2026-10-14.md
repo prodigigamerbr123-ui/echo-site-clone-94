@@ -50,3 +50,7 @@ Totais: 69 ocorrências críticas e 1782 altas. São ocorrências por pacote/art
 - [Releases do Storage](https://github.com/supabase/storage/releases).
 
 O lote de dependências do Storage terá relatório próprio com decisão, testes, imagem imutável e publicação ou rejeição.
+
+## Continuidade do pooler
+
+O pooler foi reavaliado com uma base Trivy mais recente: 26 críticos/731 altos na imagem de produção inalterada. Candidata Debian 13: zero críticos/48 altos, 14 verificações funcionais, publicação bloqueada pela análise de segurança pendente. A tabela acima permanece como snapshot histórico. Ver [relatório do pooler](pooler-candidata-2026-10-14.md).
