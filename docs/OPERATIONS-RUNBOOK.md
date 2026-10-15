@@ -23,6 +23,14 @@ npm run build
 - Operação self-hosted documentada em `ops/supabase-self-hosted/`.
 - Evidências de auditoria em `docs/auditoria-2026-10-11/`.
 
+### Studio e Meta somente durante manutenção
+
+Desde 15/10, Studio e postgres-meta ficam desligados, no perfil Compose `admin`, com restart `no`. O gateway depende da saúde do banco e o sistema diário funciona sem as duas ferramentas. O modelo padrão mantém dez serviços essenciais. Essa medida não corrige as imagens administrativas antigas; revisar seus alertas antes de uso prolongado.
+
+Na VM: `cd /opt/workout-supabase`, depois `sudo docker compose --profile admin up -d meta studio`. Acessar por túnel SSH e autenticação administrativa existente; não publicar novas portas. Ao terminar: `sudo docker compose --profile admin stop studio meta`. Não usar down para encerrar a manutenção e não persistir COMPOSE_PROFILES=admin no .env. Ativação pode recriar os containers e exige rever o rollback datado desta entrega.
+
+Evidência, verificações e retorno: [ferramentas sob demanda](auditoria-2026-10-11/admin-sob-demanda-2026-10-15.md). Backups anterior 20261015T184628Z e posterior 20261015T184842Z copiados/hashes conferidos; o posterior inclui o compose novo. Outros scripts de release datados devem recusar ou revisar esse novo estado, nunca sobrescrevê-lo com compose antigo.
+
 ## Backup
 
 O procedimento documentado está em `ops/supabase-self-hosted/backup.py`.

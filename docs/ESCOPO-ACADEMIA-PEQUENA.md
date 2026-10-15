@@ -11,7 +11,7 @@ Decisão do proprietário em 15/10/2026: sistema de uso interno para uma academi
 | Mensagens previsíveis | Preservar fila transacional e tratamento de resultado incerto. Não reenviar falhas antigas automaticamente. Conferir conexão e falhas visíveis ao operador. |
 | Backup recuperável | Núcleo Workout e três bancos/configuração Evolution restaurados em isolamento a partir de 20261015T174108Z; cópia no computador verificada. Observar primeiro ciclo automático ampliado. Não foi demonstrada reconexão ao provedor em outro host. Destino externo continua a definir; não contratar serviço sem acordo de custo. |
 | Erros compreensíveis | Mostrar falha e opção de tentar novamente; impedir cliques repetidos e sucesso falso. Não exibir dados vazios como se a consulta tivesse funcionado. |
-| Operação simples | Instruções curtas de acesso, backup, atualização e retorno. Monitorar falhas reais; manter os checks de CI existentes. |
+| Operação simples | Instruções curtas de acesso, backup, atualização e retorno. Studio/Meta somente sob demanda de manutenção; dez serviços essenciais mantidos por padrão. Monitorar falhas reais; manter os checks de CI existentes. |
 
 ## Melhorias que podem ficar para depois
 
