@@ -38,3 +38,5 @@ Retorno da entrega: revisar estado privado e executar `sudo python3 /home/ubuntu
 Foi preparado um candidato forte fora do Git, em diretório Windows com acesso restrito ao usuário, para substituir a senha de entrada do proprietário. **Nenhuma senha foi alterada e nenhuma sessão foi encerrada neste lote.** A aplicação depende da resposta do proprietário porque exigirá entrar novamente no painel. Esse preparo não conclui a rotação das demais credenciais.
 
 Fonte primária: [perfis e ativação explícita no Docker Compose](https://docs.docker.com/compose/how-tos/profiles/).
+
+Atualização posterior: o proprietário autorizou a troca, executada e verificada em [senha do proprietário](senha-proprietario-2026-10-15.md). O preparo descrito acima registra o estado daquele lote. O verify datado desta entrega compara a senha anterior e não deve ser usado como monitor após essa troca intencional; não alterar a evidência antiga para mascarar a diferença.

@@ -207,3 +207,9 @@ O build preserva o executável PostgREST e depende de pacotes APT resolvidos na
 ocasião. Rebuild exige nova comparação do scanner e nova validação; preservar a
 imagem testada para recuperação. O backup completo integrado e a preservação
 externa de todas as imagens customizadas continuam pendentes.
+
+## Credencial atual do proprietário
+
+Troca autorizada e concluída em 15/10: mesmo usuário administrativo, nova senha mantida no arquivo privado local indicado ao proprietário; login/dashboard conferidos e logout global executado. Sete sessões anteriores removidas; zero sessões/refresh não revogados na conferência. JWTs de acesso emitidos antes do logout podem valer até sua expiração; token conferido com duração de 1h. Ver [evidência](auditoria-2026-10-11/senha-proprietario-2026-10-15.md). Não reutilizar o candidato como se ainda estivesse pendente.
+
+Não restaurar banco para reverter senha. Ao restaurar um snapshot anterior a uma troca/revogação, revisar credenciais e sessões antes de reabrir o acesso ao ambiente. Scripts de verificação datados que comparam a senha antiga precisam ser interpretados com esse histórico.

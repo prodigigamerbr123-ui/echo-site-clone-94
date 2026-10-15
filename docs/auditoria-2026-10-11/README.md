@@ -4,6 +4,7 @@ Estado consolidado e backlog: [handoff](../../handoff.md). Procedimentos: [runbo
 
 | Área | Evidência de referência | Alcance e limite |
 | --- | --- | --- |
+| Acesso do dono | [15/10: senha e logout global](senha-proprietario-2026-10-15.md) | Novo login/dashboard aprovados; sete sessões removidas e refresh recusado. JWTs expiram no prazo próprio. |
 | Administração | [15/10: Studio/Meta sob demanda](admin-sob-demanda-2026-10-15.md) | Dois serviços desligados por padrão; dez verificações isoladas e 20 de produção repetidas. Imagens não corrigidas por esse lote. |
 | Básico/configurações | [15/10: escopo e confiabilidade](configuracoes-basico-2026-10-15.md) | cc2eaa6 publicado; 328 testes e assets conferidos. |
 | Backup WhatsApp | [15/10: bancos/configuração Evolution](backup-evolution-2026-10-15.md) | Snapshot final copiado, três bancos restaurados; núcleo Workout repetiu 39 checks. Sem conexão duplicada ao provedor. |
