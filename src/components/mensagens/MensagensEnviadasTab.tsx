@@ -2,10 +2,11 @@ import { fetchAllPages } from "@/lib/fetchAllPages";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Filter, MessageCircle } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import MessageFilters from "./MessageFilters";
 import MessagesList from "./MessagesList";
 import { getFilteredMessagesCount, type Message } from "./sentMessageFilters";
@@ -17,60 +18,26 @@ interface Student {
 }
 
 export default function MensagensEnviadasTab() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("today");
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  const fetchMessages = useCallback(async () => {
-    try {
-      const data = await fetchAllPages((from, to) => supabase
-        .from('messages')
-        .select(`
-          *,
-          students (
-            name,
-            phone
-          )
-        `, { count: "exact" })
-        .order("sent_at", { ascending: false }).order("id").range(from, to));
-      setMessages(data || []);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as mensagens enviadas.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  const fetchStudents = useCallback(async () => {
-    try {
-      const data = await fetchAllPages((from, to) => supabase
-        .from("students").select("id, name, phone", { count: "exact" })
-        .order("name").order("id").range(from, to));
-      setStudents(data || []);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar a lista de alunos.",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    void fetchMessages();
-    void fetchStudents();
-  }, [fetchMessages, fetchStudents]);
+  const catalog = useQuery({
+    queryKey: ["sent-messages", "catalog"],
+    queryFn: async () => {
+      const [messages, students] = await Promise.all([
+        fetchAllPages<Message>((from, to) => supabase.from("messages")
+          .select("*, students(name, phone)", { count: "exact" })
+          .order("sent_at", { ascending: false }).order("id").range(from, to)),
+        fetchAllPages<Student>((from, to) => supabase.from("students")
+          .select("id, name, phone", { count: "exact" })
+          .order("name").order("id").range(from, to)),
+      ]);
+      return { messages, students };
+    },
+  });
+  const messages = catalog.data?.messages ?? [];
+  const students = catalog.data?.students ?? [];
 
   const sentMessages = messages.filter(m => m.status === 'sent');
   const failedMessages = messages.filter(m => m.status === 'failed');
@@ -79,7 +46,14 @@ export default function MensagensEnviadasTab() {
   const sentCount = getFilteredMessagesCount(sentMessages, searchTerm, dateFilter, customDateRange, selectedStudents);
   const failedCount = getFilteredMessagesCount(failedMessages, searchTerm, dateFilter, customDateRange, selectedStudents);
 
-  if (loading) {
+  if (catalog.error) {
+    return <div role="alert" className="space-y-3">
+      <p>Não foi possível carregar o histórico completo e os filtros de alunos.</p>
+      <Button onClick={() => void catalog.refetch()}>Tentar novamente</Button>
+    </div>;
+  }
+
+  if (catalog.isPending) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
