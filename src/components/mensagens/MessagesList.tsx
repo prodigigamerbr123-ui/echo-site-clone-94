@@ -11,7 +11,7 @@ interface MessagesListProps {
   selectedStudents?: string[];
 }
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: Message["status"]) => {
   switch (status) {
     case 'sent':
       return <Badge variant="default" className="bg-green-500">Enviado</Badge>;
@@ -20,7 +20,7 @@ const getStatusBadge = (status: string) => {
     case 'pending':
       return <Badge variant="secondary">Pendente</Badge>;
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return <Badge variant="outline">{status ?? "Status indisponível"}</Badge>;
   }
 };
 

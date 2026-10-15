@@ -1,19 +1,9 @@
 import { fmtDateISOSP } from "@/lib/spTime";
+import type { Tables } from "@/integrations/supabase/types";
 
-export interface Student {
-  id: string;
-  name: string;
-  phone: string;
-  birth_date: string | null;
-  last_evaluation_date: string | null;
-  had_evaluation: boolean;
-  created_at: string;
-  plan: string | null;
-  status: string;
-  city: string | null;
-  payment_due_date: string | null;
-  cpf: string | null;
-}
+export type Student = Pick<Tables<"students">,
+  "id" | "name" | "phone" | "birth_date" | "last_evaluation_date" | "had_evaluation" |
+  "created_at" | "plan" | "status" | "city" | "payment_due_date" | "cpf">;
 
 export function paymentStatus(due: string | null) {
   if (!due) return null;

@@ -8,19 +8,7 @@ import { Filter, MessageCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import MessageFilters from "./MessageFilters";
 import MessagesList from "./MessagesList";
-import { getFilteredMessagesCount } from "./sentMessageFilters";
-
-interface Message {
-  id: string;
-  content: string;
-  status: string;
-  sent_at: string;
-  student_id: string;
-  students?: {
-    name: string;
-    phone: string;
-  };
-}
+import { getFilteredMessagesCount, type Message } from "./sentMessageFilters";
 
 interface Student {
   id: string;

@@ -21,7 +21,6 @@ import {
   CalendarCheck,
   CalendarClock,
   CalendarX,
-  CheckCircle2,
   ClipboardCheck,
   MessageSquare,
   RefreshCw,

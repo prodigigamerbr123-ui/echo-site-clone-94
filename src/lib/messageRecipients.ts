@@ -1,4 +1,6 @@
-export interface Student { id: string; name: string; phone: string; had_evaluation: boolean; }
+import type { Tables } from "@/integrations/supabase/types";
+
+export type Student = Pick<Tables<"students">, "id" | "name" | "phone" | "had_evaluation">;
 export interface PredefinedMessage { id: string; title: string; content: string; }
 
 /** Toggle only visible recipients, retaining selections outside the current search. */

@@ -8,7 +8,7 @@ import {
   type ActionState,
 } from "../_shared/aiChatContracts.ts";
 import type { Database, Json } from "../_shared/database.types.ts";
-import { isRecord, record, errorMessage } from "../_shared/contracts.ts";
+import { record, errorMessage } from "../_shared/contracts.ts";
 import {
   parseToolAction,
   clientHistory,

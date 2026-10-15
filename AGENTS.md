@@ -20,6 +20,7 @@ Use Node.js 22, matching CI, and npm with `package-lock.json`.
 - `npm run build`: generate production output in `dist/`.
 - `npm run preview`: serve the generated build locally.
 - `npm run lint`: run ESLint.
+- `npm run check:reachability`: reject application modules disconnected from the entrypoint and tests; reusable `ui/` primitives are excluded.
 - `npx tsc --noEmit -p tsconfig.app.json`: check application types.
 - `npm test`: run Vitest once; `npm run test:watch`: watch mode.
 - `npm run audit:security`: fail dependency auditing on high or critical findings.
@@ -29,6 +30,8 @@ The GitHub Pages workflow runs security, types, lint, tests, and build before de
 ## Coding Style & Naming Conventions
 
 Follow adjacent TypeScript: two-space indentation, double quotes, and semicolons. Use PascalCase for React components, camelCase for functions, and `use` prefixes for hooks. Prefer `@/` imports for frontend modules. Reuse shared contracts and existing UI primitives. Name migrations `YYYYMMDDHHMMSS_description.sql`; add new migrations instead of rewriting applied history.
+
+Application TypeScript is strict, with implicit-any, unused locals/parameters, and switch fallthrough checks enabled. Derive database field types from shared schema contracts; preserve nullable values instead of hiding them with assertions.
 
 ## Testing Guidelines
 

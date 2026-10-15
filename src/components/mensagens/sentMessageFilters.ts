@@ -1,14 +1,8 @@
-export interface Message {
-  id: string;
-  content: string;
-  status: string;
-  sent_at: string;
-  student_id: string;
-  students?: {
-    name: string;
-    phone: string;
-  };
-}
+import type { Tables } from "@/integrations/supabase/types";
+
+export type Message = Pick<Tables<"messages">, "id" | "content" | "status" | "sent_at" | "student_id"> & {
+  students?: Pick<Tables<"students">, "name" | "phone"> | null;
+};
 
 const filterMessagesByDate = (messages: Message[], dateFilter: string, customDateRange: { from?: Date; to?: Date }) => {
   if (dateFilter === "all") return messages;

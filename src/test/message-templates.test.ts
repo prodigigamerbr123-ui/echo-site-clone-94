@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createTemplateReader, interpolate } from "../../supabase/functions/_shared/templateResolver";
 
-const db = vi.hoisted(() => ({ content: "Original {nome}", error: null as unknown }));
+const db = vi.hoisted((): { content: string | null; error: unknown } => ({ content: "Original {nome}", error: null }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: db.content === null ? null : { content: db.content }, error: db.error }) }) }) }),
 } }));

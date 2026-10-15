@@ -155,4 +155,9 @@ describe("evaluation creation recovery", () => {
     expect(sessionStorage.getItem(intent.storageKey)).toBeNull();
     expect((await prepareEvaluationIntent(args[0], when, args[3])).id).not.toBe(intent.id);
   });
+  it("preserves explicit null notes in the transaction contract", async () => {
+    const result = await saveEvaluationWithMessages(args[0], args[1], when, null);
+    expect(result.evaluation_id).toEqual(expect.any(String));
+    expect(mocks.rpc).toHaveBeenCalledWith("mutate_evaluation_tx", expect.objectContaining({ _notes: null }));
+  });
 });

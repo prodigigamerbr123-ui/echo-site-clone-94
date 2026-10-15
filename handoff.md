@@ -6,6 +6,8 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 ## Estado atual e regras de continuidade
 
+> Lote de qualidade de 15/10 validado localmente e em homologação: 322 testes/39 arquivos, TypeScript estrito, lint e alcance de módulos aprovados, zero vulnerabilidades npm reportadas. Removidos 17 módulos desconectados; formulário, lista, fila e diálogo da agenda separados. Bug de pré-seleção após refetch corrigido. Publicação ainda em preparação; conferir [relatório](docs/auditoria-2026-10-11/qualidade-frontend-2026-10-15.md). Cliente dispensou SMTP e informou não possuir destino externo de backup.
+
 > Recuperação integrada comprovada em 15/10: snapshot `20261015T162649Z`, 39 checks, banco principal + `_supabase`, Auth, REST, arquivos e funções em rede isolada; reinício e cleanup aprovados. Medição de 20,42 s com imagens prontas e poucos registros, sem representar RTO completo. Lacuna do cache Deno corrigida no backup; 34 arquivos de funções e 222 de cache restaurados. Storage/Nginx/Evolution também tiveram imagens copiadas e blobs OCI conferidos fora da VM. Host vazio, serviços externos e cópia externa independente continuam pendentes. Ver [recuperação integrada](docs/auditoria-2026-10-11/recuperacao-integrada-2026-10-15.md).
 
 > Auth security1 publicado em 15/10: imagem `94a79d1a5e15…`, 42 verificações isoladas e 19 em produção repetidas após reinício. Senhas, identidades, migrações e sete sessões anteriores preservadas; sessão própria da auditoria encerrada. Trivy com base atualizada: 30 altos → um alto residual da versão pgproto3, com correção local documentada, cinco baixos/um desconhecido; sem supressão. Backups pré/pós e imagem/evidência copiados/hashes conferidos. Ver [Auth e backups](docs/auditoria-2026-10-11/auth-seguranca-2026-10-15.md).
@@ -50,13 +52,13 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
-| 9 | Separação completa da tela de agenda | Parcial | Consultas, métricas e ações foram extraídas; ainda separar formulário, diálogos e componentes maiores. |
+| 9 | Separação completa da tela de agenda | Implementado e validado; publicação em preparação | Formulário, lista, fila, pendências, diálogo e tipos extraídos. Página orquestra consultas/ações; 12 novos testes de componentes/seleção. |
 | 10 | Edição de observações no histórico | Publicado; edição normal e concorrente validadas em homologação | Proteção de versão, resposta autorizada, recibo de edição idêntica e erro persistente implementados. Manter acompanhamento. |
 | 11 | Recuperação do formulário após reload | Limitada | O recibo preserva a tentativa; os campos não são restaurados automaticamente. Definir necessidade de rascunho e proteção dos dados. |
 | 12 | Recuperação entre abas/dispositivos | Não implementada | Avaliar necessidade de recibo durável no servidor; atualmente há recuperação por aba e proteção transacional no banco. |
 | 13 | Demais telas grandes | Parcial | Revisar responsabilidades em mensagens, modelos e configurações conforme os problemas encontrados. |
-| 14 | Código morto e imports/variáveis não usados | Não encerrado | Revisar e ativar verificações hoje desativadas. |
-| 15 | TypeScript estrito | Pendente | Ativar gradualmente strict, noImplicitAny e verificações de variáveis/parâmetros não usados. |
+| 14 | Código morto e imports/variáveis não usados | Lote validado; publicação em preparação | 17 módulos desconectados removidos; lint/TypeScript de não usados ativos e alcance no CI. Primitivas UI reutilizáveis preservadas; revisão de exports individuais continua manutenção. |
+| 15 | TypeScript estrito | Ativado e validado; publicação em preparação | strict/noImplicitAny/não usados/fallthrough ativos; contratos anuláveis corrigidos sem esconder erros. |
 | 16 | Cache em toda a aplicação | Parcial | Conferir invalidação, troca de identidade, respostas atrasadas e dados antigos nas telas restantes. |
 | 17 | Consultas restantes da IA | Parcial | Revisar limites, paginação, totais e indicação de respostas parciais em cada ferramenta. |
 | 18 | Estados de carregamento, erro e vazio | Parcial | Continuar procurando telas que confundem falha de consulta com ausência de dados. |
@@ -82,20 +84,20 @@ Os números desta seção vêm das últimas varreduras documentadas. Não repres
 
 ## 4. Backups, recuperação e operação
 
-Existem evidências anteriores de backups verificados e de homologação. Não concluir que os artefatos privados estão ausentes porque não estão no Git. O exercício completo de restauração continua sem evidência de conclusão.
+Existem evidências anteriores de backups verificados e de homologação. Não concluir que os artefatos privados estão ausentes porque não estão no Git. O núcleo integrado foi restaurado com evidência em 15/10; o exercício de desastre em host vazio e serviços externos continua parcial.
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
 | 31 | Restauração completa em ambiente isolado | Núcleo integrado comprovado; desastre completo ainda parcial | Snapshot `20261015T162649Z`: 39 checks de banco principal + `_supabase`, Auth, REST, arquivos e funções, reinício e cleanup. Imagens já disponíveis; faltam host vazio, DNS/TLS, Realtime, processo do pooler e continuidade Evolution/provedores. |
 | 32 | Funcionamento atual dos backups automáticos | Cobertura ampliada confirmada; cache Deno acrescentado depois | Automático `20261015T060345Z`: cinco arquivos copiados/hashes conferidos. SHA256 no manifesto/sincronização; cache Deno acrescentado a runtime.tar.gz e provado no restore `20261015T162649Z`. Observar primeiro automático com cache; timer ativo. |
-| 33 | Independência e retenção das cópias | Cópias e imagens customizadas verificadas; independência externa pendente | Auth/pooler/PostgREST e agora Storage/Nginx/Evolution exportados e verificados; estes últimos 21/11/11 blobs OCI. Falta armazenamento externo independente e política final; hoje são 14 snapshots completos, não dias. Imagem Evolution não inclui banco/licença/sessão. |
+| 33 | Independência e retenção das cópias | Cópias e imagens customizadas verificadas; independência externa pendente | Auth/pooler/PostgREST e agora Storage/Nginx/Evolution exportados e verificados; estes últimos 21/11/11 blobs OCI. Cliente informou em 15/10 não possuir destino externo; falta definir serviço e política final. Hoje são 14 snapshots completos, não dias. Imagem Evolution não inclui banco/licença/sessão. |
 | 34 | Tempo e perda máxima de recuperação | Medição técnica realizada; metas operacionais pendentes | Restore integrado 20,42 s com imagens prontas e poucos dados. Não inclui provisionamento/DNS/TLS/provedores; definir RTO completo e RPO aceitáveis. Intervalo diário nominal de backup não é garantia de RPO. |
 | 35 | Primeira execução diária natural das automações | Confirmada em produção por leitura | Execução de 14/10 às 08:00 de Brasília: success, sem erro, zero candidatos e zero mensagens. Ver conferência operacional de 14/10; acompanhar ciclos seguintes e cenários com candidatos. |
 | 36 | Estabilidade prolongada da fila | Validação parcial | Observar operação contínua, reconexões, latência, falhas e recuperação. |
 | 37 | Reconciliação de mensagens antigas falhas/incertas | Pendente de análise operacional | Conferir o ocorrido antes de decidir qualquer repetição. |
 | 38 | Testes de carga | Pendente | Medir comportamento com mais alunos, mensagens, avaliações e consultas concorrentes. |
 | 39 | Recursos adicionais do Storage | Não validados no lote anterior | Testar TUS, S3 e transformação de imagens se forem utilizados. |
-| 40 | Recuperação de senha por email | SMTP pendente conforme último relatório | Configurar e validar envio e recuperação. |
+| 40 | Recuperação de senha por email | Dispensada pelo cliente em 15/10 | Manter perfil pré-configurado do dono e recuperação administrativa pela VM. Não configurar SMTP, signup público ou contas individuais como requisito deste projeto. |
 | 41 | Gemini real | Sem validação completa | Conferir modelo, credencial, geração, timeout e qualidade com chamada controlada. |
 | 42 | Monitoramento operacional | Parcial | Consolidar alertas úteis de backup, automações, fila, conexão e indisponibilidade. |
 | 43 | Estado dos antigos projetos Supabase | Não confirmado | Verificar exclusão de WORKOUT01/02/03 e documentar o destino da cópia Cloud do WORKOUT04. |
@@ -106,10 +108,10 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 | --- | --- | --- | --- |
 | 44 | Performance real do frontend | Bundle e carregamento por rotas melhoraram | Medir carregamento em celular/rede lenta, navegação e consumo de recursos. |
 | 45 | Consultas que carregam todos os registros | Ainda existem | Avaliar paginação e filtros no servidor conforme o volume crescer. |
-| 46 | README completo | Iniciado pelo outro chat | Completar configuração, execução local, arquitetura e referências operacionais. |
+| 46 | README completo | Ampliado em 15/10 | Configuração pública, comandos, backend self-hosted, CI e limites documentados; manter atualizado com futuras entregas. |
 | 47 | Runbook operacional | Atualizado; recuperação completa pendente | Backup de cinco arquivos, restore de metadados, contas limitadas, migrações administrativas e publicação/retorno de pooler/PostgREST documentados. Completar recuperação integrada, incidentes e armazenamento externo. |
 | 48 | Deploy de frontend e backend | Processos existentes | Documentar dependências, ordem de migrações e compatibilidade entre versões. |
-| 49 | Organização das evidências | Muitos relatórios disponíveis | Criar índice consolidado e indicar quais relatórios substituem os anteriores. |
+| 49 | Organização das evidências | Índice criado em 15/10 | docs/auditoria-2026-10-11/README.md relaciona entregas atuais e fotografias históricas. Manter a cada publicação. |
 | 50 | Arquivos locais não rastreados | Existem documentos e scripts | Revisar o que deve entrar no Git e manter material privado fora dele. |
 | 51 | Matriz final da auditoria | Parcial | Relacionar cada achado a correção, commit, teste, publicação ou pendência justificada. |
 

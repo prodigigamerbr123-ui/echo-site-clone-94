@@ -9,7 +9,9 @@ Este documento descreve procedimentos operacionais do Workout e separa operaçõ
 ```bash
 npm ci
 npm run lint
+npm run check:reachability
 npx tsc --noEmit -p tsconfig.app.json
+npm run audit:security
 npm test -- --run
 npm run build
 ```
@@ -60,7 +62,7 @@ Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e age
 
 ## Evidências atuais
 
-Entrega de 15/10: [Auth security1 e backups](auditoria-2026-10-11/auth-seguranca-2026-10-15.md), imagem `94a79d1a5e15…`, 42 checks isolados e 19 em produção repetidos após reinício. Sete sessões anteriores preservadas; sessão própria encerrada. Zero críticos, um alto de versão pgproto3 com correção local documentada, cinco baixos/um desconhecido. Backup pré `20261015T162021Z` e pós `20261015T162154Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e sete blobs OCI verificados. Procedimento/retorno em `ops/supabase-self-hosted/auth-security/README.md`. SMTP e rotação global continuam pendentes.
+Entrega de 15/10: [Auth security1 e backups](auditoria-2026-10-11/auth-seguranca-2026-10-15.md), imagem `94a79d1a5e15…`, 42 checks isolados e 19 em produção repetidos após reinício. Sete sessões anteriores preservadas; sessão própria encerrada. Zero críticos, um alto de versão pgproto3 com correção local documentada, cinco baixos/um desconhecido. Backup pré `20261015T162021Z` e pós `20261015T162154Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e sete blobs OCI verificados. Procedimento/retorno em `ops/supabase-self-hosted/auth-security/README.md`. Rotação global continua pendente. SMTP foi dispensado pelo cliente em 15/10.
 
 Entrega mais recente: [PostgREST security1](auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md), imagem `dc990d07c8ce…`, zero críticos/altos, 37 médios/quatro baixos. Mesmo binário 14.17, 41 checks isolados/17 em produção e reinício aprovado. Backup anterior `20261015T010314Z`, posterior `20261015T010534Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e seis blobs OCI verificados fora da VM. Schemas/funções e contagens preservados.
 
@@ -93,6 +95,16 @@ Conferência mais recente: `docs/auditoria-2026-10-11/agenda-publicacao-2026-10-
 2. Preservar logs e evidências.
 3. Avaliar rollback.
 4. Registrar causa e correção.
+
+## Acesso do proprietário sem SMTP
+
+Decisão do cliente em 15/10: manter um perfil pré-configurado para o dono. SMTP, signup público e contas individuais não são requisitos atuais. Isso não dispensa a proteção e guarda da senha desse perfil.
+
+Em perda de acesso, o responsável com SSH administrativo deve identificar o usuário existente no Auth e conferir seu vínculo `staff_members` antes de qualquer alteração. Gerar e verificar backup completo; usar a API administrativa do Auth por acesso local à VM para redefinir a senha do mesmo usuário, com entrada privada, sem incluir credenciais em argumentos, logs ou Git. Não editar hashes diretamente nem criar outro administrador como atalho. Validar login e acesso aos dados; encerrar sessões conforme o incidente, entregar a senha por canal privado e remover material temporário. Não executar redefinição preventiva sem necessidade. O exercício integrado já demonstrou preservação do login no restore, não uma redefinição da senha do dono.
+
+## Destino externo de backup
+
+Em 15/10 o cliente informou não possuir bucket ou outro servidor de backup. As cópias verificadas no computador oferecem recuperação fora da VM, mas não garantem independência deste computador/conta. Não marcar essa pendência encerrada nem supor sincronização externa pelo nome da pasta OneDrive. Antes de configurar outro serviço, definir titularidade, custo, credenciais próprias, criptografia, retenção e exercício de recuperação. Não há serviço externo contratado/configurado por esta auditoria.
 
 ## Recuperar a imagem e reverter a entrega do pooler
 

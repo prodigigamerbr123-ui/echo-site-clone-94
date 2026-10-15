@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "check:reachability": "node ops/check-frontend-reachability.cjs --check",
     "audit:security": "npm audit --audit-level=high",
     "preview": "vite preview",
     "test": "vitest run",

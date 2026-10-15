@@ -426,7 +426,7 @@ export type Database = {
         Returns: Json;
       }
       mutate_evaluation_tx: {
-        Args: { _action: string; _evaluation_id: string; _student_id?: string; _scheduled_at?: string; _notes?: string; _messages?: Json; _allow_conflict?: boolean }
+        Args: { _action: string; _evaluation_id: string; _student_id?: string; _scheduled_at?: string; _notes?: string | null; _messages?: Json; _allow_conflict?: boolean }
         Returns: Json
       }
       cancel_scheduled_messages_tx: { Args: { _ids: string[]; _whole_series?: boolean }; Returns: Json }

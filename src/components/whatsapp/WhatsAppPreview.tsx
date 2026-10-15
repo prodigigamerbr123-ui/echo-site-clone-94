@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, CheckCheck } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { replaceNameVar } from "@/lib/phone";
 
 interface Props {

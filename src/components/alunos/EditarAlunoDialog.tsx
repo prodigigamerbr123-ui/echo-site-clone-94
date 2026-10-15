@@ -14,21 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Activity, Cake, CalendarClock, Check, CreditCard, FileText, MapPin, Phone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PLAN_OPTIONS } from "./studentPlans";
-
-interface Student {
-  id: string;
-  name: string;
-  phone: string;
-  birth_date: string | null;
-  last_evaluation_date: string | null;
-  had_evaluation: boolean;
-  created_at: string;
-  plan?: string | null;
-  status?: string;
-  city?: string | null;
-  cpf?: string | null;
-  payment_due_date?: string | null;
-}
+import type { Student } from "./studentListModel";
 
 interface EditarAlunoDialogProps {
   student: Student;

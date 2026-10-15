@@ -34,4 +34,11 @@ describe("prazo da agenda em paridade com a automação", () => {
     expect(needsEvaluation({ ...student, status: "inactive" }, 0, false, now)).toBe(false);
     expect(needsEvaluation(student, 0, true, now)).toBe(false);
   });
+  it("aceita o indicador nulo do banco como ausência de avaliação registrada", () => {
+    const first = { ...student, had_evaluation: null, last_evaluation_date: null,
+      created_at: new Date(now - 15 * 86400000).toISOString() };
+    expect(needsEvaluation(first, 90, false, now)).toBe(true);
+    expect(needsEvaluation({ ...first, status: "inactive" }, 90, false, now)).toBe(false);
+    expect(needsEvaluation(first, 90, true, now)).toBe(false);
+  });
 });

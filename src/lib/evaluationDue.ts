@@ -1,3 +1,5 @@
+import type { Tables } from "@/integrations/supabase/types";
+
 export const DEFAULT_EVALUATION_DAYS_OVERDUE = 90;
 
 export function evaluationDaysOverdue(value: unknown): number {
@@ -17,7 +19,7 @@ export function elapsedEvaluationDays(reference: string, now: number): number {
 
 /** Same elapsed-time boundaries as daily-automation; no browser timezone arithmetic. */
 export function needsEvaluation(
-  student: { status: string; had_evaluation: boolean; last_evaluation_date: string | null; created_at: string },
+  student: Pick<Tables<"students">, "status" | "had_evaluation" | "last_evaluation_date" | "created_at">,
   daysOverdue: number,
   hasFutureEvaluation: boolean,
   now: number,

@@ -16,13 +16,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Activity, CalendarClock, CalendarPlus, FileText, MessageSquare, Phone, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-interface Student {
-  id: string; name: string; phone: string;
-  birth_date: string | null; last_evaluation_date: string | null;
-  had_evaluation: boolean; status: string; plan: string | null; created_at: string;
-  cpf?: string | null; payment_due_date?: string | null;
-}
+import type { Student } from "./studentListModel";
 
 interface Props {
   student: Student | null;
