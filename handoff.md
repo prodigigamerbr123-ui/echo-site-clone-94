@@ -6,6 +6,9 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 
 ## Estado atual e regras de continuidade
 
+> Mensagens predefinidas: correções locais validadas em 15/10, 342 testes/44 arquivos e nove verificações HTTP isoladas. Backup 20261015T191602Z copiado/hashes conferidos. Publicação aguardando CI; ver [relatório](docs/auditoria-2026-10-11/templates-basico-2026-10-15.md).
+
+
 > Studio/Meta sob demanda em 15/10: perfil admin, restart no, ambos desligados; gateway agora depende do banco. Dez verificações isoladas com os dois serviços ausentes e 20 em produção, repetidas; dados/senhas preservados, rotas externas e WebSocket conferidos. Backup pós 20261015T184842Z copiado/hashes conferidos e compose validado dentro do arquivo. As imagens antigas não foram corrigidas e outros containers continuam com pendências. Ver [relatório](docs/auditoria-2026-10-11/admin-sob-demanda-2026-10-15.md).
 
 > Senha do proprietário alterada em 15/10 após autorização explícita. Login e dashboard com a nova senha aprovados; sete sessões antigas removidas, zero sessões/refresh não revogados ao final, testes de refresh recusados. Dados preservados. Senha somente no arquivo privado C:/Users/pejon/.codex/ssh-workout04/owner-password-20261015/senha.txt; plano marcado aplicado. Backup pós 20261015T190428Z copiado/hashes conferidos. Access tokens já emitidos expiram no prazo próprio (token verificado: 1h); demais credenciais não foram rotacionadas. Ver [relatório](docs/auditoria-2026-10-11/senha-proprietario-2026-10-15.md).

@@ -164,6 +164,8 @@ export function useAutomationManager() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation-settings"] });
+      qc.invalidateQueries({ queryKey: ["predefined-messages"] });
+      qc.invalidateQueries({ queryKey: ["message-composer-data"] });
       toast.success("Mensagem vinculada");
     },
     onError: (e) => toast.error(e.message ?? "Erro ao vincular"),

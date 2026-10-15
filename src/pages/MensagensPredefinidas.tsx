@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { errorMessage } from "@/lib/errorMessage";
 import { MessageSquare, Search, Plus, Edit, Trash2, Copy, Sparkles, FileText, Calendar, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,26 +12,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
-import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
+import { loadPredefinedMessages, savePredefinedMessage, deletePredefinedMessage, type PredefinedMessage } from "@/lib/predefinedMessages";
 import { useAuth } from "@/hooks/useAuth";
 import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 
-interface PredefinedMessage {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-}
-
 export default function MensagensPredefinidas() {
+  usePageTitle("Mensagens Pré-definidas");
   const { role } = useAuth();
+  const queryClient = useQueryClient();
+  const catalog = useQuery({ queryKey: ["predefined-messages", "catalog"], queryFn: loadPredefinedMessages });
+  const messages = useMemo(() => catalog.data?.messages ?? [], [catalog.data]);
+  const automationIds = useMemo(() => catalog.data?.automationIds ?? new Set<string>(), [catalog.data]);
   const canManageTemplates = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
-  const [messages, setMessages] = useState<PredefinedMessage[]>([]);
-  const [automationIds, setAutomationIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMessage, setEditingMessage] = useState<PredefinedMessage | null>(null);
   const [activeTab, setActiveTab] = useState<"manual" | "automation">("manual");
@@ -36,27 +33,11 @@ export default function MensagensPredefinidas() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const busy = useRef(false);
+  const createId = useRef<string | null>(null);
 
   const { toast } = useToast();
-
-  const fetchMessages = useCallback(async () => {
-    try {
-      const [{ data, error }, autoIds] = await Promise.all([
-        supabase.from("predefined_messages").select("*").order("title"),
-        fetchAutomationTemplateIds(),
-      ]);
-      if (error) throw error;
-      setMessages(data || []);
-      setAutomationIds(autoIds);
-    } catch (error) {
-      console.error("Error fetching predefined messages:", error);
-      toast({ title: "Erro", description: "Não foi possível carregar as mensagens pré-definidas.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => { void fetchMessages(); }, [fetchMessages]);
 
   const manualMessages = useMemo(() => messages.filter((m) => !automationIds.has(m.id)), [messages, automationIds]);
   const automationMessages = useMemo(() => messages.filter((m) => automationIds.has(m.id)), [messages, automationIds]);
@@ -80,37 +61,33 @@ export default function MensagensPredefinidas() {
       toast({ title: "Atenção", description: "Preencha todos os campos obrigatórios.", variant: "destructive" });
       return;
     }
+    if (busy.current) return;
+    busy.current = true;
     setSaving(true);
+    setSaveError(null);
     try {
-      if (editingMessage) {
-        const { error } = await supabase
-          .from("predefined_messages")
-          .update({ title: title.trim(), content: content.trim() })
-          .eq("id", editingMessage.id);
-        if (error) throw error;
-        toast({ title: "Sucesso!", description: "Mensagem atualizada com sucesso." });
-      } else {
-        const { error } = await supabase
-          .from("predefined_messages")
-          .insert({ title: title.trim(), content: content.trim() });
-        if (error) throw error;
-        toast({ title: "Sucesso!", description: "Mensagem pré-definida criada com sucesso." });
-      }
+      const id = editingMessage?.id ?? (createId.current ??= crypto.randomUUID());
+      await savePredefinedMessage(id, { title, content }, !!editingMessage);
+      toast({ title: "Sucesso!", description: editingMessage ? "Mensagem atualizada com sucesso." : "Mensagem pré-definida criada com sucesso." });
       setTitle("");
       setContent("");
       setEditingMessage(null);
       setIsDialogOpen(false);
-      fetchMessages();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["predefined-messages"] }),
+        queryClient.invalidateQueries({ queryKey: ["message-composer-data"] }),
+      ]);
     } catch (error) {
-      console.error("Error saving predefined message:", error);
-      toast({ title: "Erro", description: "Não foi possível salvar a mensagem.", variant: "destructive" });
+      setSaveError("Não foi possível confirmar o salvamento. " + errorMessage(error));
     } finally {
+      busy.current = false;
       setSaving(false);
     }
   };
 
   const handleEditMessage = (m: PredefinedMessage) => {
-    if (!canManageTemplates) return;
+    if (!canManageTemplates || busy.current) return;
+    setSaveError(null);
     setEditingMessage(m);
     setTitle(m.title);
     setContent(m.content);
@@ -118,16 +95,25 @@ export default function MensagensPredefinidas() {
   };
 
   const handleDeleteMessage = async (id: string) => {
-    if (!canManageTemplates) return;
-    if (!confirm("Tem certeza que deseja excluir esta mensagem pré-definida?")) return;
+    if (!canManageTemplates || busy.current) return;
+    const confirmation = automationIds.has(id)
+      ? "Esta mensagem está vinculada a uma automação. Ao excluir, ela passará a usar o texto padrão. Deseja excluir?"
+      : "Tem certeza que deseja excluir esta mensagem pré-definida?";
+    if (!confirm(confirmation)) return;
+    busy.current = true;
+    setSaving(true);
     try {
-      const { error } = await supabase.from("predefined_messages").delete().eq("id", id);
-      if (error) throw error;
+      await deletePredefinedMessage(id);
       toast({ title: "Sucesso!", description: "Mensagem pré-definida excluída." });
-      fetchMessages();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["predefined-messages"] }),
+        queryClient.invalidateQueries({ queryKey: ["message-composer-data"] }),
+      ]);
     } catch (error) {
-      console.error("Error deleting predefined message:", error);
-      toast({ title: "Erro", description: "Não foi possível excluir a mensagem.", variant: "destructive" });
+      toast({ title: "Erro", description: errorMessage(error), variant: "destructive" });
+    } finally {
+      busy.current = false;
+      setSaving(false);
     }
   };
 
@@ -141,7 +127,9 @@ export default function MensagensPredefinidas() {
   };
 
   const openNewMessageDialog = () => {
-    if (!canManageTemplates) return;
+    if (!canManageTemplates || busy.current) return;
+    createId.current = crypto.randomUUID();
+    setSaveError(null);
     setEditingMessage(null);
     setTitle("");
     setContent("");
@@ -157,12 +145,20 @@ export default function MensagensPredefinidas() {
     return Array.from(found);
   };
 
-  if (loading) {
+  if (catalog.error) {
+    return <div role="alert" className="space-y-3">
+      <h1 className="text-2xl font-bold">Mensagens Pré-definidas</h1>
+      <p>Não foi possível carregar as mensagens e seus vínculos com automações.</p>
+      <Button onClick={() => void catalog.refetch()}>Tentar novamente</Button>
+    </div>;
+  }
+
+  if (catalog.isPending) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando mensagens pré-definidas...</p>
+          <p role="status" className="text-muted-foreground">Carregando mensagens pré-definidas...</p>
         </div>
       </div>
     );
@@ -184,9 +180,9 @@ export default function MensagensPredefinidas() {
               </p>
             </div>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!busy.current) setIsDialogOpen(open); }}>
             {canManageTemplates && <DialogTrigger asChild>
-              <Button onClick={openNewMessageDialog} className="gap-2 shadow-sm">
+              <Button disabled={saving} onClick={openNewMessageDialog} className="gap-2 shadow-sm">
                 <Plus className="h-4 w-4" />
                 Nova Mensagem
               </Button>
@@ -200,6 +196,7 @@ export default function MensagensPredefinidas() {
                   <Label htmlFor="title">Título da Mensagem</Label>
                   <Input
                     id="title"
+                    disabled={saving}
                     placeholder="Ex: Boas-vindas, Lembrete de treino..."
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -214,6 +211,7 @@ export default function MensagensPredefinidas() {
                       {["nome", "dias", "data", "hora"].map((v) => (
                         <Button
                           key={v}
+                          disabled={saving}
                           type="button"
                           variant="ghost"
                           size="sm"
@@ -231,6 +229,7 @@ export default function MensagensPredefinidas() {
                   </div>
                   <Textarea
                     id="content"
+                    disabled={saving}
                     placeholder="Digite o conteúdo da mensagem..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -243,6 +242,7 @@ export default function MensagensPredefinidas() {
                   </p>
                 </div>
                 <WhatsAppPreview content={content} />
+                {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
                 <Button onClick={handleSaveMessage} disabled={saving} className="w-full">
                   {saving ? (
                     <div className="flex items-center gap-2">
@@ -286,6 +286,7 @@ export default function MensagensPredefinidas() {
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                aria-label="Buscar mensagens"
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -313,7 +314,7 @@ export default function MensagensPredefinidas() {
               {searchTerm ? "Nenhuma mensagem encontrada." : "Nenhuma mensagem pré-definida ainda."}
             </p>
             {!searchTerm && canManageTemplates && (
-              <Button onClick={openNewMessageDialog} variant="outline" className="gap-2">
+              <Button disabled={saving} onClick={openNewMessageDialog} variant="outline" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Criar Primeira Mensagem
               </Button>
@@ -339,6 +340,7 @@ export default function MensagensPredefinidas() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={saving}
                         onClick={() => handleEditMessage(message)}
                         className="h-9 w-9 p-0"
                         aria-label="Editar mensagem pré-definida"
@@ -349,6 +351,7 @@ export default function MensagensPredefinidas() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={saving}
                         onClick={() => handleDeleteMessage(message.id)}
                         className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                         aria-label="Excluir mensagem pré-definida"
