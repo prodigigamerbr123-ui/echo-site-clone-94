@@ -84,7 +84,7 @@ Frontend de 15/10: b981426, workflow 38774544059 aprovado; 322 testes/39 arquivo
 
 Borda de 15/10: HSTS/nosniff/no-referrer publicados por reload do gateway, sem recriação; testes isolados 200/404/502, cinco rotas externas e compatibilidade Auth/REST/CORS aprovados. Backup pós 20261015T171145Z copiado/hashes conferidos. Retorno guardado e limites HSTS em [borda e operação](auditoria-2026-10-11/borda-operacao-2026-10-15.md).
 
-Entrega de 15/10: [Auth security1 e backups](auditoria-2026-10-11/auth-seguranca-2026-10-15.md), imagem `94a79d1a5e15…`, 42 checks isolados e 19 em produção repetidos após reinício. Sete sessões anteriores preservadas; sessão própria encerrada. Zero críticos, um alto de versão pgproto3 com correção local documentada, cinco baixos/um desconhecido. Backup pré `20261015T162021Z` e pós `20261015T162154Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e sete blobs OCI verificados. Procedimento/retorno em `ops/supabase-self-hosted/auth-security/README.md`. Rotação global continua pendente. SMTP foi dispensado pelo cliente em 15/10.
+Entrega de 15/10: [Auth security1 e backups](auditoria-2026-10-11/auth-seguranca-2026-10-15.md), imagem `94a79d1a5e15…`, 42 checks isolados e 19 em produção repetidos após reinício. Sete sessões anteriores preservadas; sessão própria encerrada. Zero críticos, um alto de versão pgproto3 com correção local documentada, cinco baixos/um desconhecido. Backup pré `20261015T162021Z` e pós `20261015T162154Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e sete blobs OCI verificados. Procedimento/retorno em `ops/supabase-self-hosted/auth-security/README.md`. Senha do proprietário e logout global foram concluídos posteriormente em 15/10; as demais credenciais têm revisão própria. SMTP foi dispensado pelo cliente.
 
 Entrega mais recente: [PostgREST security1](auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md), imagem `dc990d07c8ce…`, zero críticos/altos, 37 médios/quatro baixos. Mesmo binário 14.17, 41 checks isolados/17 em produção e reinício aprovado. Backup anterior `20261015T010314Z`, posterior `20261015T010534Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e seis blobs OCI verificados fora da VM. Schemas/funções e contagens preservados.
 
@@ -213,3 +213,49 @@ externa de todas as imagens customizadas continuam pendentes.
 Troca autorizada e concluída em 15/10: mesmo usuário administrativo, nova senha mantida no arquivo privado local indicado ao proprietário; login/dashboard conferidos e logout global executado. Sete sessões anteriores removidas; zero sessões/refresh não revogados na conferência. JWTs de acesso emitidos antes do logout podem valer até sua expiração; token conferido com duração de 1h. Ver [evidência](auditoria-2026-10-11/senha-proprietario-2026-10-15.md). Não reutilizar o candidato como se ainda estivesse pendente.
 
 Não restaurar banco para reverter senha. Ao restaurar um snapshot anterior a uma troca/revogação, revisar credenciais e sessões antes de reabrir o acesso ao ambiente. Scripts de verificação datados que comparam a senha antiga precisam ser interpretados com esse histórico.
+
+## Estado operacional após o fechamento básico de 15/10
+
+Referência atual: [runtimes, recuperação, monitor e interface](auditoria-2026-10-11/fechamento-basico-2026-10-15.md).
+Dois bancos, Edge, Realtime e Cloudflared receberam imagens locais revisadas.
+O PostgreSQL conserva a mesma versão e executável; não houve migração de dados.
+Snapshot final `20261015T195613Z`, cinco arquivos copiados/hashes conferidos;
+núcleo repetiu 39 verificações e os três bancos Evolution foram restaurados,
+reiniciados e removidos do ambiente isolado. Não equivale a recuperação de host vazio.
+
+Imgproxy está parado, restart `no`, perfil `images`, e transformação desabilitada
+no Storage. Upload/download normal continua disponível. Não habilitar o perfil
+isoladamente e supor que transformações foram revalidadas. Studio/Meta permanecem
+no perfil `admin`; todas essas imagens dormentes exigem revisão antes de habilitar.
+
+Monitor local instalado: `operational-health.timer`, a cada cinco minutos.
+
+```bash
+sudo systemctl status operational-health.service --no-pager
+sudo journalctl -u operational-health.service --since today --no-pager
+sudo cat /var/lib/workout-monitor/latest.json
+sudo systemctl list-timers operational-health.timer workout-supabase-backup.timer
+```
+
+O JSON contém contagens e nomes de verificações, sem conteúdo de mensagens,
+alunos ou credenciais. `alerts: []` significa somente que os checks implementados
+passaram. Saída 1 sinaliza alerta; conferir antes de repetir qualquer envio.
+Logs locais não avisam o dono fora da VM nem detectam indisponibilidade do próprio
+host a partir de outro servidor. Configuração do monitor está no repositório:
+copiar o Python para `/opt/workout-supabase`, os dois units para
+`/etc/systemd/system`, criar `/var/lib/workout-monitor` com modo 700,
+executar `systemd-analyze verify`, `daemon-reload` e habilitar o timer.
+
+Imagens customizadas de retorno e containers anteriores são preservados.
+Os containers antigos de PostgreSQL Evolution e Cloudflared estão parados com
+restart `no`. **Nunca iniciar dois bancos apontando ao mesmo volume.**
+Retorno dos quatro runtimes exige rever primeiro a alteração posterior do perfil
+de imagens: o guarda do Compose anterior recusará a configuração mais recente.
+Não burlar o guarda nem restaurar dump para desfazer atualização de imagem.
+Procedimentos e limites em `ops/supabase-self-hosted/remaining-runtime-security/README.md`.
+
+O serviço de backup foi aprovado sob demanda com sua cobertura ampliada;
+o disparo natural do timer após essa ampliação ainda precisa ser observado em
+16/10. Manter a sincronização no computador. As 35 falhas históricas foram
+preservadas sem reenvio; ausência de recibo não prova que uma mensagem antiga
+nunca chegou ao destinatário.

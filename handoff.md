@@ -6,6 +6,9 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 
 ## Estado atual e regras de continuidade
 
+> Rodada básica de 15/10: frontend fa56487 publicado, workflow 38797495844 aprovado; 349 testes/47 arquivos, lint sem avisos, tipos/alcance/build e assets de entrada/CSS/caixa de saída conferidos. Corrigidos erros/rascunhos/travas da caixa de saída e altura/rolagem dos diálogos. Cinco runtimes publicados: dois bancos com zero críticos/altos, Edge/Realtime com bibliotecas atualizadas e Cloudflared sem críticos/altos. Imgproxy desligado por padrão, como Studio/Meta. Monitor local de cinco minutos com 27 checks aprovados. Backup final 20261015T195613Z copiado/hashes conferidos, núcleo repetiu 39 checks e três bancos Evolution foram restaurados/reiniciados em isolamento. Ver [fechamento básico](docs/auditoria-2026-10-11/fechamento-basico-2026-10-15.md). Sem bug bloqueante identificado nos fluxos verificados; isso não é garantia de ausência absoluta de defeitos. Riscos residuais, credenciais técnicas fora deste lote, destino externo e observação futura permanecem explícitos. Próxima etapa solicitada: discutir layout, sem iniciar redesenho sem combinar as propostas.
+
+
 > Mensagens predefinidas: correções publicadas e verificadas em 15/10, 342 testes/44 arquivos e nove verificações HTTP isoladas. Backup 20261015T191602Z copiado/hashes conferidos. Commit f13ae5b, workflow 38792640691 aprovado; entrada e rota coincidem com o build local por SHA256. Ver [relatório](docs/auditoria-2026-10-11/templates-basico-2026-10-15.md).
 
 
@@ -38,9 +41,9 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 > Entrega publicada: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`, [workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso. Homologação integrada de criação, remarcação, histórico e edição/conflito de notas; 306 testes em 36 arquivos. Backup `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Dashboard, agenda e histórico conferidos em produção sem escrita. Ver [relatório da entrega](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md). Execução diária natural também confirmada no item 35.
 
 - Última rodada publicada: tipos estritos, limpeza de 17 módulos e separação da interface da agenda, com correção de pré-seleção após refetch. A entrega funcional anterior acrescentou recuperação de criação, recibo, trava, calendário/métricas e histórico com edição concorrente de notas.
-- Validação atual: **342 testes em 44 arquivos; lint, tipos estritos, alcance e build aprovados**; CI de f13ae5b aprovado, scanner pré-publicação: 442 arquivos sem padrões detectados. Auditoria npm aprovada no CI. Validações anteriores: 322 e 306 testes; nove testes de calendário passaram também em UTC+14 e Los Angeles.
+- Validação atual: **349 testes em 47 arquivos; lint, tipos estritos, alcance e build aprovados**; CI de fa56487 aprovado; scanner do repositório e evidências deste lote no relatório de fechamento, rodada anterior: 442 arquivos sem padrões detectados. Auditoria npm aprovada no CI. Validações anteriores: 322 e 306 testes; nove testes de calendário passaram também em UTC+14 e Los Angeles.
 - As mudanças desse lote estão commitadas e publicadas. Permanecem arquivos históricos independentes não rastreados; preservá-los.
-- Último frontend publicado: `f13ae5b`, workflow `38792640691` aprovado; 342 testes/44 arquivos e assets de entrada/mensagens predefinidas conferidos. Configurações publicadas anteriormente em cc2eaa6. Entregas anteriores: b981426 (qualidade/agenda) e 892bb88 (operações de agenda/histórico). Backend e backup têm entregas próprias descritas acima.
+- Último frontend publicado: `fa56487`, workflow `38797495844` aprovado; 349 testes/47 arquivos e assets de entrada/CSS/caixa de saída conferidos. Modelos publicados anteriormente em f13ae5b. Configurações publicadas anteriormente em cc2eaa6. Entregas anteriores: b981426 (qualidade/agenda) e 892bb88 (operações de agenda/histórico). Backend e backup têm entregas próprias descritas acima.
 - Preservar as alterações dos outros chats e os arquivos não rastreados. Revisar antes de adicionar ao Git; não usar reset ou limpeza geral.
 - Manter o login compartilhado por decisão do cliente. Contas individuais e separação por funcionário não são requisitos pendentes.
 - Usar fixtures isoladas. Não enviar WhatsApp real nem fazer chamadas pagas de IA em testes automatizados.
@@ -72,10 +75,10 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 | 13 | Demais telas grandes | Parcial | Revisar responsabilidades em mensagens, modelos e configurações conforme os problemas encontrados. |
 | 14 | Código morto e imports/variáveis não usados | Publicado e validado em 15/10 | 17 módulos desconectados removidos; lint/TypeScript de não usados ativos e alcance no CI. Primitivas UI reutilizáveis preservadas; revisão de exports individuais continua manutenção. |
 | 15 | TypeScript estrito | Ativado, validado e publicado em 15/10 | strict/noImplicitAny/não usados/fallthrough ativos; contratos anuláveis corrigidos sem esconder erros. |
-| 16 | Cache em toda a aplicação | Parcial | Conferir invalidação, troca de identidade, respostas atrasadas e dados antigos nas telas restantes. |
+| 16 | Cache em toda a aplicação | Parcial; catálogo/histórico de mensagens corrigidos | Cache do catálogo/compositor invalidado após alterações; histórico usa consulta conjunta e cache limpo na troca de identidade. Demais revisões são manutenção. |
 | 17 | Consultas restantes da IA | Parcial | Revisar limites, paginação, totais e indicação de respostas parciais em cada ferramenta. |
-| 18 | Estados de carregamento, erro e vazio | Agenda e configurações corrigidas/publicadas; demais telas em manutenção | Configurações têm erro/repetição e bloqueiam edição de dados antigos após falha; intervalo reverte se não salvo. Corrigir falhas concretas das demais telas conforme uso. |
-| 19 | Uso em celular e acessibilidade | Parcial | Revisar formulários, tabelas, diálogos, navegação por teclado e telas menores no conjunto completo. |
+| 18 | Estados de carregamento, erro e vazio | Correções básicas publicadas | Agenda, configurações, modelos, fila e histórico distinguem falha de vazio; fila trata exceções, preserva rascunho e trava cliques. 349 testes aprovados. |
+| 19 | Uso em celular e acessibilidade | Conferência básica concluída em 15/10 | Login, painel/menu, alunos/cadastro, modelos, fila, agenda e configurações conferidos em homologação. Diálogos corrigidos em telas baixas; não é certificação de todos os dispositivos. |
 
 ## 3. Segurança da aplicação e da VM
 
@@ -83,17 +86,17 @@ Os números desta seção vêm das últimas varreduras documentadas. Não repres
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
-| 20 | Inventário atualizado dos containers | Concluído para o snapshot de 14/10 | Varredura de 15 imagens/16 containers, IDs imutáveis e evidência privada copiada. Manter atualização periódica. |
+| 20 | Inventário atualizado dos containers | Atualizado em 15/10 | Varredura final de 15 imagens/16 nomes de produção; IDs imutáveis, base e relatórios privados copiados/conferidos. |
 | 21 | Dependências vulneráveis do Storage | Altos corrigidos e publicação concluída | security2: zero críticos/altos, 25 médios; 31 checks isolados e produção saudável. Tratar os médios em lote próprio. |
-| 22 | Outros containers do Supabase | Auth, pooler e PostgREST endurecidos e publicados; demais pendentes | Auth: 42 checks isolados/19 em produção e reinício; 30 altos → um alto residual de versão com correção local, cinco baixos/um desconhecido. PostgREST: zero críticos/altos, 37 médios/quatro baixos. Pooler: zero críticos/48 altos revisados e contas limitadas. Studio/Meta passaram a ficar desligados sob demanda, sem corrigir suas imagens antigas. Resolver residuais e revisar Edge Runtime, Realtime, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
+| 22 | Outros containers do Supabase | Lote publicado; alertas residuais abertos | PostgreSQL zero críticos/altos; Edge 1 crítico de versão zlib (Debian registra ausência do minizip afetado) e 51 altos; Realtime zero críticos/79 altos. Auth/pooler preservados conforme relatórios. Nenhum crítico/alto com correção indicada na base nos serviços ativos; isso não prova ausência de risco. Studio/Meta/imgproxy desligados sob demanda, com imagens antigas ainda vulneráveis. |
 | 23 | Alertas residuais da Evolution | Acompanhamento pendente | Revisar alerta médio relacionado a RabbitMQ e aviso de situação desconhecida em OpenPGP; verificar antes de habilitar AMQP. |
 | 24 | Atualizações futuras da Evolution | Processo pendente de consolidação | Preservar licença, sessão e ajustes necessários; validar compatibilidade e retorno. |
-| 25 | Alertas médios/baixos dos gateways | Não encerrado | Avaliar os restantes e atualizar a varredura de Nginx/Envoy. |
+| 25 | Alertas médios/baixos dos gateways | Atualizados e triados em 15/10 | Nginx sem achados; Envoy 14 médios/16 baixos; Cloudflared recompilado/publicado com zero críticos/altos/médios/baixos e um desconhecido. Manutenção periódica continua. |
 | 26 | Segurança da borda pública | TLS, bloqueios e cabeçalhos conferidos em 15/10 | HSTS/nosniff/no-referrer publicados com ensaio isolado e backup; Auth/CORS preservados. Conferência parcial, não pentest exaustivo; revisar políticas específicas de arquivos/frontend. |
 | 27 | Rotação das credenciais compartilhadas no histórico | Senha do dono trocada e logout global verificado em 15/10 | Novo login/dashboard aprovados; sete sessões antigas removidas e refresh recusado. Senha em arquivo privado, plano aplicado; demais credenciais técnicas/provedores continuam com inventário/rotação próprios. Access tokens antigos valem até expirar. |
 | 28 | Revisão final de permissões | Matriz consolidada e catálogo conferido em 15/10 | 15 tabelas públicas com RLS e nenhum privilégio anon; 31 funções e Storage inventariados. Ver permissoes-2026-10-15.md para cobertura/limites; manter revisão de políticas/corpos e futuras mudanças. |
 | 29 | Política contínua de atualização e varredura | Procedimento documentado; responsável a definir | docs/SECURITY-MAINTENANCE.md define verificações por publicação, rotina proposta e triagem. Não equivale a novo monitoramento/agendamento instalado; confirmar responsável operacional. |
-| 30 | Encerramento formal da auditoria de segurança | Pendente | Classificar riscos restantes, registrar correções, exceções justificadas e evidências. |
+| 30 | Encerramento formal da auditoria de segurança | Rodada básica documentada; riscos residuais abertos | Correções publicadas, backups/retorno, exceção de versão zlib e limites registrados no fechamento. Não declarar segurança integral nem tratar ausência de correção indicada como ausência de risco. |
 
 ## 4. Backups, recuperação e operação
 
@@ -101,32 +104,32 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
-| 31 | Restauração completa em ambiente isolado | Núcleo integrado comprovado; desastre completo ainda parcial | Snapshot `20261015T174108Z`: núcleo Workout repetiu 39 checks; três bancos/configuração Evolution também restaurados e persistiram após reinício isolado. Imagens disponíveis; host vazio, DNS/TLS, Realtime, processo do pooler e reconexão do provedor ainda sem prova. |
-| 32 | Funcionamento atual dos backups automáticos | Cobertura ampliada confirmada; cache Deno acrescentado depois | Automático `20261015T060345Z`: cinco arquivos copiados/hashes conferidos. SHA256 no manifesto/sincronização; cache Deno acrescentado a runtime.tar.gz e provado no restore `20261015T162649Z`. Evolution acrescentada ao runtime.tar.gz em 15/10 e provada no snapshot 20261015T174108Z. Observar primeiro automático com ambas as ampliações; timer ativo. |
+| 31 | Restauração completa em ambiente isolado | Núcleo e dados Evolution comprovados novamente | Snapshot final 20261015T195613Z: 39 checks/18,97 s com imagens prontas; três bancos Evolution, contagens/reinício/cleanup aprovados. Host vazio, DNS/TLS, pooler/Realtime no exercício de desastre e reconexão do provedor em outro host continuam sem prova. |
+| 32 | Funcionamento atual dos backups automáticos | Serviço ampliado validado sob demanda | Timer ativo; execuções pelo próprio serviço systemd e cópia/hash aprovadas, incluindo cache Deno/Evolution. Primeiro disparo natural após ambas as ampliações ainda aguarda 16/10; não foi simulado como automático. |
 | 33 | Independência e retenção das cópias | Cópias e imagens customizadas verificadas; independência externa pendente | Auth/pooler/PostgREST e agora Storage/Nginx/Evolution exportados e verificados; estes últimos 21/11/11 blobs OCI. Cliente informou em 15/10 não possuir destino externo; falta definir serviço e política final. Hoje são 14 snapshots completos, não dias. Imagem Evolution não substitui seus dados; estes foram incluídos em runtime.tar.gz e restaurados em isolamento em 15/10. Reconexão/licença em outro host não testadas. |
 | 34 | Tempo e perda máxima de recuperação | Medição técnica realizada; metas operacionais pendentes | Restore integrado 20,42 s com imagens prontas e poucos dados. Não inclui provisionamento/DNS/TLS/provedores; definir RTO completo e RPO aceitáveis. Intervalo diário nominal de backup não é garantia de RPO. |
 | 35 | Primeira execução diária natural das automações | Dois ciclos confirmados por leitura | 14 e 15/10 às 08h de Brasília: success, sem erro, zero candidatos/inserções; jobs ativos e fila sem pendentes/processando. Acompanhar cenários com candidatos e estabilidade prolongada. |
-| 36 | Estabilidade prolongada da fila | Validação parcial | Observar operação contínua, reconexões, latência, falhas e recuperação. |
-| 37 | Reconciliação de mensagens antigas falhas/incertas | Pendente de análise operacional | Conferir o ocorrido antes de decidir qualquer repetição. |
+| 36 | Estabilidade prolongada da fila | Operação atual saudável; monitor instalado | Zero pendentes atrasados/processando presos; WhatsApp conectado, jobs e respostas recentes aprovados. Monitor local cinco minutos. Vários dias de operação e candidatos reais ainda exigem acompanhamento. |
+| 37 | Reconciliação de mensagens antigas falhas/incertas | Triagem técnica concluída; reenvio não autorizado | 35 falhas antigas, zero recibos de sucesso conflitantes/duplicados no banco e nenhum dispatch_started_at. Falta de recibo histórico não prova não entrega. Preservadas sem repetir/cancelar; conferir WhatsApp individualmente se houver intenção de reenviar. |
 | 38 | Testes de carga | Pendente | Medir comportamento com mais alunos, mensagens, avaliações e consultas concorrentes. |
 | 39 | Recursos adicionais do Storage | Não validados no lote anterior | Testar TUS, S3 e transformação de imagens se forem utilizados. |
 | 40 | Recuperação de senha por email | Dispensada pelo cliente em 15/10 | Manter perfil pré-configurado do dono e recuperação administrativa pela VM. Não configurar SMTP, signup público ou contas individuais como requisito deste projeto. |
 | 41 | Gemini real | Sem validação completa | Conferir modelo, credencial, geração, timeout e qualidade com chamada controlada. |
-| 42 | Monitoramento operacional | Parcial | Consolidar alertas úteis de backup, automações, fila, conexão e indisponibilidade. |
+| 42 | Monitoramento operacional | Monitor local instalado e aprovado | 27 verificações de serviços, fila, WhatsApp, jobs/HTTP, backup, espaço e containers de retorno. Timer cinco minutos; alertas em systemd/JSON privado. Não há notificação externa nem observador fora da VM. |
 | 43 | Estado dos antigos projetos Supabase | Não confirmado | Verificar exclusão de WORKOUT01/02/03 e documentar o destino da cópia Cloud do WORKOUT04. |
 
 ## 5. Performance, documentação e manutenção
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
-| 44 | Performance real do frontend | Bundle e carregamento por rotas melhoraram | Medir carregamento em celular/rede lenta, navegação e consumo de recursos. |
+| 44 | Performance real do frontend | Bundle por rotas e uso básico em celular conferidos | Diálogos/rolagem corrigidos. Medições de rede lenta e carga maior ficam para evolução conforme necessidade. |
 | 45 | Consultas que carregam todos os registros | Ainda existem | Avaliar paginação e filtros no servidor conforme o volume crescer. |
 | 46 | README completo | Ampliado em 15/10 | Configuração pública, comandos, backend self-hosted, CI e limites documentados; manter atualizado com futuras entregas. |
-| 47 | Runbook operacional | Atualizado; recuperação completa pendente | Backup de cinco arquivos, restore de metadados, contas limitadas, migrações administrativas e publicação/retorno de pooler/PostgREST documentados. Completar recuperação integrada, incidentes e armazenamento externo. |
+| 47 | Runbook operacional | Atualizado com runtimes, recuperação e monitor | Procedimentos correntes e riscos/retorno documentados. Host vazio, serviços externos e destino independente continuam limitações explícitas. |
 | 48 | Deploy de frontend e backend | Processos existentes | Documentar dependências, ordem de migrações e compatibilidade entre versões. |
 | 49 | Organização das evidências | Índice criado em 15/10 | docs/auditoria-2026-10-11/README.md relaciona entregas atuais e fotografias históricas. Manter a cada publicação. |
 | 50 | Arquivos locais não rastreados | Existem documentos e scripts | Revisar o que deve entrar no Git e manter material privado fora dele. |
-| 51 | Matriz final da auditoria | Parcial | Relacionar cada achado a correção, commit, teste, publicação ou pendência justificada. |
+| 51 | Matriz final da auditoria | Consolidada para a rodada básica | Relatório de fechamento relaciona correções, provas, publicação e limites; backlog histórico mantido, sem transformar melhorias futuras em bloqueios ao layout. |
 
 ## 6. Melhorias de produto discutidas — definir escopo
 

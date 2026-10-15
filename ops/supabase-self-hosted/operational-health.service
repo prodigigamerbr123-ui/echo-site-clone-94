@@ -1,0 +1,14 @@
+[Unit]
+Description=Workout local operational checks (read-only)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/workout-supabase/operational-health.py --output /var/lib/workout-monitor/latest.json
+TimeoutStartSec=90
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/lib/workout-monitor

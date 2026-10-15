@@ -1,5 +1,6 @@
 """Offline data/configuration recovery check; never starts Evolution or connects WhatsApp."""
 import hashlib
+import argparse
 import json
 import os
 import pathlib
@@ -30,7 +31,7 @@ def sql(query, database='restore_catalog'):
                 '-qAt', '-v', 'ON_ERROR_STOP=1'], query.encode()).decode().strip()
 
 
-def main(archive):
+def main(archive, database_image=None):
     if ROOT.exists():
         raise RuntimeError('Recovery directory exists; preserve evidence before retrying')
     if subprocess.run(['docker', 'inspect', NAME], capture_output=True).returncode == 0:
@@ -46,6 +47,12 @@ def main(archive):
                 raise RuntimeError('Archive entry escapes recovery directory')
         package.extractall(ROOT, members=members, filter='data')
     metadata = json.loads((ROOT / 'evolution/metadata.json').read_text())
+    if database_image:
+        import re
+        if not re.fullmatch(r'sha256:[a-f0-9]{64}', database_image):
+            raise RuntimeError('Candidate database requires an immutable local image ID')
+        run(['docker', 'image', 'inspect', database_image])
+        metadata['postgres_image'] = database_image
     if metadata['format'] != 1 or not metadata['dbdata_empty']:
         raise RuntimeError('Unsupported recovery format')
     configs = json.loads((ROOT / 'evolution/containers.json').read_text())
@@ -123,10 +130,15 @@ def main(archive):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 2:
-        attempt = int(sys.argv[2])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('archive')
+    parser.add_argument('attempt', type=int, nargs='?')
+    parser.add_argument('--database-image')
+    options = parser.parse_args()
+    if options.attempt is not None:
+        attempt = options.attempt
         if not 1 <= attempt <= 999:
             raise SystemExit('Attempt must be between 1 and 999')
         ROOT = ROOT.with_name(ROOT.name + '-attempt-' + str(attempt))
         NAME += '-' + str(attempt)
-    main(sys.argv[1])
+    main(options.archive, options.database_image)

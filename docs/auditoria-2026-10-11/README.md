@@ -5,6 +5,7 @@ Estado consolidado e backlog: [handoff](../../handoff.md). Procedimentos: [runbo
 | Área | Evidência de referência | Alcance e limite |
 | --- | --- | --- |
 | Modelos de mensagens | [15/10: confiabilidade básica](templates-basico-2026-10-15.md) | 342 testes e nove verificações isoladas; publicação registrada no relatório. |
+| Fechamento básico | [15/10: runtimes, recuperação, monitor e interface](fechamento-basico-2026-10-15.md) | fa56487 publicado; 349 testes, cinco runtimes, monitor local 27 checks e restore final. Riscos residuais explícitos. |
 | Acesso do dono | [15/10: senha e logout global](senha-proprietario-2026-10-15.md) | Novo login/dashboard aprovados; sete sessões removidas e refresh recusado. JWTs expiram no prazo próprio. |
 | Administração | [15/10: Studio/Meta sob demanda](admin-sob-demanda-2026-10-15.md) | Dois serviços desligados por padrão; dez verificações isoladas e 20 de produção repetidas. Imagens não corrigidas por esse lote. |
 | Básico/configurações | [15/10: escopo e confiabilidade](configuracoes-basico-2026-10-15.md) | cc2eaa6 publicado; 328 testes e assets conferidos. |

@@ -1,0 +1,9 @@
+FROM golang:1.26.9-alpine3.24 AS builder
+WORKDIR /src
+# Source from the official 1.19 tag, pinned to its reviewed commit.
+ADD https://github.com/tianon/gosu/archive/6456aaa0f3c854d199d0f037f068eb97515b7513.tar.gz /src/source.tar.gz
+RUN tar -xzf source.tar.gz --strip-components=1 \
+    && CGO_ENABLED=0 go build -trimpath -buildvcs=false -o /gosu . \
+    && /gosu --version && /gosu nobody id
+FROM scratch
+COPY --from=builder /gosu /gosu

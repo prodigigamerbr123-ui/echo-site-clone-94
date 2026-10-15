@@ -1,0 +1,14 @@
+FROM golang:1.26.9-alpine3.24 AS builder
+WORKDIR /src
+ADD https://github.com/cloudflare/cloudflared/archive/18cdfe0a6fc7b72a0702d255a1f984e776ce0498.tar.gz /src/source.tar.gz
+RUN tar -xzf source.tar.gz --strip-components=1 \
+    && go get golang.org/x/net@v0.60.0 \
+    && CGO_ENABLED=0 go build -mod=mod -trimpath -buildvcs=false \
+       -ldflags="-X main.Version=2026.10.0-workout-security1" -o /cloudflared ./cmd/cloudflared \
+    && /cloudflared --version
+FROM alpine:3.24
+RUN apk upgrade --no-cache && apk add --no-cache ca-certificates
+COPY --from=builder /cloudflared /usr/local/bin/cloudflared
+USER 65532:65532
+ENTRYPOINT ["cloudflared", "--no-autoupdate"]
+CMD ["version"]

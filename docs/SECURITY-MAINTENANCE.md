@@ -29,3 +29,23 @@ Registrar exceções com CVE/pacote, serviço, exposição, evidência, mitigaç
 ## Pendências que exigem decisão do proprietário
 
 Destino independente de backup e custo; metas RTO/RPO; responsável/alertas fora da VM; janela de rotação das credenciais e entrega privada do acesso do dono. SMTP foi dispensado e o administrador compartilhado foi mantido pelo cliente. Essas decisões não encerram os riscos residuais listados no handoff.
+
+## Registro corrente de riscos — 15/10
+
+Ver [fechamento básico](auditoria-2026-10-11/fechamento-basico-2026-10-15.md) para
+IDs imutáveis, base do scanner e provas. Nos serviços ativos há um crítico de
+versão zlib (com a condição de minizip ausente documentada pelo Debian) e 179
+ocorrências altas: Edge 51, Realtime 79, Auth 1 e pooler 48. Não foram suprimidos.
+Nenhum desses críticos/altos tem versão corrigida indicada nessa base. Isso não
+significa que sejam inexploráveis; manter triagem e rever advisories semanalmente
+ou antes de qualquer nova exposição/funcionalidade que alcance os componentes.
+
+Studio, Meta e imgproxy ficam desligados por padrão; seus alertas não estão
+corrigidos. Reavaliar antes de habilitar, inclusive durante manutenção.
+Os bancos e Cloudflared ficaram sem críticos/altos na varredura final.
+
+O monitor operacional foi instalado com timer de cinco minutos e 27 verificações.
+Ele complementa a rotina proposta acima; não instala varredura semanal automática,
+notificações externas ou backup independente. O responsável nominal e a aceitação
+dos riscos residuais continuam a definir. A senha do dono já foi trocada;
+as demais credenciais ficaram fora do lote de fechamento por solicitação do cliente.

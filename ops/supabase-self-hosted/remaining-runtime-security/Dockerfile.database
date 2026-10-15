@@ -1,0 +1,6 @@
+ARG UPSTREAM_IMAGE
+FROM workout-gosu:1.19-go1.26.9 AS gosu
+FROM ${UPSTREAM_IMAGE}
+# Only runtime libraries; do not upgrade PostgreSQL, extensions or data format.
+RUN apk upgrade --no-cache c-ares curl libcurl libcrypto3 libssl3
+COPY --from=gosu /gosu /usr/local/bin/gosu

@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Workout services, queue, WhatsApp and backup every five minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=operational-health.service
+
+[Install]
+WantedBy=timers.target

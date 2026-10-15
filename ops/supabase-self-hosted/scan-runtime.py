@@ -1,5 +1,6 @@
 """Read-only production image inventory and serial vulnerability scans. Run on VM."""
 import collections
+import argparse
 import datetime
 import hashlib
 import json
@@ -36,6 +37,11 @@ def run(args):
 
 
 def main():
+    global ROOT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output-dir', type=pathlib.Path, default=ROOT,
+                        help='New private evidence directory; existing inventory is never replaced.')
+    ROOT = parser.parse_args().output_dir
     ROOT.mkdir(mode=0o700, exist_ok=True)
     if (ROOT / 'inventory.json').exists():
         raise RuntimeError('Existing inventory; preserve prior evidence instead of overwriting')

@@ -5,6 +5,7 @@ Uses only backup files for application data, code, files and dependency cache.
 Existing locally cached service images are prerequisites, not a cold-host restore.
 """
 import base64
+import argparse
 import hashlib
 import hmac
 import json
@@ -47,7 +48,13 @@ def signed(secret, role):
 
 
 def main():
-    stamp, attempt = sys.argv[1:]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('snapshot')
+    parser.add_argument('attempt')
+    parser.add_argument('--image-overrides', type=pathlib.Path,
+                        help='Private JSON of immutable service image IDs, for isolated candidate validation.')
+    options = parser.parse_args()
+    stamp, attempt = options.snapshot, options.attempt
     assert re.fullmatch(r'\d{8}T\d{6}Z', stamp) and re.fullmatch(r'[1-9]\d{0,2}', attempt)
     root = BASE / ('attempt-' + attempt)
     root.mkdir(parents=True, mode=0o700, exist_ok=False)
@@ -128,6 +135,15 @@ def main():
         'db': 'workout-supabase-db', 'auth': 'workout-supabase-auth', 'rest': 'workout-supabase-rest',
         'storage': 'workout-supabase-storage', 'edge': 'workout-supabase-edge-functions',
         'gateway': 'workout-supabase-public'}.items()}
+    if options.image_overrides:
+        overrides = json.loads(options.image_overrides.read_text())
+        if not isinstance(overrides, dict) or not set(overrides).issubset(images):
+            raise RuntimeError('Unexpected candidate service')
+        for service, image in overrides.items():
+            if not isinstance(image, str) or not re.fullmatch(r'sha256:[a-f0-9]{64}', image):
+                raise RuntimeError('Candidate images must use immutable local image IDs')
+            run(['docker', 'image', 'inspect', image])
+            images[service] = image
     result['images'] = images
     extracted = root / 'restored'
     extracted.mkdir(mode=0o700)
