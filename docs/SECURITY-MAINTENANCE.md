@@ -28,7 +28,7 @@ Registrar exceções com CVE/pacote, serviço, exposição, evidência, mitigaç
 
 ## Pendências que exigem decisão do proprietário
 
-Destino independente de backup e custo; metas RTO/RPO; responsável/alertas fora da VM; janela de rotação das credenciais e entrega privada do acesso do dono. SMTP foi dispensado e o administrador compartilhado foi mantido pelo cliente. Essas decisões não encerram os riscos residuais listados no handoff.
+Destino independente de backup e custo; metas RTO/RPO; responsável/alertas fora da VM; janela de eventual rotação das demais credenciais técnicas. O acesso do dono já foi trocado e entregue em arquivo privado. SMTP foi dispensado e o administrador compartilhado foi mantido pelo cliente. Essas decisões não encerram os riscos residuais listados no handoff.
 
 ## Registro corrente de riscos — 15/10
 

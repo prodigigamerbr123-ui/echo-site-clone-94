@@ -2,7 +2,7 @@
 
 Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
 
-Índice das entregas mais recentes: [evidências](docs/auditoria-2026-10-11/README.md). O histórico detalhado, decisões, arquitetura, commits e procedimentos estão em [HANDOFF-AUDITORIA-2026-10-14.md](docs/HANDOFF-AUDITORIA-2026-10-14.md). As evidências do último bloco estão em [agenda-recuperacao-local-2026-10-14.md](docs/auditoria-2026-10-11/agenda-recuperacao-local-2026-10-14.md). Em caso de divergência, distinguir data, código local, validação e versão publicada.
+Índice das entregas mais recentes: [evidências](docs/auditoria-2026-10-11/README.md). O histórico detalhado, decisões, arquitetura, commits e procedimentos estão em [HANDOFF-AUDITORIA-2026-10-14.md](docs/HANDOFF-AUDITORIA-2026-10-14.md). As evidências do último bloco estão em [fechamento-basico-2026-10-15.md](docs/auditoria-2026-10-11/fechamento-basico-2026-10-15.md). Em caso de divergência, distinguir data, código local, validação e versão publicada.
 
 ## Estado atual e regras de continuidade
 
@@ -40,7 +40,7 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 
 > Entrega publicada: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`, [workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso. Homologação integrada de criação, remarcação, histórico e edição/conflito de notas; 306 testes em 36 arquivos. Backup `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Dashboard, agenda e histórico conferidos em produção sem escrita. Ver [relatório da entrega](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md). Execução diária natural também confirmada no item 35.
 
-- Última rodada publicada: tipos estritos, limpeza de 17 módulos e separação da interface da agenda, com correção de pré-seleção após refetch. A entrega funcional anterior acrescentou recuperação de criação, recibo, trava, calendário/métricas e histórico com edição concorrente de notas.
+- Última rodada publicada: confiabilidade da caixa de saída/histórico, diálogos em tela baixa, cinco runtimes, imgproxy opcional e monitor operacional. Frontend fa56487; infraestrutura/documentação a28fccb. Limites e riscos no relatório de fechamento. As entregas anteriores de tipos, limpeza, agenda e recuperação permanecem preservadas.
 - Validação atual: **349 testes em 47 arquivos; lint, tipos estritos, alcance e build aprovados**; CI de fa56487 aprovado; scanner do repositório e evidências deste lote no relatório de fechamento, rodada anterior: 442 arquivos sem padrões detectados. Auditoria npm aprovada no CI. Validações anteriores: 322 e 306 testes; nove testes de calendário passaram também em UTC+14 e Los Angeles.
 - As mudanças desse lote estão commitadas e publicadas. Permanecem arquivos históricos independentes não rastreados; preservá-los.
 - Último frontend publicado: `fa56487`, workflow `38797495844` aprovado; 349 testes/47 arquivos e assets de entrada/CSS/caixa de saída conferidos. Modelos publicados anteriormente em f13ae5b. Configurações publicadas anteriormente em cc2eaa6. Entregas anteriores: b981426 (qualidade/agenda) e 892bb88 (operações de agenda/histórico). Backend e backup têm entregas próprias descritas acima.
