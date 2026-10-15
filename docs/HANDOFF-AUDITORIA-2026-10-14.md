@@ -1,5 +1,7 @@
 # Workout — transferência completa da auditoria
 
+> Entrega posterior de PostgREST: runtime security1 publicado (`dc990d07c8ce…`), zero críticos/altos, 37 médios/quatro baixos; mesmo binário da API. 41 verificações isoladas e 17 em produção, reinício, backups e imagem copiados/conferidos. Ver [PostgREST](auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md). A tabela de containers abaixo é histórica; não repetir seus números como a imagem atual do PostgREST.
+
 > Atualização posterior publicada: pooler com contas próprias de metadados/manager, sem senha administrativa compartilhada no ambiente, migrações separadas e autenticação filtrada. 56 checks isolados e 29 em produção; reinício e restauração dos metadados novos comprovados. Ver [permissões do pooler](auditoria-2026-10-11/pooler-permissoes-2026-10-14.md). Os registros anteriores de supabase_admin no pooler foram superados; essa conta continua administrativa nos outros serviços.
 
 

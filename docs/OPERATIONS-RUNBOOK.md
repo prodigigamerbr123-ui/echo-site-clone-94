@@ -52,6 +52,8 @@ Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e age
 
 ## Evidências atuais
 
+Entrega mais recente: [PostgREST security1](auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md), imagem `dc990d07c8ce…`, zero críticos/altos, 37 médios/quatro baixos. Mesmo binário 14.17, 41 checks isolados/17 em produção e reinício aprovado. Backup anterior `20261015T010314Z`, posterior `20261015T010534Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e seis blobs OCI verificados fora da VM. Schemas/funções e contagens preservados.
+
 Entrega posterior: [contas limitadas do pooler](auditoria-2026-10-11/pooler-permissoes-2026-10-14.md), 56 checks isolados/29 em produção e reinício comprovado. Backup anterior `20261015T000850Z`, posterior `20261015T001054Z`, cinco arquivos cada copiados/hashes conferidos. Os metadados posteriores também foram restaurados em isolamento. A imagem security1 não mudou; mudou a configuração de credenciais e permissões.
 
 Entrega mais recente: [pooler security1 e backup ampliado](auditoria-2026-10-11/pooler-publicacao-2026-10-14.md), 32 checks isolados e 12 pós-publicação. Imagem `1f3562efb570cd78c131771e2ab64ca8db2c71f40d5dd5efe5d6dba976d5c2a6`, zero críticos/48 altos revisados, seis registros Hex residuais. Somente pooler recriado; dados e migrações preservados.
@@ -131,3 +133,33 @@ Restaurar somente `_supabase` foi comprovado com
 separada em `/home/ubuntu/workout-pooler-roles-restore-20261014`; não repetir sobre
 provas existentes. O restore completo e a reconstituição do helper em postgres
 continuam parte do exercício integrado pendente.
+
+## PostgREST: versão publicada e retorno
+
+A imagem atual é workout-postgrest:14.17-security1, ID
+`sha256:dc990d07c8ce83f1e676959e37e55845b4337bdb2ad65c6079e9522a658edcf1`.
+O compose aplica UID/GID 1000, read_only, cap_drop ALL, no-new-privileges e limite
+256 PIDs. Mantém o host explícito e a porta administrativa para postgrest --ready;
+não alterar os parâmetros funcionais para reproduzir somente o healthcheck.
+
+A imagem exportada está no diretório privado local
+`C:/Users/pejon/.codex/ssh-workout04/postgrest-release-20261014/runtime-image.tar.gz`.
+Conferir SHA256 `c3d4cc58cfbc162d2e8e25230610f340b4f03919975701a0c66bdefedd762d63`
+antes de docker load e atribuir a tag ao ID verificado:
+
+```bash
+docker tag sha256:dc990d07c8ce83f1e676959e37e55845b4337bdb2ad65c6079e9522a658edcf1 workout-postgrest:14.17-security1
+```
+
+O script privado em `/home/ubuntu/workout-postgrest-release-20261014/release.py`
+executa prepare/apply/observe/rollback. Observe faz leituras e assina um JWT curto
+para o admin existente; não substitui teste de login por senha. O rollback confere
+hash atual e imagem anterior, restaura somente o compose anterior e recria rest,
+sem restaurar banco. Não foi necessário acioná-lo. Após mudanças no compose,
+reavaliar o retorno; scripts anteriores de pooler/Storage não correspondem à
+configuração atual e seus guardas devem impedir a execução.
+
+O build preserva o executável PostgREST e depende de pacotes APT resolvidos na
+ocasião. Rebuild exige nova comparação do scanner e nova validação; preservar a
+imagem testada para recuperação. O backup completo integrado e a preservação
+externa de todas as imagens customizadas continuam pendentes.

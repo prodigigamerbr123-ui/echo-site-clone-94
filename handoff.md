@@ -6,6 +6,8 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 ## Estado atual e regras de continuidade
 
+> PostgREST publicado: `workout-postgrest:14.17-security1`, imagem `dc990d07c8ce…`, com **zero críticos/altos**, 37 médios e quatro baixos. Mesmo binário 14.17; runtime sem compiladores/cabeçalhos, sem root, read-only e sem capabilities. **41 checks isolados e 17 em produção**, repetidos após reinício. Backups pré/pós e imagem copiados/conferidos fora da VM; schemas e funções preservados. Ver [entrega PostgREST](docs/auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md).
+
 > Permissões do pooler publicadas: duas contas técnicas próprias, sem privilégios administrativos e sem a senha administrativa compartilhada no ambiente. Migrações separadas da execução; helper de autenticação recusa contas privilegiadas. **56 checks isolados e 29 em produção**, repetidos após reinício. Backups pré/pós copiados e conferidos; metadados da nova configuração restaurados isoladamente. Ver [credenciais e permissões](docs/auditoria-2026-10-11/pooler-permissoes-2026-10-14.md).
 
 > Pooler publicado: `workout-supavisor:2.9.12-security1`, imagem `1f3562efb570…`, saudável, com nove bibliotecas corrigidas + Finch, execução sem root, rootfs somente para leitura e sem capabilities. **32 verificações isoladas e 12 pós-publicação passaram**. Zero críticos e 48 ocorrências altas (10 CVEs revisados); seis registros Hex residuais continuam abertos. Backup ampliado para cinco arquivos, restore dos metadados comprovado e imagem copiada para fora da VM. Ver [publicação e riscos restantes](docs/auditoria-2026-10-11/pooler-publicacao-2026-10-14.md).
@@ -62,7 +64,7 @@ Os números desta seção vêm das últimas varreduras documentadas. Não repres
 | --- | --- | --- | --- |
 | 20 | Inventário atualizado dos containers | Concluído para o snapshot de 14/10 | Varredura de 15 imagens/16 containers, IDs imutáveis e evidência privada copiada. Manter atualização periódica. |
 | 21 | Dependências vulneráveis do Storage | Altos corrigidos e publicação concluída | security2: zero críticos/altos, 25 médios; 31 checks isolados e produção saudável. Tratar os médios em lote próprio. |
-| 22 | Outros containers do Supabase | Pooler corrigido e endurecido em produção; residuais abertos | security1: zero críticos/48 altos revisados, 32 checks isolados e 12 pós-troca. Privilégios de banco do pooler reduzidos (56 checks isolados/29 em produção); resolver dependências residuais e revisar uso administrativo nos outros serviços; revisar Auth, Realtime, Studio, Meta, PostgREST, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
+| 22 | Outros containers do Supabase | Pooler e PostgREST endurecidos e publicados; demais pendentes | PostgREST: zero críticos/altos, 41 checks isolados/17 em produção; 37 médios/quatro baixos abertos. Pooler: zero críticos/48 altos revisados e contas limitadas (56/29 checks). Resolver residuais e revisar Auth, Realtime, Studio, Meta, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
 | 23 | Alertas residuais da Evolution | Acompanhamento pendente | Revisar alerta médio relacionado a RabbitMQ e aviso de situação desconhecida em OpenPGP; verificar antes de habilitar AMQP. |
 | 24 | Atualizações futuras da Evolution | Processo pendente de consolidação | Preservar licença, sessão e ajustes necessários; validar compatibilidade e retorno. |
 | 25 | Alertas médios/baixos dos gateways | Não encerrado | Avaliar os restantes e atualizar a varredura de Nginx/Envoy. |
@@ -79,8 +81,8 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
 | 31 | Restauração completa em ambiente isolado | Parcial; metadados do pooler restaurados | Dumps de `_supabase` anteriores e posteriores à separação de credenciais restaurados isoladamente; contagens/migrações/hashes conferidos. Falta restauração integrada de banco principal, Auth, arquivos e funções, com RTO/RPO. |
-| 32 | Funcionamento atual dos backups automáticos | Timer ativo; cobertura ampliada e validada manualmente | Último automático 14/10 06:03 UTC, sucesso. Backups manuais anteriores e posteriores às duas entregas incluem `pooler.dump` e configurações pooler/Envoy; cinco arquivos copiados e conferidos. Observar primeira execução automática com a nova cobertura. |
-| 33 | Independência e retenção das cópias | Cópias locais verificadas; independência externa pendente | Imagem do pooler exportada e 14 blobs OCI verificados fora da VM. Preservar outras imagens customizadas, armazenamento externo independente e política de retenção; hoje são 14 snapshots completos, não dias. |
+| 32 | Funcionamento atual dos backups automáticos | Timer ativo; cobertura ampliada e validada manualmente | Último automático 14/10 06:03 UTC, sucesso. Backups manuais anteriores e posteriores às entregas de pooler/PostgREST incluem `pooler.dump` e configurações pooler/Envoy; cinco arquivos copiados e conferidos. Observar primeira execução automática com a nova cobertura. |
+| 33 | Independência e retenção das cópias | Cópias locais verificadas; independência externa pendente | Imagens do pooler e PostgREST exportadas; 14 e seis blobs OCI, respectivamente, verificados fora da VM. Preservar outras imagens customizadas, armazenamento externo independente e política de retenção; hoje são 14 snapshots completos, não dias. |
 | 34 | Tempo e perda máxima de recuperação | Não definidos formalmente | Medir o restore e registrar RTO/RPO compatíveis com a academia. |
 | 35 | Primeira execução diária natural das automações | Confirmada em produção por leitura | Execução de 14/10 às 08:00 de Brasília: success, sem erro, zero candidatos e zero mensagens. Ver conferência operacional de 14/10; acompanhar ciclos seguintes e cenários com candidatos. |
 | 36 | Estabilidade prolongada da fila | Validação parcial | Observar operação contínua, reconexões, latência, falhas e recuperação. |
@@ -99,7 +101,7 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 | 44 | Performance real do frontend | Bundle e carregamento por rotas melhoraram | Medir carregamento em celular/rede lenta, navegação e consumo de recursos. |
 | 45 | Consultas que carregam todos os registros | Ainda existem | Avaliar paginação e filtros no servidor conforme o volume crescer. |
 | 46 | README completo | Iniciado pelo outro chat | Completar configuração, execução local, arquitetura e referências operacionais. |
-| 47 | Runbook operacional | Atualizado; recuperação completa pendente | Backup de cinco arquivos, restore de metadados, contas limitadas, migrações administrativas e publicação/retorno do pooler documentados. Completar recuperação integrada, incidentes e armazenamento externo. |
+| 47 | Runbook operacional | Atualizado; recuperação completa pendente | Backup de cinco arquivos, restore de metadados, contas limitadas, migrações administrativas e publicação/retorno de pooler/PostgREST documentados. Completar recuperação integrada, incidentes e armazenamento externo. |
 | 48 | Deploy de frontend e backend | Processos existentes | Documentar dependências, ordem de migrações e compatibilidade entre versões. |
 | 49 | Organização das evidências | Muitos relatórios disponíveis | Criar índice consolidado e indicar quais relatórios substituem os anteriores. |
 | 50 | Arquivos locais não rastreados | Existem documentos e scripts | Revisar o que deve entrar no Git e manter material privado fora dele. |

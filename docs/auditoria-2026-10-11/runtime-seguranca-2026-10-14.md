@@ -1,5 +1,7 @@
 # Varredura atual dos containers — 14/10/2026
 
+> Continuidade publicada: PostgREST security1 tem zero críticos/altos, 37 médios/quatro baixos, com 41 checks isolados/17 em produção. A mesma base Trivy contou cinco críticos/172 altos na imagem original. Ver [entrega PostgREST](postgrest-seguranca-2026-10-14.md). Os números da tabela abaixo continuam como fotografia anterior; Storage e pooler também foram atualizados posteriormente.
+
 > Atualização posterior: pooler security1 publicado após revisão dos alertas residuais, endurecimento do runtime, 32 verificações isoladas, backup e restauração de metadados. Ver [publicação de 14/10](pooler-publicacao-2026-10-14.md). Os estados de candidata/bloqueio abaixo preservam a fotografia anterior.
 
 > A tabela registra o snapshot anterior à troca do Storage neste dia. Depois desta varredura, security2 foi validada e publicada com zero críticos/altos e 25 médios; ver `storage-seguranca-2026-10-14.md`. As outras imagens não foram alteradas por esse lote.
