@@ -6,7 +6,7 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 
 ## Estado atual e regras de continuidade
 
-> Mensagens predefinidas: correções locais validadas em 15/10, 342 testes/44 arquivos e nove verificações HTTP isoladas. Backup 20261015T191602Z copiado/hashes conferidos. Publicação aguardando CI; ver [relatório](docs/auditoria-2026-10-11/templates-basico-2026-10-15.md).
+> Mensagens predefinidas: correções publicadas e verificadas em 15/10, 342 testes/44 arquivos e nove verificações HTTP isoladas. Backup 20261015T191602Z copiado/hashes conferidos. Commit f13ae5b, workflow 38792640691 aprovado; entrada e rota coincidem com o build local por SHA256. Ver [relatório](docs/auditoria-2026-10-11/templates-basico-2026-10-15.md).
 
 
 > Studio/Meta sob demanda em 15/10: perfil admin, restart no, ambos desligados; gateway agora depende do banco. Dez verificações isoladas com os dois serviços ausentes e 20 em produção, repetidas; dados/senhas preservados, rotas externas e WebSocket conferidos. Backup pós 20261015T184842Z copiado/hashes conferidos e compose validado dentro do arquivo. As imagens antigas não foram corrigidas e outros containers continuam com pendências. Ver [relatório](docs/auditoria-2026-10-11/admin-sob-demanda-2026-10-15.md).
@@ -38,9 +38,9 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 > Entrega publicada: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`, [workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso. Homologação integrada de criação, remarcação, histórico e edição/conflito de notas; 306 testes em 36 arquivos. Backup `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Dashboard, agenda e histórico conferidos em produção sem escrita. Ver [relatório da entrega](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md). Execução diária natural também confirmada no item 35.
 
 - Última rodada publicada: tipos estritos, limpeza de 17 módulos e separação da interface da agenda, com correção de pré-seleção após refetch. A entrega funcional anterior acrescentou recuperação de criação, recibo, trava, calendário/métricas e histórico com edição concorrente de notas.
-- Validação atual: **328 testes em 41 arquivos; lint, tipos estritos, alcance e build aprovados**; CI de cc2eaa6 aprovado, scanner pré-publicação: 430 arquivos sem padrões detectados. Auditoria npm aprovada no CI. Validações anteriores: 322 e 306 testes; nove testes de calendário passaram também em UTC+14 e Los Angeles.
+- Validação atual: **342 testes em 44 arquivos; lint, tipos estritos, alcance e build aprovados**; CI de f13ae5b aprovado, scanner pré-publicação: 442 arquivos sem padrões detectados. Auditoria npm aprovada no CI. Validações anteriores: 322 e 306 testes; nove testes de calendário passaram também em UTC+14 e Los Angeles.
 - As mudanças desse lote estão commitadas e publicadas. Permanecem arquivos históricos independentes não rastreados; preservá-los.
-- Último frontend publicado: `cc2eaa6`, workflow `38778303244` aprovado; 328 testes/41 arquivos e assets de entrada/configurações conferidos. Entregas anteriores: b981426 (qualidade/agenda) e 892bb88 (operações de agenda/histórico). Backend e backup têm entregas próprias descritas acima.
+- Último frontend publicado: `f13ae5b`, workflow `38792640691` aprovado; 342 testes/44 arquivos e assets de entrada/mensagens predefinidas conferidos. Configurações publicadas anteriormente em cc2eaa6. Entregas anteriores: b981426 (qualidade/agenda) e 892bb88 (operações de agenda/histórico). Backend e backup têm entregas próprias descritas acima.
 - Preservar as alterações dos outros chats e os arquivos não rastreados. Revisar antes de adicionar ao Git; não usar reset ou limpeza geral.
 - Manter o login compartilhado por decisão do cliente. Contas individuais e separação por funcionário não são requisitos pendentes.
 - Usar fixtures isoladas. Não enviar WhatsApp real nem fazer chamadas pagas de IA em testes automatizados.

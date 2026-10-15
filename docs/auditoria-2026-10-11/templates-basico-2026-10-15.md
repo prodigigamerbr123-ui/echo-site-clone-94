@@ -21,7 +21,7 @@ Backup anterior: **20261015T191602Z**, cinco arquivos copiados ao computador e S
 
 ## Publicação e retorno
 
-Publicação pendente do CI neste registro inicial. Retorno: reverter o commit deste lote e publicar pelo mesmo workflow; nenhuma migração ou alteração de dados de produção é necessária.
+Publicado em `f13ae5b987d432ed0a33f596fceec70ced31f1fd`; [workflow 38792640691](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38792640691) concluído com sucesso, incluindo auditoria de dependências. Entrada `index-thHeGeZH.js` e rota `MensagensPredefinidas-v815J6xi.js` conferidas por SHA256 contra o build local. SHA256 da rota: `450c14f7f1fcae9d500ee6b3df384c16dbfcb866d7da13f83ce4fd619f914d4c`. Verificação de produção somente de leitura; não foram criados modelos reais. Retorno: reverter o commit deste lote e publicar pelo mesmo workflow; nenhuma migração ou alteração de dados de produção é necessária.
 
 ## Limites
 
