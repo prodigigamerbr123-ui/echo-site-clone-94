@@ -1,5 +1,7 @@
 # Workout — transferência completa da auditoria
 
+> Atualização posterior publicada: pooler com contas próprias de metadados/manager, sem senha administrativa compartilhada no ambiente, migrações separadas e autenticação filtrada. 56 checks isolados e 29 em produção; reinício e restauração dos metadados novos comprovados. Ver [permissões do pooler](auditoria-2026-10-11/pooler-permissoes-2026-10-14.md). Os registros anteriores de supabase_admin no pooler foram superados; essa conta continua administrativa nos outros serviços.
+
 
 > Continuidade de infraestrutura: pooler security1 publicado e saudável, imagem `1f3562efb570…`, sem root, rootfs somente para leitura e sem capabilities. Passaram 32 verificações isoladas e 12 pós-publicação. Zero críticos/48 altos de sistema operacional revisados; seis registros Hex continuam abertos. Backup ampliado, metadados restaurados e imagem preservada fora da VM. Ver [publicação e pendências](auditoria-2026-10-11/pooler-publicacao-2026-10-14.md) e os itens 22/31–33 do handoff principal.
 > Matriz consolidada de continuidade: [handoff.md](../handoff.md), na raiz do repositório, contém os 63 itens discutidos, estados, pendências e ordem de retomada. Este documento preserva o histórico detalhado.

@@ -1,11 +1,11 @@
 """Restore only the pooler metadata backup in a disposable networkless PostgreSQL."""
+import argparse
 import hashlib
 import json
 import os
 import pathlib
 import re
 import subprocess
-import sys
 import time
 
 ROOT = pathlib.Path('/home/ubuntu/workout-pooler-runtime-20261014')
@@ -28,7 +28,16 @@ def run(args, data=None):
 
 
 def main():
-    stamp = sys.argv[1]
+    global ROOT, NAME
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('stamp')
+    parser.add_argument('--scope', choices=['runtime', 'roles'], default='runtime')
+    args = parser.parse_args()
+    if args.scope == 'roles':
+        ROOT = pathlib.Path('/home/ubuntu/workout-pooler-roles-restore-20261014')
+        NAME = 'workout-pooler-roles-restore-20261014-db'
+        ROOT.mkdir(mode=0o700, exist_ok=True)
+    stamp = args.stamp
     assert re.fullmatch(r'\d{8}T\d{6}Z', stamp)
     backup = pathlib.Path('/home/ubuntu/workout-backups') / stamp
     assert (backup / 'complete').exists()

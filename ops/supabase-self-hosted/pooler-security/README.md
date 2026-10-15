@@ -127,3 +127,45 @@ all paths and existing state before reuse. Production applies read_only, cap_dro
 ALL, no-new-privileges, tmpfs and PID limits in compose. NODE_IP loopback is valid
 for the reviewed single-node installation only. Database role privileges and
 residual Decimal/Cloak/Cowlib and OS advisories remain separate work.
+
+## Dedicated database roles (published)
+
+The running pooler now uses `workout_pooler_meta` for metadata and
+`workout_pooler_manager` for credential lookup, with independent passwords and
+no administrator password in its environment. The shared application login is
+unchanged. See [the role release](../../../docs/auditoria-2026-10-11/pooler-permissoes-2026-10-14.md).
+
+`database-roles.sql` runs as administrator after creating those two LOGIN roles
+with private random passwords. It grants metadata DML without CREATE/ownership,
+keeps migration history read-only and installs a filtered SECURITY DEFINER auth
+helper. It refuses privileged accounts and memberships, the metadata account and
+the legacy pgbouncer account. It does not modify the original administrator or
+pgbouncer roles. The new manager cannot execute the old unrestricted auth helper.
+
+`verify-isolated.py --candidate restricted --functional-only` uses a separate
+private directory `/home/ubuntu/workout-pooler-roles-20261014` and fixture names.
+Copy the reviewed runtime build-state.json and database-roles.sql there first.
+Its 56 checks include permission denials, independent credentials, both SQL modes
+with the new manager identity, unchanged migration history and restart. It removes
+only its own disposable containers/network/env file and never reads real secrets.
+
+`release-database-roles.py` has prepare/apply/rollback phases, uses PyYAML, and is
+specific to `/home/ubuntu/workout-pooler-roles-release-20261014`. Prepare creates a
+fresh five-file backup and saves old compose/bootstrap/metadata. Apply requires
+independent hashes for all eight files, checks the tested SQL recipe and unchanged
+configuration, replaces encrypted manager credentials through Repo/Vault, changes
+only the pooler service and requires 29 checks plus a repeat after restart.
+Rollback restores the targeted metadata fields and files, recreates the pooler,
+verifies health and disables the new roles. It does not restore the main database;
+review subsequent changes before considering any date-specific rollback script.
+
+Runtime startup deliberately omits `/app/bin/migrate`. Perform future migrations
+using a reviewed, temporary administrative task, then grant the required access
+to any new tables and verify compatibility before starting the limited service.
+Do not solve migration failures by giving the persistent role CREATE or ownership.
+
+`restore-metadata.py STAMP --scope roles` restores only `_supabase` in a new
+networkless fixture and writes separate private evidence without overwriting the
+runtime release proof. It copies role definitions without passwords, starts no
+application workers and compares the full user/tenant hashes to live read-only
+fingerprints. Main database/auth helper/files/functions recovery remains separate.

@@ -52,6 +52,8 @@ Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e age
 
 ## Evidências atuais
 
+Entrega posterior: [contas limitadas do pooler](auditoria-2026-10-11/pooler-permissoes-2026-10-14.md), 56 checks isolados/29 em produção e reinício comprovado. Backup anterior `20261015T000850Z`, posterior `20261015T001054Z`, cinco arquivos cada copiados/hashes conferidos. Os metadados posteriores também foram restaurados em isolamento. A imagem security1 não mudou; mudou a configuração de credenciais e permissões.
+
 Entrega mais recente: [pooler security1 e backup ampliado](auditoria-2026-10-11/pooler-publicacao-2026-10-14.md), 32 checks isolados e 12 pós-publicação. Imagem `1f3562efb570cd78c131771e2ab64ca8db2c71f40d5dd5efe5d6dba976d5c2a6`, zero críticos/48 altos revisados, seis registros Hex residuais. Somente pooler recriado; dados e migrações preservados.
 
 Segurança da infraestrutura posterior: `docs/auditoria-2026-10-11/storage-seguranca-2026-10-14.md`. Storage security2 publicado, zero críticos/altos na varredura, 25 médios, 31 checks de homologação e serviços conferidos. Backup `20261014T182248Z` com quatro arquivos e dois arquivos privados de release copiados/hashes comparados. Rollback de imagem/compose em `ops/supabase-self-hosted/storage-security/dependencies/release.py`; estado privado na VM. Não executar scripts de release anteriores contra a imagem nova.
@@ -91,3 +93,41 @@ docker tag sha256:1f3562efb570cd78c131771e2ab64ca8db2c71f40d5dd5efe5d6dba976d5c2
 O compose publicado exige UID/GID 65534, read_only, cap_drop ALL, no-new-privileges, pids_limit 256, tmpfs /tmp e RELEASE_TMP /tmp/release. NODE_IP loopback foi validado apenas para um pooler; múltiplos nós exigem revisão. Restaurar apenas a imagem não reproduz todos os controles.
 
 A release específica usa `/home/ubuntu/workout-pooler-runtime-release-20261014/release-runtime.py`, fases prepare/apply/rollback e estado privado. Antes de retorno, conferir que não houve alterações posteriores. `sudo python3 release-runtime.py rollback` verifica hash do compose e ID antigo, restaura o compose anterior, recria somente supavisor e verifica saúde; não restaura banco. Não foi necessário executá-lo. Scripts antigos do Storage/pooler não devem desfazer mudanças posteriores no compose. Inspeções privadas incluem credenciais; nunca copiá-las para Git.
+
+## Operar o pooler com contas limitadas
+
+O serviço persistente usa workout_pooler_meta em DATABASE_URL e a senha própria
+de workout_pooler_manager em POSTGRES_PASSWORD. Não copiar novamente a senha
+administrativa compartilhada para essas variáveis. O alias técnico do manager
+agora é workout_pooler_manager; pgbouncer não é uma credencial válida através do
+novo helper. O usuário/senha do site permanece o mesmo.
+
+A configuração montada obtém POOLER_MANAGER_USER e cria o tenant com o helper
+pgbouncer.workout_pooler_auth. A função recusa contas privilegiadas e sua execução
+não é pública. As contas não possuem CREATE, ownership, privilégios administrativos
+ou associação a outras roles. Não conceder permissões adicionais sem rever os
+limites e repetir as validações.
+
+O comando persistente não executa migrações. Para atualizar a versão:
+
+1. Conferir backup, restauração, imagem e SQL das migrações pretendidas.
+2. Executar o migrador da imagem revisada como tarefa administrativa temporária,
+   com ambiente privado e sem expor senha no terminal ou no Git.
+3. Revisar grants das novas tabelas: runtime precisa de DML, sem propriedade/CREATE;
+   schema_migrations continua somente leitura. Não reaplicar a receita inteira
+   indiscriminadamente: a função já existe e os nomes das roles são protegidos.
+4. Iniciar o serviço com as contas limitadas; validar SQL, autorização e reinício.
+
+A entrega atual foi executada por
+`/home/ubuntu/workout-pooler-roles-release-20261014/release-database-roles.py`.
+Seu rollback guardado verifica hashes atuais, restaura campos específicos de
+credenciais/consulta, compose e bootstrap, recria somente supavisor e desabilita
+as novas contas. Não foi necessário acioná-lo. Preservar as provas e inspecionar
+mudanças posteriores antes de executá-lo. O rollback anterior de runtime/Storage
+não corresponde à configuração atual e deve ser bloqueado por seus guardas.
+
+Restaurar somente `_supabase` foi comprovado com
+`restore-metadata.py 20261015T001054Z --scope roles`. Essa opção grava evidência
+separada em `/home/ubuntu/workout-pooler-roles-restore-20261014`; não repetir sobre
+provas existentes. O restore completo e a reconstituição do helper em postgres
+continuam parte do exercício integrado pendente.

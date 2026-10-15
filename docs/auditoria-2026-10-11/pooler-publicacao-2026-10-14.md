@@ -1,5 +1,7 @@
 # Pooler publicado e backups ampliados — 14/10/2026
 
+> Entrega posterior: a [separação de credenciais e redução de permissões](pooler-permissoes-2026-10-14.md) foi publicada, com 56 checks isolados/29 em produção. O uso de supabase_admin pelo pooler descrito abaixo é histórico; os alertas de pacotes continuam abertos.
+
 ## Estado publicado
 
 **Publicado e saudável**: `workout-supavisor:2.9.12-security1`, imagem

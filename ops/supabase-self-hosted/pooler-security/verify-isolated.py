@@ -25,9 +25,9 @@ def run(args, data=None):
 
 
 def main():
-    global ROOT
+    global ROOT, PREFIX, DB, POOL, NET
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--candidate', choices=['baseline', 'dependencies', 'hardened'], default='baseline')
+    parser.add_argument('--candidate', choices=['baseline', 'dependencies', 'hardened', 'restricted'], default='baseline')
     parser.add_argument('--functional-only', action='store_true',
                         help='Test this private fixture even when the image scan blocks production promotion')
     args = parser.parse_args()
@@ -35,6 +35,11 @@ def main():
         ROOT = pathlib.Path('/home/ubuntu/workout-pooler-dependencies-20261014')
     elif args.candidate == 'hardened':
         ROOT = pathlib.Path('/home/ubuntu/workout-pooler-runtime-20261014')
+    elif args.candidate == 'restricted':
+        ROOT = pathlib.Path('/home/ubuntu/workout-pooler-roles-20261014')
+        PREFIX = 'workout-pooler-roles-check-20261014'
+        DB, POOL, NET = PREFIX + '-db', PREFIX + '-pool', PREFIX + '-net'
+    hardened = args.candidate in ('hardened', 'restricted')
     state = json.loads((ROOT / 'build-state.json').read_text())
     assert state['phase'] == 'scanned'
     image_scan_clear = state['counts'].get('CRITICAL', 0) == 0 and state['counts'].get('HIGH', 0) == 0
@@ -69,7 +74,7 @@ def main():
               'API_JWT_SECRET': secrets.token_hex(32), 'METRICS_JWT_SECRET': secrets.token_hex(32),
               'REGION': 'local', 'CLUSTER_POSTGRES': 'true', 'ERL_AFLAGS': '-proto_dist inet_tcp',
               'ERL_FLAGS': '+S 2:2', 'ECTO_IPV6': 'false', 'NODE_IP': '127.0.0.1'}
-    if args.candidate == 'hardened':
+    if hardened:
         values['RELEASE_TMP'] = '/tmp/release'
     env = ROOT / 'fixture.env'
     env.write_text('\n'.join(k + '=' + v for k, v in values.items()) + '\n')
@@ -87,21 +92,24 @@ if !Supavisor.Tenants.get_tenant_by_external_id("audit") do
   {:ok, _} = Supavisor.Tenants.create_tenant(params)
 end
 ''')
-    if args.candidate == 'hardened':
+    if hardened:
         # This file contains fixture code and environment lookups, never secrets.
         config.chmod(0o644)
 
     def start_pool(selected_image=None):
         selected_image = selected_image or image
         restrictions = []
-        if args.candidate == 'hardened' and selected_image == image:
+        if hardened and selected_image == image:
             restrictions = ['--read-only', '--cap-drop', 'ALL', '--security-opt',
                             'no-new-privileges=true', '--pids-limit', '256',
                             '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777']
+        startup = '/app/bin/migrate && /app/bin/supavisor eval \"$(cat /etc/pooler/pooler.exs)\" && /app/bin/server'
+        if args.candidate == 'restricted' and selected_image == image:
+            startup = startup.removeprefix('/app/bin/migrate && ')
         run(['docker', 'run', '-d', '--name', POOL, '--network', NET, '--network-alias', 'pool',
              '--memory', '768m', '--cpus', '1', '--env-file', str(env),
              *restrictions, '-v', str(config) + ':/etc/pooler/pooler.exs:ro', selected_image, '/bin/sh', '-c',
-             '/app/bin/migrate && /app/bin/supavisor eval "$(cat /etc/pooler/pooler.exs)" && /app/bin/server'])
+             startup])
         for _ in range(90):
             result = subprocess.run(['docker', 'exec', POOL, 'curl', '-fsS', '--max-time', '2',
                                      'http://127.0.0.1:4000/api/health'], capture_output=True)
@@ -131,7 +139,7 @@ end
             "REVOKE ALL ON FUNCTION pgbouncer.get_auth(text) FROM PUBLIC; GRANT EXECUTE ON FUNCTION pgbouncer.get_auth(text) TO pgbouncer;"
             "CREATE TABLE public.pool_fixture(id integer primary key); GRANT SELECT,INSERT ON public.pool_fixture TO fixture_workout;")
         created.append(POOL)
-        if args.candidate == 'hardened':
+        if hardened:
             old = 'sha256:464b93a60ba8c96bc06dad7f241562d6613b2a994922307717b05f432ae415c2'
             start_pool(old)
             for _ in range(20):
@@ -143,14 +151,77 @@ end
                 time.sleep(1)
             else:
                 raise RuntimeError('Original image did not become SQL-ready')
+            if args.candidate == 'restricted':
+                meta_password, manager_password = secrets.token_hex(24), secrets.token_hex(24)
+                sql("CREATE ROLE workout_pooler_meta LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '" + meta_password + "';"
+                    "CREATE ROLE workout_pooler_manager LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '" + manager_password + "';"
+                    "CREATE ROLE fixture_privileged LOGIN BYPASSRLS PASSWORD '" + password + "';"
+                    "CREATE ROLE fixture_inherited LOGIN PASSWORD '" + password + "'; GRANT fixture_privileged TO fixture_inherited;")
+                sql((ROOT / 'database-roles.sql').read_text())
+                # Use the actual encrypted Ecto field; never write plaintext into SQL metadata.
+                expression = """{:ok, _} = Application.ensure_all_started(:ssl)
+{:ok, _} = Application.ensure_all_started(:ecto_sql)
+{:ok, _} = Application.ensure_all_started(:cloak_ecto)
+{:ok, _} = Supavisor.Vault.start_link([])
+{:ok, _} = Supavisor.Repo.start_link([])
+user = Supavisor.Repo.get_by!(Supavisor.Tenants.User, is_manager: true)
+{:ok, _} = Supavisor.Tenants.update_user(user, %{
+  "db_user" => "workout_pooler_manager", "db_user_alias" => "workout_pooler_manager",
+  "db_password" => System.fetch_env!("WORKOUT_MANAGER_PASSWORD")})
+tenant = Supavisor.Tenants.get_tenant_by_external_id("audit")
+Supavisor.Repo.update!(Ecto.Changeset.change(tenant,
+  auth_query: "SELECT * FROM pgbouncer.workout_pooler_auth($1)"))
+"""
+                run(['docker', 'exec', '-e', 'PORT=4001', '-e', 'PROXY_PORT_TRANSACTION=16543',
+                     '-e', 'PROXY_PORT_SESSION=15432', '-e', 'PROXY_PORT=15412',
+                     '-e', 'WORKOUT_MANAGER_PASSWORD=' + manager_password,
+                     POOL, '/app/bin/supavisor', 'eval', expression])
+                values['DATABASE_URL'] = 'ecto://workout_pooler_meta:' + meta_password + '@db:5432/_supabase'
+                values['POSTGRES_PASSWORD'] = manager_password
+                env.write_text('\n'.join(k + '=' + v for k, v in values.items()) + '\n')
+
+                def restricted_sql(query, role='workout_pooler_meta', database='_supabase'):
+                    credential = meta_password if role == 'workout_pooler_meta' else manager_password
+                    return run(['docker', 'exec', '-i', '-e', 'PGPASSWORD=' + credential, DB,
+                                'psql', '-h', '127.0.0.1', '-U', role, '-d', database,
+                                '-Atq', '-v', 'ON_ERROR_STOP=1', '-f', '-'], query)
+
+                def denied(name, query, role='workout_pooler_meta', database='_supabase'):
+                    try:
+                        restricted_sql(query, role, database)
+                    except RuntimeError:
+                        check(name, True)
+                    else:
+                        check(name, False)
+
+                check('metadata_role_unprivileged', restricted_sql("SELECT NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls) FROM pg_roles WHERE rolname=current_user;") == 't')
+                denied('metadata_catalog_denied', 'SELECT rolpassword FROM pg_authid;')
+                denied('metadata_main_table_denied', 'SELECT * FROM public.pool_fixture;', database='postgres')
+                denied('metadata_schema_creation_denied', 'CREATE SCHEMA forbidden_probe;')
+                denied('metadata_migration_rewrite_denied', 'DELETE FROM _supavisor.schema_migrations WHERE false;')
+                denied('metadata_table_creation_denied', 'CREATE TABLE _supavisor.forbidden_probe(id int);')
+                denied('metadata_role_creation_denied', 'CREATE ROLE forbidden_probe;')
+                denied('metadata_server_file_denied', "SELECT pg_read_file('/etc/passwd');")
+                denied('metadata_assume_admin_denied', 'SET ROLE stage_bootstrap;')
+                denied('manager_metadata_denied', 'SELECT * FROM _supavisor.users;', role='workout_pooler_manager')
+                denied('manager_original_auth_denied', "SELECT * FROM pgbouncer.get_auth('postgres');", role='workout_pooler_manager', database='postgres')
+                denied('metadata_auth_helper_denied', "SELECT * FROM pgbouncer.workout_pooler_auth('fixture_workout');", database='postgres')
+                check('manager_allowed_auth', restricted_sql("SELECT username FROM pgbouncer.workout_pooler_auth('fixture_workout');", 'workout_pooler_manager', 'postgres') == 'fixture_workout')
+                for forbidden in ('postgres', 'stage_bootstrap', 'fixture_privileged', 'fixture_inherited', 'workout_pooler_meta'):
+                    check('manager_auth_rejects_' + forbidden, restricted_sql("SELECT count(*) FROM pgbouncer.workout_pooler_auth('" + forbidden + "');", 'workout_pooler_manager', 'postgres') == '0')
+                check('manager_own_auth_allowed', restricted_sql("SELECT username FROM pgbouncer.workout_pooler_auth('workout_pooler_manager');", 'workout_pooler_manager', 'postgres') == 'workout_pooler_manager')
+                check('manager_legacy_admin_secret_denied', restricted_sql("SELECT count(*) FROM pgbouncer.workout_pooler_auth('pgbouncer');", 'workout_pooler_manager', 'postgres') == '0')
+                check('credentials_independent', len({password, meta_password, manager_password}) == 3)
             old_migrations = sql("SELECT md5(string_agg(version::text,',' ORDER BY version)) FROM _supavisor.schema_migrations;", '_supabase')
             old_users = sql("SELECT md5(string_agg(row_to_json(u)::text,'|' ORDER BY id)) FROM _supavisor.users u;", '_supabase')
             run(['docker', 'rm', '-f', POOL])
         start_pool()
         inspected = json.loads(run(['docker', 'inspect', POOL]))[0]
         check('immutable_image', inspected['Image'] == image)
+        if args.candidate == 'restricted':
+            check('automatic_migrations_disabled', '/app/bin/migrate' not in ' '.join(inspected['Config']['Cmd']))
         check('no_published_ports', not inspected['HostConfig'].get('PortBindings'))
-        if args.candidate == 'hardened':
+        if hardened:
             check('non_root_uid', run(['docker', 'exec', POOL, 'id', '-u']) == '65534')
             check('root_filesystem_readonly', inspected['HostConfig']['ReadonlyRootfs'])
             check('capabilities_dropped', inspected['HostConfig']['CapDrop'] == ['ALL'])
@@ -177,6 +248,13 @@ end
         else:
             raise RuntimeError('Pool SQL endpoint did not become ready')
         check('sql_ready', True)
+        if args.candidate == 'restricted':
+            for port in ('5432', '6543'):
+                result = run(['docker', 'exec', '-e', 'PGPASSWORD=' + manager_password,
+                              '-e', 'PGCONNECT_TIMEOUT=5', DB, 'psql', '-h', 'pool', '-p', port,
+                              '-U', 'workout_pooler_manager.audit', '-d', 'postgres', '-Atq', '-c', 'SELECT 1;'])
+                check('manager_alias_sql_' + port, result == '1')
+
         check('transaction_select', client('SELECT 42;') == '42')
         check('session_select', client('SELECT 43;', 5432) == '43')
         check('transaction_write_rollback', client('BEGIN; INSERT INTO pool_fixture VALUES(1); ROLLBACK; SELECT count(*) FROM pool_fixture;').splitlines()[-1] == '0')
@@ -196,7 +274,7 @@ end
             check('privileged_catalog_denied', True)
         else:
             check('privileged_catalog_denied', False)
-        if args.candidate in ('dependencies', 'hardened'):
+        if args.candidate in ('dependencies', 'hardened', 'restricted'):
             # Plug adapter keeps the real Req/JIT helper entirely inside this fixture.
             code = '''
 adapter = fn status, body -> fn conn ->
