@@ -37,10 +37,18 @@ def main():
              '_supabase', '-Fc'], folder / 'pooler.dump')
     capture(['docker', 'exec', DB, 'pg_dumpall', '-U', 'supabase_admin',
              '--roles-only'], folder / 'roles.sql')
+    cache = pathlib.Path(subprocess.check_output([
+        'docker', 'inspect', '--format',
+        '{{range .Mounts}}{{if eq .Destination "/root/.cache/deno"}}{{.Source}}{{end}}{{end}}',
+        'workout-supabase-edge-functions'], text=True).strip())
+    expected_cache = pathlib.Path('/var/lib/docker/volumes/workout-supabase_deno-cache/_data')
+    if cache.resolve() != expected_cache or not cache.is_dir():
+        raise RuntimeError('Review unexpected Edge dependency cache mount before backup')
     capture(['tar', '-czf', '-', '-C', str(STACK), '.env', '.env.functions',
              'docker-compose.yml', 'public-gateway.conf', '.supabase-version',
              'volumes/functions', 'volumes/storage', 'volumes/pooler',
-             'volumes/api/envoy'], folder / 'runtime.tar.gz')
+             'volumes/api/envoy', '--transform=s,^_data,volumes/deno-cache,',
+             '-C', str(cache.parent), cache.name], folder / 'runtime.tar.gz')
     capture(['docker', 'exec', DB, 'tar', '-czf', '-', '-C', '/etc',
              'postgresql-custom'], folder / 'database-config.tar.gz')
     # Validate the archive catalog without restoring over production.
@@ -55,9 +63,12 @@ def main():
         members = set(runtime.getnames())
     required = {'volumes/pooler/pooler.exs', 'volumes/api/envoy/envoy.yaml',
                 'volumes/api/envoy/cds.yaml', 'volumes/api/envoy/lds.template.yaml',
-                'volumes/api/envoy/docker-entrypoint.sh'}
+                'volumes/api/envoy/docker-entrypoint.sh',
+                'volumes/functions/deno.jsonc', 'volumes/functions/main/index.ts'}
     if not required.issubset(members):
         raise RuntimeError('Runtime archive is missing required pooler/gateway configuration')
+    if not any(name.startswith('volumes/deno-cache/') for name in members):
+        raise RuntimeError('Runtime archive is missing Edge dependency cache')
     files = sorted(f for f in folder.iterdir() if f.is_file())
     checksums = {}
     for item in files:

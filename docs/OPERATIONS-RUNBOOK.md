@@ -2,7 +2,7 @@
 
 ## Escopo
 
-Este documento descreve procedimentos operacionais do Workout. Ele separa procedimentos documentados de operações comprovadas. Não há restore completo de produção comprovado neste repositório.
+Este documento descreve procedimentos operacionais do Workout e separa operações comprovadas de procedimentos. O núcleo do backend foi restaurado de forma integrada em isolamento em 15/10; recuperação em host vazio e serviços externos ainda não foram demonstrados.
 
 ## Validação antes de publicação
 
@@ -29,13 +29,19 @@ Desde 14/10, o procedimento instalado gera cinco arquivos: `database.dump` (post
 
 Primeiro automático com cobertura ampliada confirmado: `20261015T060345Z`, às 06:03:45 UTC (03:03:45 de Brasília). Cinco arquivos copiados para armazenamento privado no computador e SHA256 comparados; catálogos dos dois dumps e configurações obrigatórias válidos. Timer ativo, próximo ciclo previsto para 16/10.
 
-Desde 15/10, o manifesto inclui `sha256` além dos tamanhos. A sincronização Windows instalada verifica identidade do snapshot, marcador complete, presença/tamanho e hash dos cinco arquivos antes de registrar sucesso. Para manifestos antigos, busca os hashes por SSH. Execução manual do procedimento instalado `20261015T161530Z` e sincronização pelo Windows PowerShell passaram. Falha deve impedir atualização de `last-sync.txt`; não tratar só a existência desse arquivo como evidência de backup recente. Retenção: 14 snapshots completos, não 14 dias; cópia externa independente e restauração integrada continuam pendentes.
+Desde 15/10, o manifesto inclui `sha256` além dos tamanhos. A sincronização Windows instalada verifica identidade do snapshot, marcador complete, presença/tamanho e hash dos cinco arquivos antes de registrar sucesso. Para manifestos antigos, busca os hashes por SSH. Execução manual do procedimento instalado `20261015T161530Z` e sincronização pelo Windows PowerShell passaram. Falha deve impedir atualização de `last-sync.txt`; não tratar só a existência desse arquivo como evidência de backup recente. Retenção: 14 snapshots completos, não 14 dias; cópia externa independente e recuperação em host vazio continuam pendentes.
+
+Ampliação posterior de 15/10: runtime.tar.gz inclui `volumes/deno-cache`, obtido do volume Docker identificado/validado, além do código. Snapshot `20261015T162649Z` copiado/hashes conferidos e restaurado sem downloads externos. Observar o primeiro ciclo automático com esse cache. O backup recusa mount inesperado; mudança de nome do projeto/volume exige revisão explícita do caminho.
 
 ## Restore
 
 Restauração dos metadados do pooler demonstrada: `restore-metadata.py 20261014T231942Z` restaurou `_supabase` em PostgreSQL descartável com rede none, sem workers de aplicação e roles sem senhas copiadas. Contagens, migrações e hashes de usuários/tenants coincidiram; fixture removida. Script específico desta entrega, com caminhos e nomes fixos: inspecionar estado antes de reutilizar.
 
-A recuperação integrada de banco principal, Auth, arquivos e funções continua pendente. Validar sem sobrescrever produção e medir RTO/RPO. Evidências: [pooler publicado](auditoria-2026-10-11/pooler-publicacao-2026-10-14.md).
+Recuperação integrada aprovada em 15/10: `restore-integrated.py 20261015T162649Z 5`, 39 checks, banco principal completo + `_supabase`, Auth, REST, Storage, funções e gateway em rede interna. Dados de backup, senha do usuário original, migrações e funções comparados; fixtures sintéticas validaram login, dashboard, execução de função, upload/download, reinício e refresh. O Storage original não tinha objetos; não alegar recuperação de anexos reais. Containers/rede/envs temporários removidos.
+
+O procedimento requer imagens locais já disponíveis e os cinco arquivos de um snapshot completo com SHA256/cache Deno. Copiar os arquivos do armazenamento privado para a área de backups, conferir os hashes e IDs das imagens, revisar o script datado e escolher um número de tentativa ainda inexistente. Ele mantém cron desativado desde a partida e pg_net sem processar a cópia; nunca iniciar workers reais ou fornecer credenciais externas ao exercício. Logs e dados extraídos permanecem privados.
+
+Medição: 20,42 segundos no ensaio com poucos dados e imagens prontas, excluindo limpeza final. Não é RTO de desastre completo; faltam host vazio, DNS/TLS, Realtime, processo do pooler e Evolution/provedores. Definir RTO/RPO com a academia. Evidências: [recuperação de 15/10](auditoria-2026-10-11/recuperacao-integrada-2026-10-15.md).
 
 ## Rollback
 
@@ -68,7 +74,7 @@ Conferência mais recente: `docs/auditoria-2026-10-11/agenda-publicacao-2026-10-
 
 - Agenda/histórico: correções locais documentadas em `docs/auditoria-2026-10-11/agenda-recuperacao-local-2026-10-14.md`, com lint, tipos, build e 298 testes em 35 arquivos. Essa fotografia local foi superada pela publicação 892bb88 descrita acima.
 - Runtime/segurança: relatórios em `docs/auditoria-2026-10-11/`; são evidências históricas.
-- Restore: metadados do pooler comprovados neste bloco; recuperação integrada completa continua pendente.
+- Restore: núcleo integrado comprovado em 15/10 com 39 checks; recuperação de infraestrutura em host vazio e serviços externos ainda pendente.
 
 ## Referências operacionais verificadas em 14/10
 
