@@ -1,10 +1,14 @@
 # Workout — handoff e pendências consolidadas
 
-Atualização: 14/10/2026. Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
+Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
 
 O histórico detalhado, decisões, arquitetura, commits e procedimentos estão em [HANDOFF-AUDITORIA-2026-10-14.md](docs/HANDOFF-AUDITORIA-2026-10-14.md). As evidências do último bloco estão em [agenda-recuperacao-local-2026-10-14.md](docs/auditoria-2026-10-11/agenda-recuperacao-local-2026-10-14.md). Em caso de divergência, distinguir data, código local, validação e versão publicada.
 
 ## Estado atual e regras de continuidade
+
+> Auth security1 publicado em 15/10: imagem `94a79d1a5e15…`, 42 verificações isoladas e 19 em produção repetidas após reinício. Senhas, identidades, migrações e sete sessões anteriores preservadas; sessão própria da auditoria encerrada. Trivy com base atualizada: 30 altos → um alto residual da versão pgproto3, com correção local documentada, cinco baixos/um desconhecido; sem supressão. Backups pré/pós e imagem/evidência copiados/hashes conferidos. Ver [Auth e backups](docs/auditoria-2026-10-11/auth-seguranca-2026-10-15.md).
+
+> Backup automático ampliado confirmado em 15/10 às 06:03:45 UTC (03:03:45 de Brasília), snapshot `20261015T060345Z`: cinco arquivos copiados para fora da VM e SHA256 conferidos; ambos os catálogos e configurações obrigatórias validados. O procedimento e a sincronização instalada agora também conferem SHA256 automaticamente; execução manual `20261015T161530Z` aprovada. Restauração integrada e armazenamento externo independente continuam pendentes.
 
 > PostgREST publicado: `workout-postgrest:14.17-security1`, imagem `dc990d07c8ce…`, com **zero críticos/altos**, 37 médios e quatro baixos. Mesmo binário 14.17; runtime sem compiladores/cabeçalhos, sem root, read-only e sem capabilities. **41 checks isolados e 17 em produção**, repetidos após reinício. Backups pré/pós e imagem copiados/conferidos fora da VM; schemas e funções preservados. Ver [entrega PostgREST](docs/auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md).
 
@@ -64,7 +68,7 @@ Os números desta seção vêm das últimas varreduras documentadas. Não repres
 | --- | --- | --- | --- |
 | 20 | Inventário atualizado dos containers | Concluído para o snapshot de 14/10 | Varredura de 15 imagens/16 containers, IDs imutáveis e evidência privada copiada. Manter atualização periódica. |
 | 21 | Dependências vulneráveis do Storage | Altos corrigidos e publicação concluída | security2: zero críticos/altos, 25 médios; 31 checks isolados e produção saudável. Tratar os médios em lote próprio. |
-| 22 | Outros containers do Supabase | Pooler e PostgREST endurecidos e publicados; demais pendentes | PostgREST: zero críticos/altos, 41 checks isolados/17 em produção; 37 médios/quatro baixos abertos. Pooler: zero críticos/48 altos revisados e contas limitadas (56/29 checks). Resolver residuais e revisar Auth, Realtime, Studio, Meta, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
+| 22 | Outros containers do Supabase | Auth, pooler e PostgREST endurecidos e publicados; demais pendentes | Auth: 42 checks isolados/19 em produção e reinício; 30 altos → um alto residual de versão com correção local, cinco baixos/um desconhecido. PostgREST: zero críticos/altos, 37 médios/quatro baixos. Pooler: zero críticos/48 altos revisados e contas limitadas. Resolver residuais e revisar Realtime, Studio, Meta, PostgreSQL e auxiliares. Não atualizar banco automaticamente. |
 | 23 | Alertas residuais da Evolution | Acompanhamento pendente | Revisar alerta médio relacionado a RabbitMQ e aviso de situação desconhecida em OpenPGP; verificar antes de habilitar AMQP. |
 | 24 | Atualizações futuras da Evolution | Processo pendente de consolidação | Preservar licença, sessão e ajustes necessários; validar compatibilidade e retorno. |
 | 25 | Alertas médios/baixos dos gateways | Não encerrado | Avaliar os restantes e atualizar a varredura de Nginx/Envoy. |
@@ -81,7 +85,7 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
 | 31 | Restauração completa em ambiente isolado | Parcial; metadados do pooler restaurados | Dumps de `_supabase` anteriores e posteriores à separação de credenciais restaurados isoladamente; contagens/migrações/hashes conferidos. Falta restauração integrada de banco principal, Auth, arquivos e funções, com RTO/RPO. |
-| 32 | Funcionamento atual dos backups automáticos | Timer ativo; cobertura ampliada e validada manualmente | Último automático 14/10 06:03 UTC, sucesso. Backups manuais anteriores e posteriores às entregas de pooler/PostgREST incluem `pooler.dump` e configurações pooler/Envoy; cinco arquivos copiados e conferidos. Observar primeira execução automática com a nova cobertura. |
+| 32 | Funcionamento atual dos backups automáticos | Cobertura ampliada confirmada em execução automática | Automático `20261015T060345Z`: cinco arquivos copiados/hashes conferidos, catálogos e entradas obrigatórias válidos. SHA256 adicionado ao manifesto e à sincronização instalada; manual `20261015T161530Z` aprovado. Acompanhar próximos ciclos; restore completo é o item 31. |
 | 33 | Independência e retenção das cópias | Cópias locais verificadas; independência externa pendente | Imagens do pooler e PostgREST exportadas; 14 e seis blobs OCI, respectivamente, verificados fora da VM. Preservar outras imagens customizadas, armazenamento externo independente e política de retenção; hoje são 14 snapshots completos, não dias. |
 | 34 | Tempo e perda máxima de recuperação | Não definidos formalmente | Medir o restore e registrar RTO/RPO compatíveis com a academia. |
 | 35 | Primeira execução diária natural das automações | Confirmada em produção por leitura | Execução de 14/10 às 08:00 de Brasília: success, sem erro, zero candidatos e zero mensagens. Ver conferência operacional de 14/10; acompanhar ciclos seguintes e cenários com candidatos. |

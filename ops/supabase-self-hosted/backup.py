@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run as root on the Workout VM; archives contain secrets and personal data."""
 import datetime
+import hashlib
 import json
 import os
 import pathlib
@@ -57,9 +58,14 @@ def main():
                 'volumes/api/envoy/docker-entrypoint.sh'}
     if not required.issubset(members):
         raise RuntimeError('Runtime archive is missing required pooler/gateway configuration')
-    manifest = {'created_utc': stamp, 'files': {
-        f.name: f.stat().st_size for f in folder.iterdir() if f.is_file()
-    }}
+    files = sorted(f for f in folder.iterdir() if f.is_file())
+    checksums = {}
+    for item in files:
+        with item.open('rb') as source:
+            checksums[item.name] = hashlib.file_digest(source, 'sha256').hexdigest()
+    manifest = {'created_utc': stamp,
+                'files': {f.name: f.stat().st_size for f in files},
+                'sha256': checksums}
     (folder / 'manifest.json').write_text(json.dumps(manifest, indent=2))
     (folder / 'complete').write_text('true\n')
     for item in [folder, *folder.iterdir()]:

@@ -27,7 +27,9 @@ O procedimento documentado está em `ops/supabase-self-hosted/backup.py`.
 
 Desde 14/10, o procedimento instalado gera cinco arquivos: `database.dump` (postgres), `pooler.dump` (_supabase), `roles.sql`, `runtime.tar.gz` e `database-config.tar.gz`, além de manifesto e marcador complete. Confere ambos os catálogos pg_restore e exige configurações montadas do pooler/Envoy no tar antes de concluir. Backups contêm segredos e dados pessoais; manter fora do Git.
 
-Snapshots `20261014T231942Z` e `20261014T232726Z`: cinco arquivos cada, copiados para armazenamento privado no computador e SHA256 comparados. Timer ativo, último automático em 14/10 06:03:27 UTC, success/0. A cobertura nova passou em duas execuções manuais; observar a primeira automática. Retenção: 14 snapshots completos, não 14 dias; cópia externa independente ainda pendente.
+Primeiro automático com cobertura ampliada confirmado: `20261015T060345Z`, às 06:03:45 UTC (03:03:45 de Brasília). Cinco arquivos copiados para armazenamento privado no computador e SHA256 comparados; catálogos dos dois dumps e configurações obrigatórias válidos. Timer ativo, próximo ciclo previsto para 16/10.
+
+Desde 15/10, o manifesto inclui `sha256` além dos tamanhos. A sincronização Windows instalada verifica identidade do snapshot, marcador complete, presença/tamanho e hash dos cinco arquivos antes de registrar sucesso. Para manifestos antigos, busca os hashes por SSH. Execução manual do procedimento instalado `20261015T161530Z` e sincronização pelo Windows PowerShell passaram. Falha deve impedir atualização de `last-sync.txt`; não tratar só a existência desse arquivo como evidência de backup recente. Retenção: 14 snapshots completos, não 14 dias; cópia externa independente e restauração integrada continuam pendentes.
 
 ## Restore
 
@@ -51,6 +53,8 @@ Não armazenar segredos no Git. `.env.example` contém somente nomes de variáve
 Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e agenda.
 
 ## Evidências atuais
+
+Entrega de 15/10: [Auth security1 e backups](auditoria-2026-10-11/auth-seguranca-2026-10-15.md), imagem `94a79d1a5e15…`, 42 checks isolados e 19 em produção repetidos após reinício. Sete sessões anteriores preservadas; sessão própria encerrada. Zero críticos, um alto de versão pgproto3 com correção local documentada, cinco baixos/um desconhecido. Backup pré `20261015T162021Z` e pós `20261015T162154Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e sete blobs OCI verificados. Procedimento/retorno em `ops/supabase-self-hosted/auth-security/README.md`. SMTP e rotação global continuam pendentes.
 
 Entrega mais recente: [PostgREST security1](auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md), imagem `dc990d07c8ce…`, zero críticos/altos, 37 médios/quatro baixos. Mesmo binário 14.17, 41 checks isolados/17 em produção e reinício aprovado. Backup anterior `20261015T010314Z`, posterior `20261015T010534Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e seis blobs OCI verificados fora da VM. Schemas/funções e contagens preservados.
 
