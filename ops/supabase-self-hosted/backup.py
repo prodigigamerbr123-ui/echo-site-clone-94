@@ -9,6 +9,9 @@ import pwd
 import shutil
 import subprocess
 import tarfile
+import tempfile
+
+from evolution_backup import backup_evolution
 
 ROOT = pathlib.Path('/home/ubuntu/workout-backups')
 STACK = pathlib.Path('/opt/workout-supabase')
@@ -44,11 +47,14 @@ def main():
     expected_cache = pathlib.Path('/var/lib/docker/volumes/workout-supabase_deno-cache/_data')
     if cache.resolve() != expected_cache or not cache.is_dir():
         raise RuntimeError('Review unexpected Edge dependency cache mount before backup')
-    capture(['tar', '-czf', '-', '-C', str(STACK), '.env', '.env.functions',
-             'docker-compose.yml', 'public-gateway.conf', '.supabase-version',
-             'volumes/functions', 'volumes/storage', 'volumes/pooler',
-             'volumes/api/envoy', '--transform=s,^_data,volumes/deno-cache,',
-             '-C', str(cache.parent), cache.name], folder / 'runtime.tar.gz')
+    with tempfile.TemporaryDirectory(prefix='workout-evolution-backup-', dir='/home/ubuntu') as temporary:
+        backup_evolution(pathlib.Path(temporary))
+        capture(['tar', '-czf', '-', '-C', str(STACK), '.env', '.env.functions',
+                 'docker-compose.yml', 'public-gateway.conf', '.supabase-version',
+                 'volumes/functions', 'volumes/storage', 'volumes/pooler',
+                 'volumes/api/envoy', '--transform=s,^_data,volumes/deno-cache,',
+                 '-C', str(cache.parent), cache.name, '-C', temporary, 'evolution'],
+                folder / 'runtime.tar.gz')
     capture(['docker', 'exec', DB, 'tar', '-czf', '-', '-C', '/etc',
              'postgresql-custom'], folder / 'database-config.tar.gz')
     # Validate the archive catalog without restoring over production.
@@ -69,12 +75,16 @@ def main():
         raise RuntimeError('Runtime archive is missing required pooler/gateway configuration')
     if not any(name.startswith('volumes/deno-cache/') for name in members):
         raise RuntimeError('Runtime archive is missing Edge dependency cache')
+    if not {'evolution/metadata.json', 'evolution/containers.json', 'evolution/roles.sql',
+            'evolution/deployment/credentials.env', 'evolution/deployment/tunnel.yml',
+            'evolution/database-0.dump'}.issubset(members):
+        raise RuntimeError('Runtime archive is missing Evolution databases/configuration')
     files = sorted(f for f in folder.iterdir() if f.is_file())
     checksums = {}
     for item in files:
         with item.open('rb') as source:
             checksums[item.name] = hashlib.file_digest(source, 'sha256').hexdigest()
-    manifest = {'created_utc': stamp,
+    manifest = {'created_utc': stamp, 'evolution_backup_format': 1,
                 'files': {f.name: f.stat().st_size for f in files},
                 'sha256': checksums}
     (folder / 'manifest.json').write_text(json.dumps(manifest, indent=2))

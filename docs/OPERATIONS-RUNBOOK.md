@@ -35,6 +35,14 @@ Desde 15/10, o manifesto inclui `sha256` além dos tamanhos. A sincronização W
 
 Ampliação posterior de 15/10: runtime.tar.gz inclui `volumes/deno-cache`, obtido do volume Docker identificado/validado, além do código. Snapshot `20261015T162649Z` copiado/hashes conferidos e restaurado sem downloads externos. Observar o primeiro ciclo automático com esse cache. O backup recusa mount inesperado; mudança de nome do projeto/volume exige revisão explícita do caminho.
 
+## Backup da integração WhatsApp
+
+Desde 15/10, o mesmo runtime.tar.gz inclui `evolution/`: dumps dos três bancos, roles e configuração privada da Evolution/proxy/túnel. O snapshot continua tendo cinco arquivos, com manifesto/hashes e sincronização existentes. Ao instalar ou atualizar o procedimento, copiar **backup.py e evolution_backup.py juntos** para `/opt/workout-supabase/`, preservando a versão anterior. Não publicar os artefatos: incluem dados pessoais, tokens, senhas e licença.
+
+Execução instalada `20261015T174108Z` copiada para o computador e SHA256 conferidos. O volume dbdata estava vazio; se passar a conter arquivos, o backup exige revisão antes de copiar SQLite ativo. O timer continua ativo; primeiro automático com cache Deno/Evolution ainda precisa ser observado. Dumps de cada banco são consistentes individualmente, sem snapshot atômico entre bancos.
+
+Recuperação Evolution: copiar `restore-evolution.py` e `evolution_backup.py` juntos para diretório privado da VM; conferir hash do runtime.tar.gz e escolher tentativa ainda inexistente. Executar `sudo python3 /caminho/restore-evolution.py /caminho/runtime.tar.gz 3`. O teste restaura bancos em PostgreSQL sem rede/portas, valida contagens e reinício, remove o banco temporário e não inicia Evolution/WhatsApp. Foi aprovado com o snapshot final; licença/reconexão em outro host continuam sem teste. Ver [evidência e retorno](auditoria-2026-10-11/backup-evolution-2026-10-15.md).
+
 ## Restore
 
 Restauração dos metadados do pooler demonstrada: `restore-metadata.py 20261014T231942Z` restaurou `_supabase` em PostgreSQL descartável com rede none, sem workers de aplicação e roles sem senhas copiadas. Contagens, migrações e hashes de usuários/tenants coincidiram; fixture removida. Script específico desta entrega, com caminhos e nomes fixos: inspecionar estado antes de reutilizar.
@@ -61,6 +69,8 @@ Não armazenar segredos no Git. `.env.example` contém somente nomes de variáve
 Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e agenda. Procedimento por publicação, rotina proposta e triagem em [manutenção de segurança](SECURITY-MAINTENANCE.md); matriz/catálogo em [permissões de 15/10](auditoria-2026-10-11/permissoes-2026-10-15.md). Ainda é necessário definir o responsável nominal e instalar/conferir alertas externos.
 
 ## Evidências atuais
+
+Frontend básico: cc2eaa6, workflow 38778303244 aprovado, 328 testes/41 arquivos; configurações com falha recuperável e gravações serializadas no mesmo cliente. Assets conferidos em produção. Snapshot final 20261015T174108Z aprovado nas duas recuperações: três bancos Evolution e 39 checks do núcleo Workout; copiar/verificar antes de usar em incidente.
 
 Frontend de 15/10: b981426, workflow 38774544059 aprovado; 322 testes/39 arquivos, lint, tipos estritos, alcance, build e auditoria npm sem achados. Assets de entrada/agenda coincidem em produção. Ver [qualidade](auditoria-2026-10-11/qualidade-frontend-2026-10-15.md).
 

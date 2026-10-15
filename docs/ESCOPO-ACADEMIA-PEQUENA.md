@@ -9,7 +9,7 @@ Decisão do proprietário em 15/10/2026: sistema de uso interno para uma academi
 | Acesso e dados protegidos | Login compartilhado mantido; sem acesso anônimo aos alunos. Concluir troca coordenada das credenciais expostas, preservando o acesso do dono. Uso interno não muda a exposição atual do site à internet. |
 | Alunos e avaliações | Cadastro, edição, busca, agenda, remarcação, cancelamento e histórico já têm correções/testes. Corrigir falhas concretas; não reescrever telas apenas por tamanho. |
 | Mensagens previsíveis | Preservar fila transacional e tratamento de resultado incerto. Não reenviar falhas antigas automaticamente. Conferir conexão e falhas visíveis ao operador. |
-| Backup recuperável | Núcleo Workout restaurado em isolamento; cópia no computador verificada. Priorizar também dados/configuração da Evolution, pois só preservar a imagem não recupera a sessão. Destino externo continua a definir; não contratar serviço sem acordo de custo. |
+| Backup recuperável | Núcleo Workout e três bancos/configuração Evolution restaurados em isolamento a partir de 20261015T174108Z; cópia no computador verificada. Observar primeiro ciclo automático ampliado. Não foi demonstrada reconexão ao provedor em outro host. Destino externo continua a definir; não contratar serviço sem acordo de custo. |
 | Erros compreensíveis | Mostrar falha e opção de tentar novamente; impedir cliques repetidos e sucesso falso. Não exibir dados vazios como se a consulta tivesse funcionado. |
 | Operação simples | Instruções curtas de acesso, backup, atualização e retorno. Monitorar falhas reais; manter os checks de CI existentes. |
 
