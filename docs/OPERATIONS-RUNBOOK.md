@@ -58,9 +58,13 @@ Antes de publicar:
 
 Não armazenar segredos no Git. `.env.example` contém somente nomes de variáveis públicas.
 
-Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e agenda.
+Acompanhar erros frontend, Edge Functions, automações, fila de mensagens e agenda. Procedimento por publicação, rotina proposta e triagem em [manutenção de segurança](SECURITY-MAINTENANCE.md); matriz/catálogo em [permissões de 15/10](auditoria-2026-10-11/permissoes-2026-10-15.md). Ainda é necessário definir o responsável nominal e instalar/conferir alertas externos.
 
 ## Evidências atuais
+
+Frontend de 15/10: b981426, workflow 38774544059 aprovado; 322 testes/39 arquivos, lint, tipos estritos, alcance, build e auditoria npm sem achados. Assets de entrada/agenda coincidem em produção. Ver [qualidade](auditoria-2026-10-11/qualidade-frontend-2026-10-15.md).
+
+Borda de 15/10: HSTS/nosniff/no-referrer publicados por reload do gateway, sem recriação; testes isolados 200/404/502, cinco rotas externas e compatibilidade Auth/REST/CORS aprovados. Backup pós 20261015T171145Z copiado/hashes conferidos. Retorno guardado e limites HSTS em [borda e operação](auditoria-2026-10-11/borda-operacao-2026-10-15.md).
 
 Entrega de 15/10: [Auth security1 e backups](auditoria-2026-10-11/auth-seguranca-2026-10-15.md), imagem `94a79d1a5e15…`, 42 checks isolados e 19 em produção repetidos após reinício. Sete sessões anteriores preservadas; sessão própria encerrada. Zero críticos, um alto de versão pgproto3 com correção local documentada, cinco baixos/um desconhecido. Backup pré `20261015T162021Z` e pós `20261015T162154Z`, cinco arquivos cada copiados/hashes conferidos; imagem exportada e sete blobs OCI verificados. Procedimento/retorno em `ops/supabase-self-hosted/auth-security/README.md`. Rotação global continua pendente. SMTP foi dispensado pelo cliente em 15/10.
 

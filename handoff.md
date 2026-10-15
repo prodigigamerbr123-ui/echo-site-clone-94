@@ -2,17 +2,19 @@
 
 Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
 
-O histórico detalhado, decisões, arquitetura, commits e procedimentos estão em [HANDOFF-AUDITORIA-2026-10-14.md](docs/HANDOFF-AUDITORIA-2026-10-14.md). As evidências do último bloco estão em [agenda-recuperacao-local-2026-10-14.md](docs/auditoria-2026-10-11/agenda-recuperacao-local-2026-10-14.md). Em caso de divergência, distinguir data, código local, validação e versão publicada.
+Índice das entregas mais recentes: [evidências](docs/auditoria-2026-10-11/README.md). O histórico detalhado, decisões, arquitetura, commits e procedimentos estão em [HANDOFF-AUDITORIA-2026-10-14.md](docs/HANDOFF-AUDITORIA-2026-10-14.md). As evidências do último bloco estão em [agenda-recuperacao-local-2026-10-14.md](docs/auditoria-2026-10-11/agenda-recuperacao-local-2026-10-14.md). Em caso de divergência, distinguir data, código local, validação e versão publicada.
 
 ## Estado atual e regras de continuidade
 
-> Lote de qualidade de 15/10 validado localmente e em homologação: 322 testes/39 arquivos, TypeScript estrito, lint e alcance de módulos aprovados, zero vulnerabilidades npm reportadas. Removidos 17 módulos desconectados; formulário, lista, fila e diálogo da agenda separados. Bug de pré-seleção após refetch corrigido. Publicação ainda em preparação; conferir [relatório](docs/auditoria-2026-10-11/qualidade-frontend-2026-10-15.md). Cliente dispensou SMTP e informou não possuir destino externo de backup.
+> Borda e operação conferidas em 15/10: TLS válido, rotas administrativas bloqueadas, anon sem acesso aos alunos, preflight/CORS preservados. HSTS, nosniff e no-referrer publicados por reload, sem recriar container. Backup pós `20261015T171145Z` copiado/hashes conferidos. Segundo ciclo diário natural bem-sucedido às 08h, sem candidatos/envios. Ver [relatório](docs/auditoria-2026-10-11/borda-operacao-2026-10-15.md).
+
+> Lote de qualidade de 15/10 publicado em b981426 (workflow 38774544059 aprovado), validado localmente e em homologação: 322 testes/39 arquivos, TypeScript estrito, lint e alcance de módulos aprovados, zero vulnerabilidades npm reportadas. Removidos 17 módulos desconectados; formulário, lista, fila e diálogo da agenda separados. Bug de pré-seleção após refetch corrigido. Entrada e agenda servidas em produção coincidem com o build validado; conferir [relatório](docs/auditoria-2026-10-11/qualidade-frontend-2026-10-15.md). Cliente dispensou SMTP e informou não possuir destino externo de backup.
 
 > Recuperação integrada comprovada em 15/10: snapshot `20261015T162649Z`, 39 checks, banco principal + `_supabase`, Auth, REST, arquivos e funções em rede isolada; reinício e cleanup aprovados. Medição de 20,42 s com imagens prontas e poucos registros, sem representar RTO completo. Lacuna do cache Deno corrigida no backup; 34 arquivos de funções e 222 de cache restaurados. Storage/Nginx/Evolution também tiveram imagens copiadas e blobs OCI conferidos fora da VM. Host vazio, serviços externos e cópia externa independente continuam pendentes. Ver [recuperação integrada](docs/auditoria-2026-10-11/recuperacao-integrada-2026-10-15.md).
 
 > Auth security1 publicado em 15/10: imagem `94a79d1a5e15…`, 42 verificações isoladas e 19 em produção repetidas após reinício. Senhas, identidades, migrações e sete sessões anteriores preservadas; sessão própria da auditoria encerrada. Trivy com base atualizada: 30 altos → um alto residual da versão pgproto3, com correção local documentada, cinco baixos/um desconhecido; sem supressão. Backups pré/pós e imagem/evidência copiados/hashes conferidos. Ver [Auth e backups](docs/auditoria-2026-10-11/auth-seguranca-2026-10-15.md).
 
-> Backup automático ampliado confirmado em 15/10 às 06:03:45 UTC (03:03:45 de Brasília), snapshot `20261015T060345Z`: cinco arquivos copiados para fora da VM e SHA256 conferidos; ambos os catálogos e configurações obrigatórias validados. O procedimento e a sincronização instalada agora também conferem SHA256 automaticamente; execução manual `20261015T161530Z` aprovada. Restauração integrada e armazenamento externo independente continuam pendentes.
+> Backup automático ampliado confirmado em 15/10 às 06:03:45 UTC (03:03:45 de Brasília), snapshot `20261015T060345Z`: cinco arquivos copiados para fora da VM e SHA256 conferidos; ambos os catálogos e configurações obrigatórias validados. O procedimento e a sincronização instalada agora também conferem SHA256 automaticamente; execução manual `20261015T161530Z` aprovada. O núcleo integrado foi restaurado posteriormente; armazenamento externo independente continua pendente.
 
 > PostgREST publicado: `workout-postgrest:14.17-security1`, imagem `dc990d07c8ce…`, com **zero críticos/altos**, 37 médios e quatro baixos. Mesmo binário 14.17; runtime sem compiladores/cabeçalhos, sem root, read-only e sem capabilities. **41 checks isolados e 17 em produção**, repetidos após reinício. Backups pré/pós e imagem copiados/conferidos fora da VM; schemas e funções preservados. Ver [entrega PostgREST](docs/auditoria-2026-10-11/postgrest-seguranca-2026-10-14.md).
 
@@ -24,10 +26,10 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 > Entrega publicada: `892bb88b5456e3ae92b26743b5fce1dfb8c2a49b`, [workflow 38611036898](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38611036898) concluído com sucesso. Homologação integrada de criação, remarcação, histórico e edição/conflito de notas; 306 testes em 36 arquivos. Backup `20261014T175538Z`, quatro arquivos copiados e hashes conferidos. Dashboard, agenda e histórico conferidos em produção sem escrita. Ver [relatório da entrega](docs/auditoria-2026-10-11/agenda-publicacao-2026-10-14.md). Execução diária natural também confirmada no item 35.
 
-- Última rodada publicada: recuperação de criação após perda de resposta, recibo por identidade, trava síncrona, calendário de Brasília, métricas, paginação/erro no histórico e edição de notas com comparação de versão.
-- Validação registrada: **306 testes em 36 arquivos; lint, tipos e build aprovados**, incluindo 24 testes da rodada anterior e oito de notas. Os nove testes de calendário passaram também em UTC+14 e Los Angeles. Scanner pré-publicação: 386 arquivos, sem padrões detectados.
+- Última rodada publicada: tipos estritos, limpeza de 17 módulos e separação da interface da agenda, com correção de pré-seleção após refetch. A entrega funcional anterior acrescentou recuperação de criação, recibo, trava, calendário/métricas e histórico com edição concorrente de notas.
+- Validação atual: **322 testes em 39 arquivos; lint, tipos estritos, alcance e build aprovados**, auditoria npm sem achados. Scanner pré-publicação: 422 arquivos, sem padrões detectados. Validação anterior: 306 testes; nove testes de calendário passaram também em UTC+14 e Los Angeles.
 - As mudanças desse lote estão commitadas e publicadas. Permanecem arquivos históricos independentes não rastreados; preservá-los.
-- Último código publicado: `892bb88`. A entrega anterior era `24056d2`, com documentação em `a92f387`. Verificação atual inclui leitura do histórico operacional e navegação autenticada em produção.
+- Último frontend publicado: `b981426`, workflow `38774544059` aprovado; 322 testes/39 arquivos e assets de entrada/agenda conferidos. A entrega funcional anterior era `892bb88`; a navegação autenticada da nova organização foi validada em homologação. Backend de infraestrutura tem entregas próprias descritas acima.
 - Preservar as alterações dos outros chats e os arquivos não rastreados. Revisar antes de adicionar ao Git; não usar reset ou limpeza geral.
 - Manter o login compartilhado por decisão do cliente. Contas individuais e separação por funcionário não são requisitos pendentes.
 - Usar fixtures isoladas. Não enviar WhatsApp real nem fazer chamadas pagas de IA em testes automatizados.
@@ -52,13 +54,13 @@ O histórico detalhado, decisões, arquitetura, commits e procedimentos estão e
 
 | Nº | Item | Situação | O que falta |
 | --- | --- | --- | --- |
-| 9 | Separação completa da tela de agenda | Implementado e validado; publicação em preparação | Formulário, lista, fila, pendências, diálogo e tipos extraídos. Página orquestra consultas/ações; 12 novos testes de componentes/seleção. |
+| 9 | Separação completa da tela de agenda | Publicado e validado em 15/10 | Formulário, lista, fila, pendências, diálogo e tipos extraídos. Página orquestra consultas/ações; 12 novos testes de componentes/seleção. |
 | 10 | Edição de observações no histórico | Publicado; edição normal e concorrente validadas em homologação | Proteção de versão, resposta autorizada, recibo de edição idêntica e erro persistente implementados. Manter acompanhamento. |
 | 11 | Recuperação do formulário após reload | Limitada | O recibo preserva a tentativa; os campos não são restaurados automaticamente. Definir necessidade de rascunho e proteção dos dados. |
 | 12 | Recuperação entre abas/dispositivos | Não implementada | Avaliar necessidade de recibo durável no servidor; atualmente há recuperação por aba e proteção transacional no banco. |
 | 13 | Demais telas grandes | Parcial | Revisar responsabilidades em mensagens, modelos e configurações conforme os problemas encontrados. |
-| 14 | Código morto e imports/variáveis não usados | Lote validado; publicação em preparação | 17 módulos desconectados removidos; lint/TypeScript de não usados ativos e alcance no CI. Primitivas UI reutilizáveis preservadas; revisão de exports individuais continua manutenção. |
-| 15 | TypeScript estrito | Ativado e validado; publicação em preparação | strict/noImplicitAny/não usados/fallthrough ativos; contratos anuláveis corrigidos sem esconder erros. |
+| 14 | Código morto e imports/variáveis não usados | Publicado e validado em 15/10 | 17 módulos desconectados removidos; lint/TypeScript de não usados ativos e alcance no CI. Primitivas UI reutilizáveis preservadas; revisão de exports individuais continua manutenção. |
+| 15 | TypeScript estrito | Ativado, validado e publicado em 15/10 | strict/noImplicitAny/não usados/fallthrough ativos; contratos anuláveis corrigidos sem esconder erros. |
 | 16 | Cache em toda a aplicação | Parcial | Conferir invalidação, troca de identidade, respostas atrasadas e dados antigos nas telas restantes. |
 | 17 | Consultas restantes da IA | Parcial | Revisar limites, paginação, totais e indicação de respostas parciais em cada ferramenta. |
 | 18 | Estados de carregamento, erro e vazio | Parcial | Continuar procurando telas que confundem falha de consulta com ausência de dados. |
@@ -76,10 +78,10 @@ Os números desta seção vêm das últimas varreduras documentadas. Não repres
 | 23 | Alertas residuais da Evolution | Acompanhamento pendente | Revisar alerta médio relacionado a RabbitMQ e aviso de situação desconhecida em OpenPGP; verificar antes de habilitar AMQP. |
 | 24 | Atualizações futuras da Evolution | Processo pendente de consolidação | Preservar licença, sessão e ajustes necessários; validar compatibilidade e retorno. |
 | 25 | Alertas médios/baixos dos gateways | Não encerrado | Avaliar os restantes e atualizar a varredura de Nginx/Envoy. |
-| 26 | Segurança da borda pública | Validação parcial | Conferir exposição efetiva, rotas administrativas, TLS, cabeçalhos, limites e comportamento externo. |
+| 26 | Segurança da borda pública | TLS, bloqueios e cabeçalhos conferidos em 15/10 | HSTS/nosniff/no-referrer publicados com ensaio isolado e backup; Auth/CORS preservados. Conferência parcial, não pentest exaustivo; revisar políticas específicas de arquivos/frontend. |
 | 27 | Rotação das credenciais compartilhadas no histórico | Sem comprovação de conclusão | Inventariar e trocar de forma coordenada, atualizando os serviços dependentes. |
-| 28 | Revisão final de permissões | Várias correções já publicadas | Consolidar matriz de tabelas, funções, Storage e papéis, incluindo testes negativos. |
-| 29 | Política contínua de atualização e varredura | Parcial | Definir frequência, responsáveis, critérios de correção e registro das versões. |
+| 28 | Revisão final de permissões | Matriz consolidada e catálogo conferido em 15/10 | 15 tabelas públicas com RLS e nenhum privilégio anon; 31 funções e Storage inventariados. Ver permissoes-2026-10-15.md para cobertura/limites; manter revisão de políticas/corpos e futuras mudanças. |
+| 29 | Política contínua de atualização e varredura | Procedimento documentado; responsável a definir | docs/SECURITY-MAINTENANCE.md define verificações por publicação, rotina proposta e triagem. Não equivale a novo monitoramento/agendamento instalado; confirmar responsável operacional. |
 | 30 | Encerramento formal da auditoria de segurança | Pendente | Classificar riscos restantes, registrar correções, exceções justificadas e evidências. |
 
 ## 4. Backups, recuperação e operação
@@ -92,7 +94,7 @@ Existem evidências anteriores de backups verificados e de homologação. Não c
 | 32 | Funcionamento atual dos backups automáticos | Cobertura ampliada confirmada; cache Deno acrescentado depois | Automático `20261015T060345Z`: cinco arquivos copiados/hashes conferidos. SHA256 no manifesto/sincronização; cache Deno acrescentado a runtime.tar.gz e provado no restore `20261015T162649Z`. Observar primeiro automático com cache; timer ativo. |
 | 33 | Independência e retenção das cópias | Cópias e imagens customizadas verificadas; independência externa pendente | Auth/pooler/PostgREST e agora Storage/Nginx/Evolution exportados e verificados; estes últimos 21/11/11 blobs OCI. Cliente informou em 15/10 não possuir destino externo; falta definir serviço e política final. Hoje são 14 snapshots completos, não dias. Imagem Evolution não inclui banco/licença/sessão. |
 | 34 | Tempo e perda máxima de recuperação | Medição técnica realizada; metas operacionais pendentes | Restore integrado 20,42 s com imagens prontas e poucos dados. Não inclui provisionamento/DNS/TLS/provedores; definir RTO completo e RPO aceitáveis. Intervalo diário nominal de backup não é garantia de RPO. |
-| 35 | Primeira execução diária natural das automações | Confirmada em produção por leitura | Execução de 14/10 às 08:00 de Brasília: success, sem erro, zero candidatos e zero mensagens. Ver conferência operacional de 14/10; acompanhar ciclos seguintes e cenários com candidatos. |
+| 35 | Primeira execução diária natural das automações | Dois ciclos confirmados por leitura | 14 e 15/10 às 08h de Brasília: success, sem erro, zero candidatos/inserções; jobs ativos e fila sem pendentes/processando. Acompanhar cenários com candidatos e estabilidade prolongada. |
 | 36 | Estabilidade prolongada da fila | Validação parcial | Observar operação contínua, reconexões, latência, falhas e recuperação. |
 | 37 | Reconciliação de mensagens antigas falhas/incertas | Pendente de análise operacional | Conferir o ocorrido antes de decidir qualquer repetição. |
 | 38 | Testes de carga | Pendente | Medir comportamento com mais alunos, mensagens, avaliações e consultas concorrentes. |

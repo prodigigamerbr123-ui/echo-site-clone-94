@@ -20,7 +20,7 @@
 
 ## Publicação e limites
 
-Publicação do frontend ainda deve ser confirmada pelo SHA, workflow e assets servidos antes de marcar este lote entregue. Não exige migração de banco. Remoção de um import não usado na função `ai-assistant` é apenas limpeza de fonte; runtime Edge continua na revisão anterior até sua próxima publicação, sem mudança de comportamento requerida por esta interface.
+Frontend publicado: commit `b9814268c5ed2996f3d448960ce982b62bff79e2`, [workflow 38774544059](https://github.com/prodigigamerbr123-ui/echo-site-clone-94/actions/runs/38774544059) concluído com sucesso. Em produção, entrada `index-DWWKfN4c.js` e agenda `AgendarAvaliacao-BMDa4qCy.js` responderam 200 e seus bytes coincidiram com o build local validado. SHA256: entrada `68654f150d45cd02a44609bf10799199d4af754a471877a6116dc21db0ba94cc`; agenda `00d94d721e144d0fac90e02ec7e66e03b7acf0a067eb9addddca8be14e2fea86`. Scanner pré-publicação: 422 arquivos, zero padrões detectados; cinco testes do scanner aprovados. Não exige migração de banco. Remoção de um import não usado na função `ai-assistant` é apenas limpeza de fonte; runtime Edge continua na revisão anterior até sua próxima publicação, sem mudança de comportamento requerida por esta interface.
 
 Retorno: republicar a revisão/artefato frontend anterior `892bb88`; não restaurar banco para desfazer interface. Preservar novos backups e alterações de infraestrutura posteriores.
 

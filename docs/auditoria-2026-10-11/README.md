@@ -4,7 +4,9 @@ Estado consolidado e backlog: [handoff](../../handoff.md). Procedimentos: [runbo
 
 | Área | Evidência de referência | Alcance e limite |
 | --- | --- | --- |
-| Qualidade/frontend | [15/10: tipos, limpeza e agenda](qualidade-frontend-2026-10-15.md) | 322 testes; conferir seção de publicação antes de assumir entrega. |
+| Qualidade/frontend | [15/10: tipos, limpeza e agenda](qualidade-frontend-2026-10-15.md) | b981426 publicado, 322 testes; entrada e agenda conferidas em produção. |
+| Permissões | [15/10: matriz e catálogo](permissoes-2026-10-15.md) | 15 tabelas com RLS; limites e testes por área. |
+| Borda/operação | [15/10: cabeçalhos e automação](borda-operacao-2026-10-15.md) | Cabeçalhos publicados; TLS, negativas, CORS e segundo ciclo diário conferidos. |
 | Recuperação | [15/10: núcleo integrado](recuperacao-integrada-2026-10-15.md) | 39 verificações; host vazio e provedores externos pendentes. |
 | Auth/backups | [15/10: Auth security1](auth-seguranca-2026-10-15.md) | Imagem publicada; achado residual de versão documentado; cache Deno ampliado posteriormente no relatório de recuperação. |
 | REST | [14/10: PostgREST security1](postgrest-seguranca-2026-10-14.md) | Runtime publicado; zero críticos/altos na varredura registrada. |
@@ -19,3 +21,5 @@ Estado consolidado e backlog: [handoff](../../handoff.md). Procedimentos: [runbo
 ## Como acrescentar evidência
 
 Registrar data, commit, ambiente, comando/procedimento, resultado, backup e caminho de retorno. Distinguir implementação local, teste isolado, publicação e confirmação posterior. Nunca anexar dumps, tokens, logs com dados pessoais ou configurações privadas. Hashes e resumos sanitizados são suficientes para apontar artefatos privados.
+
+Rotina técnica proposta e triagem de riscos: [manutenção de segurança](../SECURITY-MAINTENANCE.md). Responsável nominal e monitoramento externo ainda precisam ser definidos.
