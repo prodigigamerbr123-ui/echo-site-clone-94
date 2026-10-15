@@ -4,6 +4,7 @@ Estado consolidado e backlog: [handoff](../../handoff.md). Procedimentos: [runbo
 
 | Área | Evidência de referência | Alcance e limite |
 | --- | --- | --- |
+| Básico/configurações | [15/10: escopo e confiabilidade](configuracoes-basico-2026-10-15.md) | 328 testes; confirmar publicação registrada no relatório. |
 | Qualidade/frontend | [15/10: tipos, limpeza e agenda](qualidade-frontend-2026-10-15.md) | b981426 publicado, 322 testes; entrada e agenda conferidas em produção. |
 | Permissões | [15/10: matriz e catálogo](permissoes-2026-10-15.md) | 15 tabelas com RLS; limites e testes por área. |
 | Borda/operação | [15/10: cabeçalhos e automação](borda-operacao-2026-10-15.md) | Cabeçalhos publicados; TLS, negativas, CORS e segundo ciclo diário conferidos. |

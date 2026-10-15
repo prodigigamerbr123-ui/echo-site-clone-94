@@ -12,7 +12,7 @@ import {
   useNotificationSettings,
   useUpdateNotificationSettings,
 } from "@/lib/appSettings";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -58,14 +58,14 @@ const GROUPS: NotifGroup[] = [
       {
         key: "notify_failed",
         title: "Falha no envio de mensagem",
-        desc: "Aviso imediato quando uma mensagem agendada não é entregue.",
+        desc: "Avisa quando o sistema registra uma falha no envio de uma mensagem agendada.",
         icon: AlertTriangle,
         recommended: true,
       },
       {
         key: "notify_sent_each",
         title: "Notificar cada mensagem enviada",
-        desc: "Toca um aviso individual para cada mensagem entregue com sucesso.",
+        desc: "Toca um aviso para cada envio aceito pelo provedor do WhatsApp.",
         icon: BellRing,
       },
       {
@@ -167,9 +167,10 @@ const GROUPS: NotifGroup[] = [
 
 export default function Configuracoes() {
   usePageTitle("Configurações");
-  const { data: settings, isLoading } = useNotificationSettings();
+  const { data: settings, isLoading, error, refetch } = useNotificationSettings();
   const update = useUpdateNotificationSettings();
   const [minutes, setMinutes] = useState<number>(10);
+  const saving = useRef(false);
 
   const persistedMinutes = settings?.sent_summary_minutes;
   useEffect(() => {
@@ -184,11 +185,17 @@ export default function Configuracoes() {
   }, [settings]);
 
   const save = async (partial: Partial<NotificationSettings>) => {
+    if (saving.current || error || !settings) return false;
+    saving.current = true;
     try {
       await update.mutateAsync(partial);
       toast.success("Configuração salva");
+      return true;
     } catch (e: unknown) {
       toast.error("Erro ao salvar", { description: errorMessage(e) });
+      return false;
+    } finally {
+      saving.current = false;
     }
   };
 
@@ -197,7 +204,8 @@ export default function Configuracoes() {
     const clamped = Math.max(5, Math.min(60, Math.round(minutes || 10)));
     setMinutes(clamped);
     if (clamped !== settings.sent_summary_minutes) {
-      await save({ sent_summary_minutes: clamped });
+      const saved = await save({ sent_summary_minutes: clamped });
+      if (!saved) setMinutes(settings.sent_summary_minutes);
     }
   };
 
@@ -216,7 +224,7 @@ export default function Configuracoes() {
             Gerencie quais alertas do sistema você recebe em tempo real.
           </p>
         </div>
-        {settings && (
+        {settings && !error && (
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="gap-1">
               <Bell className="h-3.5 w-3.5" />
@@ -225,6 +233,7 @@ export default function Configuracoes() {
             <button
               type="button"
               onClick={() => toggleAll(true)}
+              disabled={update.isPending}
               className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
             >
               Ativar tudo
@@ -233,6 +242,7 @@ export default function Configuracoes() {
             <button
               type="button"
               onClick={() => toggleAll(false)}
+              disabled={update.isPending}
               className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
             >
               Desativar tudo
@@ -254,8 +264,16 @@ export default function Configuracoes() {
           </div>
         </CardHeader>
         <CardContent className="space-y-8">
-          {isLoading || !settings ? (
-            <p className="text-sm text-muted-foreground">Carregando…</p>
+          {update.isPending && <p role="status" className="text-sm text-muted-foreground">Salvando configuração…</p>}
+          {error ? (
+            <div role="alert" className="space-y-2 text-sm">
+              <p>Não foi possível carregar as configurações. Tente novamente.</p>
+              <button type="button" onClick={() => void refetch()} className="underline">
+                Tentar novamente
+              </button>
+            </div>
+          ) : isLoading || !settings ? (
+            <p role="status" className="text-sm text-muted-foreground">Carregando…</p>
           ) : (
             GROUPS.map((group, gi) => (
               <div key={group.id} className="space-y-3">
@@ -290,7 +308,7 @@ export default function Configuracoes() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <Label className="text-sm font-medium">{item.title}</Label>
+                                <Label htmlFor={item.key} className="text-sm font-medium">{item.title}</Label>
                                 {item.recommended && (
                                   <Badge variant="outline" className="text-[10px] uppercase">
                                     Recomendado
@@ -307,6 +325,7 @@ export default function Configuracoes() {
                                   </Label>
                                   <Input
                                     id="grp-min"
+                                    disabled={update.isPending}
                                     type="number"
                                     min={5}
                                     max={60}
@@ -323,6 +342,8 @@ export default function Configuracoes() {
                             </div>
                           </div>
                           <Switch
+                            id={item.key}
+                            disabled={update.isPending}
                             checked={checked}
                             onCheckedChange={(v) => save({ [item.key]: v })}
                           />

@@ -79,6 +79,8 @@ export function useNotificationSettings(enabled = true) {
 export function useUpdateNotificationSettings() {
   const qc = useQueryClient();
   return useMutation({
+    // Each patch reads and merges the stored document; serialize within this client.
+    scope: { id: "notification-settings" },
     mutationFn: updateNotificationSettings,
     onSuccess: (data) => {
       qc.setQueryData(NOTIFICATION_SETTINGS_QUERY_KEY, data);

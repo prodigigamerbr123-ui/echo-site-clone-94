@@ -43,6 +43,8 @@ Push em `main` dispara `.github/workflows/deploy-pages.yml`: scanner de segredos
 
 ## Operação
 
+O objetivo atual é o básico bem feito para uma academia pequena. Consulte o [escopo de encerramento](docs/ESCOPO-ACADEMIA-PEQUENA.md) para distinguir requisitos essenciais de melhorias futuras.
+
 Consulte `docs/OPERATIONS-RUNBOOK.md` e os relatórios em `docs/auditoria-2026-10-11/`.
 
 O estado consolidado está em [handoff.md](handoff.md); o [índice de evidências](docs/auditoria-2026-10-11/README.md) indica as entregas mais recentes. O dono usa perfil pré-configurado por decisão do cliente; SMTP e contas individuais não fazem parte do escopo atual. Backup externo independente ainda depende de um destino a definir.

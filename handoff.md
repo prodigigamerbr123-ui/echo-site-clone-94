@@ -6,6 +6,8 @@ Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria
 
 ## Estado atual e regras de continuidade
 
+> Escopo ajustado pelo cliente em 15/10: uso interno de uma academia pequena, com o básico bem feito. Seguir [escopo de encerramento](docs/ESCOPO-ACADEMIA-PEQUENA.md). A tabela histórica não significa 63 requisitos para liberar uso. Priorizar proteção do acesso, dados/backup, alunos/agenda, mensagens e erros claros. Melhorias de produto, refatorações sem defeito concreto e testes de escala elevada ficam para evolução; não apagar riscos ou declarar verificações não executadas.
+
 > Borda e operação conferidas em 15/10: TLS válido, rotas administrativas bloqueadas, anon sem acesso aos alunos, preflight/CORS preservados. HSTS, nosniff e no-referrer publicados por reload, sem recriar container. Backup pós `20261015T171145Z` copiado/hashes conferidos. Segundo ciclo diário natural bem-sucedido às 08h, sem candidatos/envios. Ver [relatório](docs/auditoria-2026-10-11/borda-operacao-2026-10-15.md).
 
 > Lote de qualidade de 15/10 publicado em b981426 (workflow 38774544059 aprovado), validado localmente e em homologação: 322 testes/39 arquivos, TypeScript estrito, lint e alcance de módulos aprovados, zero vulnerabilidades npm reportadas. Removidos 17 módulos desconectados; formulário, lista, fila e diálogo da agenda separados. Bug de pré-seleção após refetch corrigido. Entrada e agenda servidas em produção coincidem com o build validado; conferir [relatório](docs/auditoria-2026-10-11/qualidade-frontend-2026-10-15.md). Cliente dispensou SMTP e informou não possuir destino externo de backup.
