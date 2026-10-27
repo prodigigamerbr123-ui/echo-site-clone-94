@@ -24,7 +24,7 @@ export function AppHeader() {
           <img
             src={workoutLogo}
             alt="Workout Academia"
-            className="h-10 w-auto object-contain"
+            className="max-h-14 w-32 object-contain sm:w-48"
           />
         </div>
 
