@@ -485,6 +485,7 @@ export type Database = {
       }
       complete_evaluation_on_tx: { Args: { _evaluation_id: string; _performed_on: string; _messages?: Json }; Returns: Json }
       cancel_scheduled_messages_tx: { Args: { _ids: string[]; _whole_series?: boolean }; Returns: Json }
+      dismiss_failed_messages_tx: { Args: { _ids: string[] }; Returns: Json }
       acquire_whatsapp_delivery_lease: { Args: { _token: string }; Returns: boolean }
       release_whatsapp_delivery_lease: { Args: { _token: string }; Returns: undefined }
       prepare_scheduled_message_dispatch: { Args: { _id: string; _expected_updated_at: string; _lease_token: string }; Returns: Json }

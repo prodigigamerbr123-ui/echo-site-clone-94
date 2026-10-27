@@ -89,3 +89,16 @@ it("keeps cancellation open when the server cannot confirm it", async () => {
   expect(screen.getByRole("button", { name: "Cancelar envios" })).toBeEnabled();
   expect(mocks.rpc).toHaveBeenCalledTimes(1);
 });
+
+it("marks reviewed failures without sending and leaves possibly delivered ones out", async () => {
+  const uncertain = { ...message, id: "message-2", dispatch_started_at: "2026-10-11T12:00:00Z" };
+  mocks.pages.mockReset().mockResolvedValueOnce([message, uncertain]).mockResolvedValueOnce([{ id: "student-1", name: "Fixture", phone: "000" }])
+    .mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  mocks.rpc.mockResolvedValue({ data: { dismissed: 1 }, error: null });
+  render(<ScheduledList statusFilter="failed" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Marcar como revisadas (1)" }));
+  fireEvent.click(screen.getByRole("button", { name: "Marcar como revisadas" }));
+  await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("dismiss_failed_messages_tx", { _ids: ["message-1"] }));
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "1 falha(s) marcada(s) como revisada(s)" }));
+});

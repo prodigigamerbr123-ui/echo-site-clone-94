@@ -53,7 +53,7 @@ export function DailyWorkPanel() {
   const issueCount = issues.isError ? null : issues.data ?? null;
   const checks: (Attention & { pending: boolean; loading?: boolean })[] = [
     ...(canContact ? [{ title: "Falhas de mensagem para revisar", value: issueCount, pending: !issues.isLoading && issueCount !== 0, loading: issues.isLoading, tone: "danger" as const, to: "/caixa-de-saida?aba=falhas",
-      description: issues.isError ? "Não foi possível conferir as falhas. Abra a caixa de saída ou atualize o painel." : "Inclui registros antigos. Confira o motivo antes de repetir um envio." }] : []),
+      description: issues.isError ? "Não foi possível conferir as falhas. Abra a caixa de saída ou atualize o painel." : "Confira o motivo; depois reenvie ou marque como revisadas na Caixa de saída." }] : []),
     { title: "Avaliações aguardando baixa", value: stats.evaluationsOverdue, pending: stats.evaluationsOverdue > 0, tone: "warning", to: "/agendar-avaliacao",
       description: "Agendamentos de dias anteriores sem resultado. Registre realizada ou falta." },
     ...(canContact ? [

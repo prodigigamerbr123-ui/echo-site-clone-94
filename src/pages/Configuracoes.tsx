@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   Bell,
   BellRing,
-  Bot,
   CalendarCheck,
   CalendarClock,
   CalendarX,
@@ -25,11 +24,9 @@ import {
   MessageSquare,
   RefreshCw,
   Send,
-  Sparkles,
   UserMinus,
   UserPlus,
   Users,
-  WifiOff,
 } from "lucide-react";
 
 type NotifKey = Exclude<keyof NotificationSettings, "sent_summary_minutes">;
@@ -137,32 +134,6 @@ const GROUPS: NotifGroup[] = [
       },
     ],
   },
-  {
-    id: "sistema",
-    title: "Sistema",
-    description: "Saúde da integração com o WhatsApp e do motor de automações.",
-    items: [
-      {
-        key: "notify_whatsapp_disconnected",
-        title: "WhatsApp desconectado",
-        desc: "Alerta crítico quando a instância do WhatsApp perde conexão.",
-        icon: WifiOff,
-        recommended: true,
-      },
-      {
-        key: "notify_daily_summary",
-        title: "Resumo diário das automações",
-        desc: "Recebe um resumo do que o motor de automações fez no dia.",
-        icon: Sparkles,
-      },
-      {
-        key: "notify_ai_errors",
-        title: "Erros do assistente IA",
-        desc: "Mostra falhas ao processar mensagens ou executar ações do assistente.",
-        icon: Bot,
-      },
-    ],
-  },
 ];
 
 export default function Configuracoes() {
@@ -222,6 +193,9 @@ export default function Configuracoes() {
           <h1 className="text-2xl font-bold">Configurações</h1>
           <p className="text-muted-foreground">
             Gerencie quais alertas do sistema você recebe em tempo real.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            WhatsApp desconectado e falhas da automação diária aparecem sempre no topo da tela; esses avisos não podem ser desligados.
           </p>
         </div>
         {settings && !error && (

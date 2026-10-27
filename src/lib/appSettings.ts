@@ -17,10 +17,6 @@ export type NotificationSettings = {
   notify_student_registered: boolean;
   notify_student_status_change: boolean;
   notify_student_deleted: boolean;
-  // Sistema
-  notify_whatsapp_disconnected: boolean;
-  notify_daily_summary: boolean;
-  notify_ai_errors: boolean;
 };
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -37,9 +33,6 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   notify_student_registered: false,
   notify_student_status_change: false,
   notify_student_deleted: false,
-  notify_whatsapp_disconnected: true,
-  notify_daily_summary: true,
-  notify_ai_errors: true,
 };
 
 export const NOTIFICATION_SETTINGS_QUERY_KEY = ["app_settings", "notifications"] as const;

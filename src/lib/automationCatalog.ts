@@ -1,5 +1,8 @@
 import { DEFAULT_EVALUATION_DAYS_OVERDUE } from "@/lib/evaluationDue";
 
+// Único padrão para a tela e para o agendamento (antes: 30 na tela, 20 no código).
+export const DEFAULT_REENGAGEMENT_DAYS = 30;
+
 type ParamDef = { name: string; label: string; fallback: number; suffix?: string };
 
 type MessageTypeDef = { type: string; label: string };
@@ -77,11 +80,11 @@ export const AUTOMATIONS: AutomationDef[] = [
   {
     key: "reengagement",
     title: "Reengajamento de alunos inativos",
-    description: "Reativa alunos que não recebem mensagens há um tempo.",
-    when: "Para alunos sem contato há X dias.",
+    description: "Convida o aluno a voltar, uma única vez, depois que ele é marcado como inativo.",
+    when: "X dias depois de marcar o aluno como inativo. Não é enviada se ele voltar a ficar ativo antes.",
     messageTypes: [{ type: "reengagement", label: "Reengajamento" }],
     placeholders: ["{nome}"],
-    params: [{ name: "days_after", label: "Dias inativo", fallback: 30, suffix: "dias" }],
+    params: [{ name: "days_after", label: "Enviar após inativar", fallback: DEFAULT_REENGAGEMENT_DAYS, suffix: "dias" }],
   },
   {
     key: "payment_reminder",
@@ -97,8 +100,8 @@ export const AUTOMATIONS: AutomationDef[] = [
   {
     key: "payment_overdue",
     title: "Cobrança de mensalidade vencida",
-    description: "Envia cobrança automática para alunos com mensalidade em atraso.",
-    when: "Diariamente, respeitando o intervalo mínimo entre cobranças.",
+    description: "Envia cobrança para alunos ativos com mensalidade em atraso, até o limite de cobranças por vencimento.",
+    when: "Diariamente, respeitando o intervalo entre cobranças. Para depois do limite até a data de vencimento ser atualizada; acima de 30 dias o texto diz \"mais de 30 dias\".",
     messageTypes: [
       { type: "payment_overdue", label: "Cobrança de vencido" },
     ],
@@ -106,6 +109,7 @@ export const AUTOMATIONS: AutomationDef[] = [
     params: [
       { name: "days_after_due", label: "Enviar a partir de", fallback: 1, suffix: "dias em atraso" },
       { name: "repeat_every_days", label: "Repetir a cada", fallback: 7, suffix: "dias" },
+      { name: "max_attempts", label: "Máx. de cobranças por vencimento", fallback: 3, suffix: "envios" },
     ],
   },
 ];

@@ -13,6 +13,7 @@ import type { Database, Json } from "../_shared/database.types.ts";
 import { requireCronSecret } from "../_shared/auth.ts";
 import { resolveAutomationMessage } from "../_shared/messageTemplates.ts";
 import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
+import { COUNTED_OVERDUE_STATUSES, countOverdueAttempts, overdueAttemptsExhausted, overdueDaysLabel, overdueDaysPlaceholder } from "../_shared/paymentOverdue.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,7 +91,7 @@ const PAYMENT_DUE_TEMPLATE = (name: string) =>
   `Oi ${name}! Sua mensalidade vence hoje. Bora manter o treino em dia? 🏋️ Qualquer coisa estou à disposição!`;
 
 const PAYMENT_OVERDUE_TEMPLATE = (name: string, days: number) =>
-  `Oi ${name}! Sua mensalidade está ${days} ${days === 1 ? "dia" : "dias"} em atraso. Consegue regularizar hoje? Qualquer coisa é só me chamar!`;
+  `Oi ${name}! Sua mensalidade está ${overdueDaysLabel(days)} em atraso. Consegue regularizar hoje? Qualquer coisa é só me chamar!`;
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -425,6 +426,18 @@ serve(async (req: Request) => {
       const overdueRepeatEvery = Number(
         getParam(settings, "payment_overdue", "repeat_every_days", 7),
       );
+      // Sem limite, uma data não atualizada após o pagamento gerava cobrança para sempre.
+      const overdueMaxAttempts = Number(
+        getParam(settings, "payment_overdue", "max_attempts", 3),
+      );
+      // Tentativas contam por vencimento: mensagens criadas para a data atual do aluno.
+      const overdueHistory = await fetchAllRows((start, end) => supabase
+        .from("scheduled_messages")
+        .select("student_id, source_payment_due_date")
+        .eq("message_type", "payment_overdue")
+        .in("status", COUNTED_OVERDUE_STATUSES)
+        .order("id").range(start, end));
+      const attemptsByDue = countOverdueAttempts(overdueHistory);
 
       // Última cobrança enviada/agendada por aluno (para respeitar o intervalo)
       const sinceISO = new Date(
@@ -448,6 +461,7 @@ serve(async (req: Request) => {
         if (hasPending.has(`${s.id}:payment_overdue`)) continue;
         if (hasScheduledToday.has(`${s.id}:payment_overdue`)) continue;
         if (recentByStudent.has(s.id)) continue; // dentro do intervalo de repetição
+        if (overdueAttemptsExhausted(attemptsByDue, s.id, due, overdueMaxAttempts)) continue;
 
         const daysLate = Math.max(
           1,
@@ -461,7 +475,7 @@ serve(async (req: Request) => {
         const content = await resolveAutomationMessage(
           supabase, settings, "payment_overdue", "payment_overdue",
           PAYMENT_OVERDUE_TEMPLATE(s.name, daysLate),
-          { nome: s.name, dias: String(daysLate) },
+          { nome: s.name, dias: overdueDaysPlaceholder(daysLate) },
         );
         overdueInserts.push({
           student_id: s.id,

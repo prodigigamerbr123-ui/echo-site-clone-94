@@ -66,6 +66,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ ids: string[]; label: string; wholeSeries?: boolean } | null>(null);
+  const [dismissIds, setDismissIds] = useState<string[] | null>(null);
 
   const fetchAll = useCallback(async () => {
     const version = ++requestVersion.current;
@@ -176,6 +177,20 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
     });
   };
 
+  // Baixa de falhas já revisadas: saem da contagem de pendências sem enviar nada.
+  const confirmDismiss = async () => {
+    if (!dismissIds) return;
+    await mutate(async () => {
+      const { data, error } = await supabase.rpc("dismiss_failed_messages_tx", { _ids: dismissIds });
+      if (error) throw error;
+      const result = data as { dismissed: number } | null;
+      if (!result || typeof result.dismissed !== "number") throw new Error("O servidor não confirmou a baixa. Atualize a lista para conferir.");
+      toast({ title: `${result.dismissed} falha(s) marcada(s) como revisada(s)`, description: "Nada foi enviado. O motivo original fica na aba Canceladas." });
+      setDismissIds(null);
+      await fetchAll();
+    });
+  };
+
   const handleRetry = async (id: string) => {
     const target = messages.find(message => message.id === id);
     if (students.find(student => student.id === target?.student_id)?.messages_enabled === false) {
@@ -215,6 +230,9 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
   };
 
   const filteredCount = getFilteredMessagesCount(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
+  const dismissable = statusFilter === "failed"
+    ? filterScheduledMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents).filter(m => m.status === "failed" && !m.dispatch_started_at)
+    : [];
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -244,7 +262,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2"><CardTitle>Mensagens ({filteredCount})</CardTitle><Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => void fetchAll()}>Atualizar lista</Button></CardHeader>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2"><CardTitle>Mensagens ({filteredCount})</CardTitle><div className="flex flex-wrap gap-2">{dismissable.length > 0 && <Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => setDismissIds(dismissable.map(m => m.id))}>Marcar como revisadas ({dismissable.length})</Button>}<Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => void fetchAll()}>Atualizar lista</Button></div></CardHeader>
         <CardContent>
           {messages.length === 0 ? (
             <div className="text-center py-12">
@@ -306,6 +324,24 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
           </fieldset>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!dismissIds} onOpenChange={(o) => { if (!o && !busy.current) setDismissIds(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar {dismissIds?.length} falha(s) como revisada(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Use depois de conferir os motivos. Nada será enviado: as mensagens saem das pendências do Início e ficam na aba Canceladas com o motivo original. Para tentar de novo, use Reenviar antes de dar baixa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {actionError && <p role="alert" className="text-destructive">{actionError}</p>}
+            <AlertDialogCancel disabled={saving}>Voltar</AlertDialogCancel>
+            <AlertDialogAction disabled={saving} onClick={(event) => { event.preventDefault(); void confirmDismiss(); }}>
+              Marcar como revisadas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !busy.current) setDeleteTarget(null); }}>
         <AlertDialogContent>

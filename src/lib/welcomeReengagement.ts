@@ -1,6 +1,7 @@
 import { enqueueMessages } from "@/lib/messageQueue";
 import { fetchAutomationSettings, isAutomationEnabled, getAutomationParam } from "@/lib/automationSettings";
 import { resolveAutomationMessage } from "@/lib/messageTemplates";
+import { DEFAULT_REENGAGEMENT_DAYS } from "@/lib/automationCatalog";
 
 const WELCOME_TEMPLATES = [
   (n: string) => `Oi ${n}! 👋 Seja muito bem-vindo(a) à academia! Bora agendar sua primeira avaliação física pra montarmos seu plano de treino? 💪`,
@@ -41,7 +42,7 @@ export async function scheduleReengagementIfEnabled(studentId: string, name: str
     const settings = await fetchAutomationSettings();
     if (!isAutomationEnabled(settings, "reengagement")) return "disabled";
 
-    const daysAfter = Number(getAutomationParam(settings, "reengagement", "days_after", 20));
+    const daysAfter = Number(getAutomationParam(settings, "reengagement", "days_after", DEFAULT_REENGAGEMENT_DAYS));
     if (!Number.isInteger(daysAfter) || daysAfter < 1 || daysAfter > 365) throw new Error("Intervalo de reativação inválido");
     const when = new Date(Date.now() + daysAfter * 86400000);
     // 09-12h Brasília = 12-15h UTC
