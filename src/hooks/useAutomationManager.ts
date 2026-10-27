@@ -1,3 +1,4 @@
+import { readOverdueParams } from "../../supabase/functions/_shared/paymentOverdue";
 import { supabase } from "@/integrations/supabase/client";
 import { automationTemplates, fetchAutomationSettings, type AutomationParams } from "@/lib/automationSettings";
 import { fetchAutomationTemplateIds } from "@/lib/automationTemplateIds";
@@ -21,6 +22,7 @@ async function updateAutomationSetting(
   key: string,
   values: { enabled?: boolean; params?: AutomationParams },
 ) {
+  if (key === "payment_overdue" && values.params) readOverdueParams(values.params);
   const { data, error } = await supabase
     .from("automation_settings")
     .update(values)

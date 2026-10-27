@@ -1,3 +1,4 @@
+import { readOverdueParams } from "../../../supabase/functions/_shared/paymentOverdue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,15 +34,24 @@ export function AutomationCard({
   const templates = automationTemplates(setting?.params);
 
   const initialParams = useMemo(() => {
-    const p: Record<string, number> = {};
+    const p: Record<string, number | string> = {};
     for (const pd of def.params ?? []) {
-      p[pd.name] = Number(setting?.params?.[pd.name] ?? pd.fallback);
+      const raw = setting?.params?.[pd.name];
+      p[pd.name] = def.key === "payment_overdue"
+        ? raw === undefined ? pd.fallback : typeof raw === "number" || typeof raw === "string" ? raw : ""
+        : Number(raw ?? pd.fallback);
     }
     return p;
-  }, [setting, def.params]);
+  }, [setting, def.params, def.key]);
 
-  const [localParams, setLocalParams] = useState<Record<string, number>>(initialParams);
+  const [localParams, setLocalParams] = useState<Record<string, number | string>>(initialParams);
   useEffect(() => setLocalParams(initialParams), [initialParams]);
+
+  let paramsError: string | null = null;
+  if (def.key === "payment_overdue") {
+    try { readOverdueParams(localParams); }
+    catch (error) { paramsError = error instanceof Error ? error.message : "Confira os parâmetros."; }
+  }
 
   const count30d = def.messageTypes.reduce((s, mt) => s + (perTypeCounts[mt.type] ?? 0), 0);
   const dirty =
@@ -134,24 +144,28 @@ export function AutomationCard({
                   <Input
                     id={`${def.key}-${pd.name}`}
                     type="number"
-                    min={0}
+                    min={def.key === "payment_overdue" ? 1 : 0}
+                    step={1}
+                    aria-invalid={!!paramsError}
+                    aria-describedby={paramsError ? `${def.key}-params-error` : undefined}
                     value={localParams[pd.name] ?? ""}
                     onChange={(e) =>
                       setLocalParams((p) => ({
                         ...p,
-                        [pd.name]: Number(e.target.value),
+                        [pd.name]: e.target.value,
                       }))
                     }
                   />
                 </div>
               ))}
             </div>
+            {paramsError && <p id={`${def.key}-params-error`} role="alert" className="text-sm text-destructive">{paramsError}</p>}
             <Button
               size="sm"
               variant="outline"
-              disabled={!dirty || saving}
+              disabled={!dirty || saving || !!paramsError}
               onClick={() =>
-                onSaveParams({ ...(setting?.params ?? {}), ...localParams })
+                onSaveParams({ ...(setting?.params ?? {}), ...Object.fromEntries(Object.entries(localParams).map(([key, value]) => [key, Number(value)])) })
               }
             >
               Salvar parâmetros

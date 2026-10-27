@@ -2,6 +2,16 @@
 
 Atualização: 27/10/2026 (seção mais recente logo abaixo; o restante é histórico de 18/10). Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
 
+## Correções após revisão da Claude — 27/10/2026 (backend publicado; frontend em publicação)
+
+- Revisão do histórico e do código em `docs/REVISAO-CLAUDE-2026-10-27.md`. A publicação descrita abaixo foi lida nos registros; a VM não foi reconferida nesta rodada.
+- Corrigida a contagem de cobranças por vencimento: `failed` com `dispatch_started_at` também consome o limite, pois pode ter chegado ao aluno. Falhas definitivas sem despacho e canceladas não contam. A consulta diária agora carrega status e marcador de despacho para aplicar essa regra.
+- Os três parâmetros de cobrança vencida exigem inteiros seguros maiores ou iguais a 1. Campos ausentes usam os padrões 1/7/3; vazios, nulos explícitos, frações e valores inválidos são recusados. Formulário explica o erro, hook verifica antes de salvar e motor interrompe a programação antes de inserir mensagens quando a configuração salva é inválida. A validação não foi estendida a todos os parâmetros das demais automações.
+- Baixa de falhas limitada a 1.000 IDs por operação, com aviso da quantidade restante; a próxima baixa depende de nova revisão/confirmação. Nenhuma mudança de schema.
+- Deno check sincronizou no `deno.lock` a declaração de zod com a versão 4 já presente no `package.json`; nenhum redirect ou hash de dependência Edge foi alterado.
+- Verificação: **550 testes em 80 arquivos**, tipos estritos, build, alcance e Deno check da função diária aprovados. ESLint conferido novamente após ajustar dependência de hook. Sem teste com WhatsApp real ou IA paga.
+- **Backend publicado com autorização do cliente:** `release-overdue-safety.py`, estado `/opt/workout-releases/20261027-overdue-safety`. Backup `20261027T174217Z`: cinco arquivos validados na VM, copiados para a pasta privada de backups deste computador pelo `sync-backup.ps1` e SHA256 conferidos. Troca somente de `_shared/paymentOverdue.ts` e `daily-automation/index.ts`, com hashes instalados iguais ao pacote. Seis verificações 401 aprovadas; gateway restabelecido e dois cron jobs retomados. Nenhuma migração. Retorno das funções pelo comando `rollback` do mesmo script; backup completo preservado. Frontend em publicação via GitHub Pages. A cópia completa do projeto para continuidade em outro PC ainda não foi comprovada.
+
 ## Automações e configurações — 27/10/2026 (publicado)
 
 - **Backend:** `ops/supabase-self-hosted/release-overdue-dismiss.py`, estado em `/opt/workout-releases/20261027-overdue-dismiss`. Backup `20261027T020339Z`, cinco arquivos verificados e copiados para `C:/Users/pejon/.codex/ssh-workout04/backups/20261027T020339Z` com SHA256 iguais. Migração `20261027010000_dismiss_reviewed_failures` (ensaiada com ROLLBACK antes). Edge: `_shared/paymentOverdue.ts`, `_shared/database.types.ts`, `daily-automation/index.ts`; smoke 401 em seis funções, incluindo `daily-automation`. Contagens preservadas; cron reativado.
@@ -21,7 +31,7 @@ O lote de 18/10 e as correções da revisão de design de 26/10 **estão em prod
 - **Revisão de design 26/10, agora publicada:** banner só acusa WhatsApp desconectado com estado `close`; "Nunca avaliados" conta só ativos no painel e na lista; Início com três ações coloridas, pendências clicáveis e números coloridos clicáveis abertos direto (sem `details`); inativos sem selo de prazo e fora dos destinatários por padrão; menu com Início/Alunos primeiro e status do WhatsApp no item; margem de 16px no celular.
 - **Recarga após deploy:** abas abertas pediam chunks do build anterior (404, tela "Não foi possível abrir esta tela"). A partir do commit seguinte, a tela recarrega sozinha uma vez quando o `index.html` publicado aponta para outro build; sem build novo confirmado, mantém o botão manual.
 
-Pendências: produção mostra 35 falhas de mensagem históricas para o dono conferir na Caixa de saída; textos confusos do parecer ("Fila de Vencidos", "PREVIEW", "Placeholders", "Enfileirar envio", título duplicado em Alunos); fallback de reengajamento 20 × 30 dias; destino externo de backup; tema escuro e teclado ainda sem conferência completa nas demais telas.
+Pendências: produção registra 35 falhas de mensagem históricas para o dono conferir na Caixa de saída (contagem não reconferida nesta rodada); textos confusos do parecer ("Fila de Vencidos", "PREVIEW", "Placeholders", "Enfileirar envio", título duplicado em Alunos); destino externo de backup; tema escuro e teclado ainda sem conferência completa nas demais telas. A divergência do fallback de reengajamento 20 × 30 dias foi resolvida na entrega acima.
 
 ## Lote local de produto — 18/10/2026
 

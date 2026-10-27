@@ -233,6 +233,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
   const dismissable = statusFilter === "failed"
     ? filterScheduledMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents).filter(m => m.status === "failed" && !m.dispatch_started_at)
     : [];
+  const dismissBatch = dismissable.slice(0, 1000);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -262,8 +263,9 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2"><CardTitle>Mensagens ({filteredCount})</CardTitle><div className="flex flex-wrap gap-2">{dismissable.length > 0 && <Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => setDismissIds(dismissable.map(m => m.id))}>Marcar como revisadas ({dismissable.length})</Button>}<Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => void fetchAll()}>Atualizar lista</Button></div></CardHeader>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2"><CardTitle>Mensagens ({filteredCount})</CardTitle><div className="flex flex-wrap gap-2">{dismissable.length > 0 && <Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => setDismissIds(dismissBatch.map(m => m.id))}>Marcar como revisadas ({dismissBatch.length})</Button>}<Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => void fetchAll()}>Atualizar lista</Button></div></CardHeader>
         <CardContent>
+          {dismissable.length > dismissBatch.length && <p className="mb-3 text-sm text-muted-foreground">A baixa é feita em lotes de até 1.000 falhas. Após conferir este lote, restarão outras {dismissable.length - dismissBatch.length} nesta consulta.</p>}
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

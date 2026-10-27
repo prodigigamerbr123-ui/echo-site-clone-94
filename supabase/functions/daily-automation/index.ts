@@ -13,7 +13,7 @@ import type { Database, Json } from "../_shared/database.types.ts";
 import { requireCronSecret } from "../_shared/auth.ts";
 import { resolveAutomationMessage } from "../_shared/messageTemplates.ts";
 import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
-import { COUNTED_OVERDUE_STATUSES, countOverdueAttempts, overdueAttemptsExhausted, overdueDaysLabel, overdueDaysPlaceholder } from "../_shared/paymentOverdue.ts";
+import { COUNTED_OVERDUE_STATUSES, countOverdueAttempts, overdueAttemptsExhausted, overdueDaysLabel, overdueDaysPlaceholder, readOverdueParams } from "../_shared/paymentOverdue.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -420,20 +420,12 @@ serve(async (req: Request) => {
     const overdueInserts: QueuedMessage[] = [];
     if (overdueOn) {
       const todaySP = spDateStrToday();
-      const overdueDaysAfter = Number(
-        getParam(settings, "payment_overdue", "days_after_due", 1),
-      );
-      const overdueRepeatEvery = Number(
-        getParam(settings, "payment_overdue", "repeat_every_days", 7),
-      );
-      // Sem limite, uma data não atualizada após o pagamento gerava cobrança para sempre.
-      const overdueMaxAttempts = Number(
-        getParam(settings, "payment_overdue", "max_attempts", 3),
-      );
+      const { days_after_due: overdueDaysAfter, repeat_every_days: overdueRepeatEvery, max_attempts: overdueMaxAttempts } =
+        readOverdueParams(settings.payment_overdue?.params ?? {});
       // Tentativas contam por vencimento: mensagens criadas para a data atual do aluno.
       const overdueHistory = await fetchAllRows((start, end) => supabase
         .from("scheduled_messages")
-        .select("student_id, source_payment_due_date")
+        .select("student_id, source_payment_due_date, status, dispatch_started_at")
         .eq("message_type", "payment_overdue")
         .in("status", COUNTED_OVERDUE_STATUSES)
         .order("id").range(start, end));

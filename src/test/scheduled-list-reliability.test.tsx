@@ -102,3 +102,14 @@ it("marks reviewed failures without sending and leaves possibly delivered ones o
   expect(mocks.update).not.toHaveBeenCalled();
   expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "1 falha(s) marcada(s) como revisada(s)" }));
 });
+
+it("limits reviewed failures to the server batch size and explains the remainder", async () => {
+  const rows = Array.from({ length: 1001 }, (_, index) => ({ ...message, id: `failure-${index}` }));
+  mocks.pages.mockReset().mockResolvedValueOnce(rows).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  mocks.rpc.mockResolvedValue({ data: { dismissed: 1000 }, error: null });
+  render(<ScheduledList statusFilter="failed" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Marcar como revisadas (1000)" }));
+  expect(screen.getByText(/restarão outras 1 nesta consulta/)).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Marcar como revisadas" }));
+  await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("dismiss_failed_messages_tx", { _ids: rows.slice(0, 1000).map(row => row.id) }));
+});
