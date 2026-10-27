@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Suspense } from "react";
 import { MemoryRouter, Routes, Route, Link } from "react-router-dom";
 import { RouteErrorBoundary } from "@/components/layout/RouteErrorBoundary";
-import { lazyPage, PageImportError } from "@/lib/lazyPage";
+import { lazyPage, PageImportError, reloadIfNewerBuild } from "@/lib/lazyPage";
 
 const suppressExpectedError = (event: ErrorEvent) => {
   if (event.error instanceof PageImportError || event.error?.message === "private-server-detail") event.preventDefault();
@@ -40,5 +40,33 @@ describe("route recovery", () => {
     render(<MemoryRouter><RouteErrorBoundary><Suspense fallback={<p>Carregando</p>}><Page /></Suspense></RouteErrorBoundary></MemoryRouter>);
     expect(await screen.findByRole("heading",{ name: "Página carregada" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("reload after a new deploy", () => {
+  const page = (entry: string) => ({ ok: true, text: async () => `<script type="module" src="/assets/${entry}"></script>` }) as Response;
+  let script: HTMLScriptElement;
+  beforeEach(() => {
+    sessionStorage.clear();
+    script = document.createElement("script");
+    script.src = "https://workout.test/assets/index-old111.js";
+    document.head.appendChild(script);
+  });
+  afterEach(() => script.remove());
+
+  it("reloads once when a newer build is published, never twice for the same build", async () => {
+    const reload = vi.fn();
+    const fetcher = vi.fn().mockResolvedValue(page("index-new222.js"));
+    expect(await reloadIfNewerBuild(reload, fetcher)).toBe(true);
+    expect(await reloadIfNewerBuild(reload, fetcher)).toBe(false);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the manual screen when the published build is unchanged or unreachable", async () => {
+    const reload = vi.fn();
+    expect(await reloadIfNewerBuild(reload, vi.fn().mockResolvedValue(page("index-old111.js")))).toBe(false);
+    expect(await reloadIfNewerBuild(reload, vi.fn().mockRejectedValue(new Error("offline")))).toBe(false);
+    expect(await reloadIfNewerBuild(reload, vi.fn().mockResolvedValue({ ok: false } as Response))).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
   });
 });

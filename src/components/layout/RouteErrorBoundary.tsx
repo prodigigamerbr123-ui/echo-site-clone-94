@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { PageImportError } from "@/lib/lazyPage";
+import { PageImportError, reloadIfNewerBuild } from "@/lib/lazyPage";
 
 type Props = { children: ReactNode; resetKey: string; onReload?: () => void };
 
@@ -9,6 +9,10 @@ class PageBoundary extends Component<Props, { error: Error | null }> {
   state: { error: Error | null } = { error: null };
 
   static getDerivedStateFromError(error: Error) { return { error }; }
+
+  componentDidCatch(error: Error) {
+    if (error instanceof PageImportError) void reloadIfNewerBuild(this.props.onReload ?? (() => window.location.reload()));
+  }
 
   componentDidUpdate(previous: Props) {
     if (this.state.error && previous.resetKey !== this.props.resetKey) this.setState({ error: null });
@@ -33,7 +37,7 @@ class PageBoundary extends Component<Props, { error: Error | null }> {
   }
 }
 
-/** A failed route does not poison navigation to another screen. Never reload in a loop. */
+/** A failed route does not poison navigation to another screen. Reloads at most once per newer build, never in a loop. */
 export function RouteErrorBoundary({ children, onReload }: { children: ReactNode; onReload?: () => void }) {
   const location = useLocation();
   return <PageBoundary resetKey={location.pathname + location.search} onReload={onReload}>{children}</PageBoundary>;

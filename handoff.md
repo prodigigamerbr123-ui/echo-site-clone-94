@@ -1,6 +1,20 @@
 # Workout — handoff e pendências consolidadas
 
-Atualização: 18/10/2026. Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
+Atualização: 27/10/2026 (seção mais recente logo abaixo; o restante é histórico de 18/10). Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
+
+## Publicado em produção — 27/10/2026
+
+O lote de 18/10 e as correções da revisão de design de 26/10 **estão em produção**. A seção "Lote local de produto" abaixo é histórica: não reaplicar as migrações.
+
+- **Backend (VM):** script `ops/supabase-self-hosted/release-student-batch.py` (prepare/apply/resume), estado em `/opt/workout-releases/20261026-student-batch`. Ensaio das seis migrações em transação desfeita antes da aplicação. Aplicadas numa única transação e registradas em `schema_migrations`: `20261015210000`, `20261018210000`, `20261018220000`, `20261018230000`, `20261019000000`, `20261026000000`. Contagens preservadas (3 alunos, 2 avaliações, 62 mensagens).
+- **Edge:** `_shared/aiDashboard.ts`, `_shared/contactPreference.ts`, `_shared/database.types.ts`, `_shared/evaluationPolicy.ts`, `daily-automation/index.ts`, `send-oneshot/index.ts`; hashes conferidos com o manifesto e smoke 401 sem autenticação nas cinco funções verificadas. A divergência anterior da VM em `daily-automation` (só CRLF) e `database.types.ts` (só tipo) foi sobrescrita.
+- **Backup:** `20261027T013019Z`, cinco arquivos verificados na VM e copiados para `C:/Users/pejon/.codex/ssh-workout04/backups/20261027T013019Z` com SHA256 iguais. A cópia foi feita por SSH, não por `sync-backup.ps1`, então `last-sync.txt` não foi atualizado por esta execução. Retorno do schema = restaurar esse backup; o `rollback` do script só repõe as funções e a operação.
+- **Janela:** gateway público em 503 e os dois cron jobs pausados durante prepare/apply; ambos reativados no resume.
+- **Frontend:** `main` em `9acc4c7` (workflows de `62fac8f`, `fb9f7e1` e `9acc4c7` aprovados). `zod` atualizado para 4.6.7 por GHSA-mrhx-c7xc-m3w5 (alto, publicado após 15/10; o pacote não é importado). Telas Início, Alunos, Agenda e Mensagens conferidas em produção após recarregar.
+- **Revisão de design 26/10, agora publicada:** banner só acusa WhatsApp desconectado com estado `close`; "Nunca avaliados" conta só ativos no painel e na lista; Início com três ações coloridas, pendências clicáveis e números coloridos clicáveis abertos direto (sem `details`); inativos sem selo de prazo e fora dos destinatários por padrão; menu com Início/Alunos primeiro e status do WhatsApp no item; margem de 16px no celular.
+- **Recarga após deploy:** abas abertas pediam chunks do build anterior (404, tela "Não foi possível abrir esta tela"). A partir do commit seguinte, a tela recarrega sozinha uma vez quando o `index.html` publicado aponta para outro build; sem build novo confirmado, mantém o botão manual.
+
+Pendências: produção mostra 35 falhas de mensagem históricas para o dono conferir na Caixa de saída; textos confusos do parecer ("Fila de Vencidos", "PREVIEW", "Placeholders", "Enfileirar envio", título duplicado em Alunos); fallback de reengajamento 20 × 30 dias; destino externo de backup; tema escuro e teclado ainda sem conferência completa nas demais telas.
 
 ## Lote local de produto — 18/10/2026
 
