@@ -2,6 +2,13 @@
 
 Atualização: 27/10/2026 (seção mais recente logo abaixo; o restante é histórico de 18/10). Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
 
+## Automações e configurações — 27/10/2026 (publicado)
+
+- **Backend:** `ops/supabase-self-hosted/release-overdue-dismiss.py`, estado em `/opt/workout-releases/20261027-overdue-dismiss`. Backup `20261027T020339Z`, cinco arquivos verificados e copiados para `C:/Users/pejon/.codex/ssh-workout04/backups/20261027T020339Z` com SHA256 iguais. Migração `20261027010000_dismiss_reviewed_failures` (ensaiada com ROLLBACK antes). Edge: `_shared/paymentOverdue.ts`, `_shared/database.types.ts`, `daily-automation/index.ts`; smoke 401 em seis funções, incluindo `daily-automation`. Contagens preservadas; cron reativado.
+- **Cobrança de vencido:** para após `max_attempts` por vencimento (padrão 3; conta pending/processing/sent/uncertain com o mesmo `source_payment_due_date`). Acima de 30 dias o texto diz "mais de 30 dias".
+- **Falhas:** `dismiss_failed_messages_tx` (admin/recepção) marca falhas sem `dispatch_started_at` como canceladas, prefixando o motivo com "Falha revisada:". Botão "Marcar como revisadas" na aba Falhas. As 35 falhas antigas continuam aguardando a baixa pelo dono.
+- **Configurações:** removido o grupo Sistema (três interruptores sem efeito). **Reengajamento:** descrição corrigida (uma mensagem X dias após inativar) e padrão único de 30 dias.
+
 ## Publicado em produção — 27/10/2026
 
 O lote de 18/10 e as correções da revisão de design de 26/10 **estão em produção**. A seção "Lote local de produto" abaixo é histórica: não reaplicar as migrações.
