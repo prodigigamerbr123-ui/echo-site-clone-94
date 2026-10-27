@@ -2,6 +2,14 @@
 
 Atualização: 27/10/2026 (seção mais recente logo abaixo; o restante é histórico de 18/10). Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
 
+## Horário diário e lista de alunos — 27/10/2026
+
+- Pedido do cliente: motor diário a partir da meia-noite e importação da lista atualizada. Horário aplicado na VM: `daily-automation` mudou de `0 11 * * *` para `0 3 * * *`, com `cron.timezone=GMT` (00h de Brasília). Primeira execução no novo horário prevista para 28/10/2026 às 00h; ainda não observada. Worker continua `* * * * *`, ambos ativos. Não houve disparo manual nem alteração dos horários de envio gerados pelo motor (atualmente 12h–15h de Brasília).
+- Migração `20261027020000_daily_automation_midnight.sql`: ensaiada com ROLLBACK e depois aplicada em transação, registrada no catálogo. Comandos e flags dos jobs comparados antes/depois e preservados. Executar como proprietário dos jobs (`supabase_admin` na VM). O helper `configure_automation_cron()` não existe nesta VM; migração também adapta o helper nos ambientes em que estiver presente.
+- Backup prévio `20261027T184100Z`, copiado pelo `sync-backup.ps1` e SHA256 conferidos. Retorno de horário: como proprietário do job, executar `SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE jobname='daily-automation'), schedule := '0 11 * * *');`; em ambiente com helper, repor também o literal anterior na definição do helper. Não recriar jobs com comandos autenticados copiados para logs.
+- Banco tem 3 alunos. Não foi localizada uma lista atualizada nos arquivos consultados do projeto, Downloads e pasta antiga da academia. Os CSVs de Supabase em Downloads têm cabeçalhos de metadados de backup. Solicitado ao cliente o nome/caminho da lista. **Nenhum aluno foi importado**; não usar as fixtures da prévia como cadastro real nem inventar datas ou telefones.
+- Rótulos de automação que ainda dizem “pela manhã” no catálogo não refletem o novo horário de preparação da fila; ajustar na próxima revisão do frontend.
+
 ## Correções após revisão da Claude — 27/10/2026 (publicado e conferido)
 
 - Revisão do histórico e do código em `docs/REVISAO-CLAUDE-2026-10-27.md`. A publicação descrita abaixo foi lida nos registros; a VM não foi reconferida nesta rodada.
