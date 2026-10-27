@@ -2,7 +2,7 @@
 
 ## Base e limites
 
-**Continuação:** os achados P1, P2 (parâmetros de cobrança vencida) e P3 abaixo receberam correções locais em 27/10; permanecem nesta seção como registro do diagnóstico original. Ver a seção mais recente do `handoff.md`. Foram aprovados 550 testes/80 arquivos, tipos, build, alcance e Deno check. Não houve publicação das correções. Validação dos parâmetros de outras automações continua fora deste lote.
+**Continuação:** os achados P1, P2 (parâmetros de cobrança vencida) e P3 abaixo foram corrigidos e publicados em 27/10 com autorização do cliente; permanecem nesta seção como registro do diagnóstico original. Ver a seção mais recente do `handoff.md`: commit `e7eb7fa`, workflow `40553258706` aprovado e backup `20261027T174217Z` copiado e verificado. Foram aprovados 550 testes/80 arquivos, tipos, lint, build, alcance e Deno check. Funções instaladas e quatro assets públicos conferidos por hash; cron jobs reativados. Validação dos parâmetros de outras automações continua fora deste lote; próximo ciclo natural ainda não observado.
 
 Revisão do histórico entre `a99d3a2` e `01cd7a0`, com foco nas alterações próprias da rodada de 26/10 e na integração do lote anterior. O commit `57108d8` incorporou o trabalho local de alunos, avaliações e mensagens; não representa trabalho inteiramente novo da Claude. No início desta revisão, apenas `.claude/` estava fora do Git, sem alterações rastreadas pendentes.
 
