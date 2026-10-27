@@ -2,7 +2,18 @@
 
 Atualização: 27/10/2026 (seção mais recente logo abaixo; o restante é histórico de 18/10). Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
 
-## Horário diário e lista de alunos — 27/10/2026
+## Importação de alunos — 27/10/2026 (concluída)
+
+- Cliente confirmou importar a lista geral de vários anos, deixar todos os importados ativos e não programar mensagens. Fonte localizada: `D:/bkp outubro 2026/Desktop/bkp 0910/downloads/Todos os Clientes.csv`, salva em 15/07/2026, SHA256 `df4a0988c2a214a44aae6dd4c01b308400cf90eb0e295280639da4222d99923c`.
+- **1.357 alunos inseridos**, 3 existentes preservados, **1.360 no total**. Das 1.362 linhas, 4 identidades repetidas na fonte e 1 linha sem nome foram descartadas. Homônimos ou contatos compartilhados não foram fundidos automaticamente.
+- Todos os 1.357 importados têm `status=active`, `messages_enabled=false` e **zero mensagens na fila**. Fila anterior e registros existentes comparados por hash na transação e preservados. Nova execução em ensaio retornou zero inserções, sem duplicar cadastros.
+- Campos preservados: nome, cidade, plano original e data de cadastro do sistema anterior como `created_at` (precisão apenas de data, meia-noite Brasília). Quando há vários telefones, primeiro número brasileiro válido é o principal; origem completa permanece no CSV privado. Telefone vazio/inválido não foi inventado. Não foram preenchidos aniversário, vencimento, matrícula real ou datas de avaliação ausentes; avaliação anterior permanece desconhecida (`had_evaluation=NULL`). Planos múltiplos/legados conservados como texto original para conferência.
+- Corrigida divergência da VM: antiga constraint `students_phone_key` impedia contatos compartilhados que o formulário já permite. Migração `20261027030000_allow_shared_student_phones.sql` aplicada atomicamente com a importação, mantendo índice não único por telefone. Nenhuma mudança de frontend necessária.
+- Backup anterior `20261027T185217Z`, validado e copiado por `sync-backup.ps1` com SHA256. Dados brutos, relatório, IDs e SQL de retorno ficam fora do Git em `/home/ubuntu/workout-student-import-20261027/` (pasta privada). Importador genérico em `ops/supabase-self-hosted/import-student-csv.py`; ensaio com ROLLBACK, aplicação e verificação independente aprovados. Retorno de dados recente: revisar `rollback-import.sql` antes de executar; após uso, exclusão dos novos alunos pode apagar registros dependentes. Backup completo é a alternativa de restauração do estado anterior/schema.
+- Não ativar mensagens em lote sem nova decisão do dono; os cadastros incluem ex-alunos e não comprovam matrícula, dívida ou consentimento atual para contato.
+- Backup posterior `20261027T185354Z`, também copiado e SHA256 conferidos, contém os cadastros importados.
+
+## Horário diário e busca inicial da lista — 27/10/2026 (histórico; lista importada acima)
 
 - Pedido do cliente: motor diário a partir da meia-noite e importação da lista atualizada. Horário aplicado na VM: `daily-automation` mudou de `0 11 * * *` para `0 3 * * *`, com `cron.timezone=GMT` (00h de Brasília). Primeira execução no novo horário prevista para 28/10/2026 às 00h; ainda não observada. Worker continua `* * * * *`, ambos ativos. Não houve disparo manual nem alteração dos horários de envio gerados pelo motor (atualmente 12h–15h de Brasília).
 - Migração `20261027020000_daily_automation_midnight.sql`: ensaiada com ROLLBACK e depois aplicada em transação, registrada no catálogo. Comandos e flags dos jobs comparados antes/depois e preservados. Executar como proprietário dos jobs (`supabase_admin` na VM). O helper `configure_automation_cron()` não existe nesta VM; migração também adapta o helper nos ambientes em que estiver presente.
