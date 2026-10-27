@@ -34,7 +34,7 @@ export function formatPhoneBR(rawPhone: string | null | undefined): FormatPhoneR
 
 /** Substitui {nome} pelo nome do aluno (case-insensitive). */
 export function replaceNameVar(content: string, name: string): string {
-  return content.replace(/\{nome\}/gi, name);
+  return content.replace(/\{nome\}/gi, () => name);
 }
 
 export function hasNameVar(content: string): boolean {

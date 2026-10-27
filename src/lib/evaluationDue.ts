@@ -19,12 +19,12 @@ export function elapsedEvaluationDays(reference: string, now: number): number {
 
 /** Same elapsed-time boundaries as daily-automation; no browser timezone arithmetic. */
 export function needsEvaluation(
-  student: Pick<Tables<"students">, "status" | "had_evaluation" | "last_evaluation_date" | "created_at">,
+  student: Pick<Tables<"students">, "status" | "had_evaluation" | "last_evaluation_date" | "created_at"> & { enrollment_date?: string | null },
   daysOverdue: number,
   hasFutureEvaluation: boolean,
   now: number,
 ): boolean {
   if (student.status !== "active" || hasFutureEvaluation) return false;
   if (student.last_evaluation_date) return elapsedEvaluationDays(student.last_evaluation_date, now) > daysOverdue;
-  return !student.had_evaluation && elapsedEvaluationDays(student.created_at, now) > 14;
+  return !student.had_evaluation && elapsedEvaluationDays(student.enrollment_date ? `${student.enrollment_date}T00:00:00-03:00` : student.created_at, now) > 14;
 }

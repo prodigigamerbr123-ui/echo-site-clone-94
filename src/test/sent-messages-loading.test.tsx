@@ -10,6 +10,17 @@ vi.mock("@/components/mensagens/MessagesList", () => ({ default: () => <p>Histó
 const clients: QueryClient[] = [];
 afterEach(() => { cleanup(); clients.splice(0).forEach(c => c.clear()); vi.resetAllMocks(); });
 
+it("refreshes the history on demand and updates its count", async () => {
+  mocks.pages.mockResolvedValue([]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
+  render(<QueryClientProvider client={client}><MensagensEnviadasTab /></QueryClientProvider>);
+  const refresh = await screen.findByRole("button", { name: "Atualizar histórico" });
+  expect(screen.getByRole("tab", { name: "Enviadas (0)" })).toBeVisible();
+  mocks.pages.mockResolvedValueOnce([{ id: "new", student_id: "a", content: "Fixture", status: "sent", sent_at: new Date().toISOString() }]).mockResolvedValueOnce([]);
+  fireEvent.click(refresh);
+  expect(await screen.findByRole("tab", { name: "Enviadas (1)" })).toBeVisible();
+});
+
 it.each([0, 1])("does not present partial data as an empty history when query %i fails", async (failed) => {
   mocks.pages.mockImplementationOnce(() => failed === 0 ? Promise.reject(new Error("offline")) : Promise.resolve([]))
     .mockImplementationOnce(() => failed === 1 ? Promise.reject(new Error("offline")) : Promise.resolve([]));

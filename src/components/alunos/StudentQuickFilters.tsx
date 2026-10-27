@@ -9,11 +9,8 @@ type Props = Pick<ReturnType<typeof useStudentListFilters>,
 
 export function StudentQuickFilters({ students, pendingByStudent, isActive, isBirthdayThisMonth, paymentFilter, setPaymentFilter, statusFilter, setStatusFilter, flagFilter, setFlagFilter }: Props) {
   const activeList = (students || []).filter(isActive);
-  const overdueCount = activeList.filter((s) => paymentStatus(s.payment_due_date)?.label === "Vencido").length;
-  const dueSoonCount = activeList.filter((s) => {
-    const l = paymentStatus(s.payment_due_date)?.label || "";
-    return l.startsWith("Vence em");
-  }).length;
+  const overdueCount = activeList.filter((s) => paymentStatus(s.payment_due_date)?.key === "overdue").length;
+  const dueSoonCount = activeList.filter((s) => paymentStatus(s.payment_due_date)?.key === "due_soon").length;
   const birthdayCount = activeList.filter(isBirthdayThisMonth).length;
   const noEvalCount = activeList.filter((s) => !s.had_evaluation).length;
   const pendingCount = activeList.filter((s) => (pendingByStudent[s.id] || 0) > 0).length;
@@ -22,7 +19,7 @@ export function StudentQuickFilters({ students, pendingByStudent, isActive, isBi
   const chips: Chip[] = [
     {
       key: "overdue",
-      label: "Vencidos",
+      label: "Prazo vencido",
       count: overdueCount,
       cls: "border-red-500/40 text-red-600 hover:bg-red-500/10",
       active: paymentFilter === "overdue" && statusFilter === "active",
@@ -34,7 +31,7 @@ export function StudentQuickFilters({ students, pendingByStudent, isActive, isBi
     },
     {
       key: "due_soon",
-      label: "Vence em 3d",
+      label: "Vence em até 3d",
       count: dueSoonCount,
       cls: "border-amber-500/40 text-amber-600 hover:bg-amber-500/10",
       active: paymentFilter === "due_soon" && statusFilter === "active",
@@ -54,11 +51,16 @@ export function StudentQuickFilters({ students, pendingByStudent, isActive, isBi
     },
     {
       key: "no_eval",
-      label: "Sem avaliação",
+      label: "Nunca avaliados",
       count: noEvalCount,
       cls: "border-blue-500/40 text-blue-600 hover:bg-blue-500/10",
-      active: flagFilter === "no_evaluation",
-      onClick: () => setFlagFilter(flagFilter === "no_evaluation" ? "none" : "no_evaluation"),
+      active: flagFilter === "no_evaluation" && statusFilter === "active",
+      onClick: () => {
+        // O número conta só ativos; o filtro precisa mostrar a mesma lista.
+        const on = flagFilter === "no_evaluation" && statusFilter === "active";
+        setFlagFilter(on ? "none" : "no_evaluation");
+        setStatusFilter(on ? "all" : "active");
+      },
     },
     {
       key: "pending",

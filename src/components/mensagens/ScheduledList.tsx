@@ -1,3 +1,4 @@
+import { useAgendaClock } from "@/hooks/useAgendaClock";
 import MessageFilters from "@/components/agendarmensagem/MessageFilters";
 import MessagesList from "@/components/agendarmensagem/MessagesList";
 import { filterScheduledMessages, getFilteredMessagesCount } from "@/components/agendarmensagem/scheduledMessageFilters";
@@ -16,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { errorMessage } from "@/lib/errorMessage";
+import { hasUncertainDelivery, UNCERTAIN_DELIVERY_FILTER } from "@/lib/messageDeliveryState";
 import { fmtDateISOSP, fmtTimeSP, spDate } from "@/lib/spTime";
 import { Clock, Filter } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -35,14 +37,15 @@ interface ScheduledMessage {
   dispatch_started_at?: string | null;
   students?: { name: string; phone: string };
 }
-interface Student { id: string; name: string; phone: string; }
+interface Student { id: string; name: string; phone: string; messages_enabled?: boolean; }
 
 interface Props {
-  statusFilter: "pending" | "failed" | "processing" | "cancelled";
+  statusFilter: "pending" | "failed" | "processing" | "cancelled" | "uncertain";
   emptyLabel?: string;
 }
 
 export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
+  useAgendaClock();
   const { toast } = useToast();
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -70,12 +73,13 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
     setLoadError(false);
     try {
       const [loadedMessages, loadedStudents] = await Promise.all([
-        fetchAllPages((from, to) => supabase.from("scheduled_messages")
-          .select("*, students(name, phone)", { count: "exact" })
-          .eq("status", statusFilter)
-          .order("scheduled_for", { ascending: true }).order("id").range(from, to)),
+        fetchAllPages((from, to) => {
+          const query = supabase.from("scheduled_messages").select("*, students(name, phone)", { count: "exact" });
+          const filtered = statusFilter === "uncertain" ? query.or(UNCERTAIN_DELIVERY_FILTER) : query.eq("status", statusFilter);
+          return filtered.order("scheduled_for", { ascending: true }).order("id").range(from, to);
+        }),
         fetchAllPages((from, to) => supabase.from("students")
-          .select("id, name, phone", { count: "exact" }).order("name").order("id").range(from, to)),
+          .select("id, name, phone, messages_enabled", { count: "exact" }).order("name").order("id").range(from, to)),
       ]);
       if (version !== requestVersion.current) return;
       setMessages(loadedMessages);
@@ -123,7 +127,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
       toast({ title: "Edite pela agenda", description: "Os lembretes vinculados são atualizados junto com a avaliação." });
       return;
     }
-    if (m.dispatch_started_at || m.status === "processing" || m.status === "cancelled") {
+    if (m.dispatch_started_at || !["pending", "failed"].includes(m.status)) {
       toast({ title: "Mensagem não pode ser editada", description: "O envio já começou ou foi cancelado." });
       return;
     }
@@ -141,13 +145,15 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
     const [hh, mi] = (editTime || "00:00").split(":").map(Number);
     const dt = spDate(y, (mo || 1) - 1, day || 1, hh || 0, mi || 0);
     if (!Number.isFinite(dt.getTime()) || dt <= new Date() || !editContent.trim() || !editStudent) return toast({ title: "A data deve ser futura", variant: "destructive" });
+    if (students.find(student => student.id === editStudent)?.messages_enabled === false) return toast({ title: "Mensagens desativadas para este aluno", description: "Confira a preferência na ficha antes de preparar um envio.", variant: "destructive" });
     await mutate(async () => {
       const { data: updated, error } = await supabase.from("scheduled_messages").update({
         student_id: editStudent, content: editContent.trim(),
         scheduled_for: dt.toISOString(), status: "pending",
-      }).eq("id", editingMessage.id).eq("status", editingMessage.status).is("dispatch_started_at", null).select("id").maybeSingle();
+      }).eq("id", editingMessage.id).eq("status", editingMessage.status).is("dispatch_started_at", null).select("id,status").maybeSingle();
       if (error) throw error;
       if (!updated) throw new Error("A mensagem mudou. Atualize a lista antes de editar.");
+      if (updated.status === "cancelled") throw new Error("Envio cancelado: o aluno está com mensagens desativadas. Atualize a lista.");
       toast({ title: "Atualizada" });
       setEditingMessage(null);
       await fetchAll();
@@ -171,6 +177,11 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
   };
 
   const handleRetry = async (id: string) => {
+    const target = messages.find(message => message.id === id);
+    if (students.find(student => student.id === target?.student_id)?.messages_enabled === false) {
+      toast({ title: "Mensagens desativadas para este aluno", description: "A tentativa anterior foi preservada. Confira a preferência na ficha.", variant: "destructive" });
+      return;
+    }
     if (messages.find((m) => m.id === id)?.dispatch_started_at) {
       toast({ title: "Confira no WhatsApp", description: "A entrega é incerta. Depois de conferir, componha um novo envio manual se necessário.", variant: "destructive" });
       return;
@@ -181,9 +192,10 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
         scheduled_for: new Date(Date.now() + 60 * 1000).toISOString(),
         retry_count: 0,
         failure_reason: null,
-      }).eq("id", id).eq("status", "failed").is("dispatch_started_at", null).select("id").maybeSingle();
+      }).eq("id", id).eq("status", "failed").is("dispatch_started_at", null).select("id,status").maybeSingle();
       if (error) throw error;
       if (!retried) throw new Error("A mensagem mudou. Atualize a lista antes de reenviar.");
+      if (retried.status === "cancelled") throw new Error("Envio cancelado: o aluno está com mensagens desativadas. Atualize a lista.");
       toast({ title: "Reenfileirada — próxima tentativa em 1 min" });
       await fetchAll();
     });
@@ -198,7 +210,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
         customDateRange,
         selectedStudents,
       );
-      setSelectedMessages(filtered.map(m => m.id));
+      setSelectedMessages(filtered.filter(m => !hasUncertainDelivery(m) && !m.dispatch_started_at && ["pending", "failed", "processing"].includes(m.status)).map(m => m.id));
     } else setSelectedMessages([]);
   };
 
@@ -232,7 +244,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Mensagens ({filteredCount})</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2"><CardTitle>Mensagens ({filteredCount})</CardTitle><Button variant="outline" size="sm" disabled={saving || !!editingMessage} onClick={() => void fetchAll()}>Atualizar lista</Button></CardHeader>
         <CardContent>
           {messages.length === 0 ? (
             <div className="text-center py-12">
@@ -242,6 +254,7 @@ export default function ScheduledList({ statusFilter, emptyLabel }: Props) {
           ) : (
             <fieldset disabled={saving} aria-busy={saving}>
             <MessagesList
+              readOnly={statusFilter === "uncertain"}
               messages={messages}
               searchTerm={searchTerm} dateFilter={dateFilter}
               customDateRange={customDateRange} selectedStudents={selectedStudents}

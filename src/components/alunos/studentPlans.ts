@@ -11,3 +11,7 @@ export const PLAN_OPTIONS = [
   "Desconto Funcionários AME",
   "Convênio Talento confecções",
 ];
+
+// Legacy plans remain available when editing existing registrations.
+export const REGISTRATION_PLAN_OPTIONS = PLAN_OPTIONS.slice(0, 6);
+export const BENEFIT_OPTIONS = PLAN_OPTIONS.slice(7);

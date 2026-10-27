@@ -18,7 +18,7 @@ export const COLUMN_DEFS: { key: ColumnKey; label: string }[] = [
   { key: "plan", label: "Plano" },
   { key: "created", label: "Cadastrado em" },
   { key: "dueDate", label: "Vencimento" },
-  { key: "payment", label: "Pagamento" },
+  { key: "payment", label: "Situação do prazo" },
   { key: "lastEval", label: "Última avaliação" },
   { key: "status", label: "Status" },
 ];

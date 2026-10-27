@@ -1,14 +1,26 @@
 import { paymentStatus, type Student } from "@/components/alunos/studentListModel";
 import { spParts } from "@/lib/spTime";
 import { matchesStudentSearch } from "@/lib/studentSearch";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export function useStudentListFilters(students: Student[] | undefined, pendingScheduled: { student_id: string }[]) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [paymentFilter, setPaymentFilter] = useState<"all" | "overdue" | "due_soon" | "ok" | "none">("all");
+type PaymentFilter = "all" | "overdue" | "due_soon" | "upcoming" | "none";
+const paymentFilters: readonly string[] = ["all", "overdue", "due_soon", "upcoming", "none"];
+
+export function useStudentListFilters(students: Student[] | undefined, pendingScheduled: { student_id: string }[], initialSearch = "", initialFilters: { payment?: string | null; status?: string | null; evaluation?: string | null } = {}) {
+  const requestedPayment = paymentFilters.includes(initialFilters.payment ?? "") ? initialFilters.payment as PaymentFilter : "all";
+  const requestedStatus = initialFilters.status === "active" || initialFilters.status === "inactive" ? initialFilters.status : "all";
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  // Navigation can change ?busca= without remounting the student list.
+  // Only URL changes should replace text typed directly in the search field.
+  useEffect(() => { setSearchTerm(initialSearch); }, [initialSearch]);
+  const [statusFilter, setStatusFilter] = useState<string>(requestedStatus);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>(requestedPayment);
+  useEffect(() => { setPaymentFilter(requestedPayment); }, [requestedPayment]);
+  useEffect(() => { setStatusFilter(requestedStatus); }, [requestedStatus]);
   const [planFilter, setPlanFilter] = useState<string>("all");
-  const [flagFilter, setFlagFilter] = useState<"none" | "birthday_month" | "no_evaluation" | "pending_messages">("none");
+  const requestedFlag = initialFilters.evaluation === "nunca" ? "no_evaluation" : "none";
+  const [flagFilter, setFlagFilter] = useState<"none" | "birthday_month" | "no_evaluation" | "pending_messages">(requestedFlag);
+  useEffect(() => { setFlagFilter(requestedFlag); }, [requestedFlag]);
   const [sortBy, setSortBy] = useState<"recent" | "name" | "due" | "last_eval">("recent");
   const pendingByStudent = pendingScheduled.reduce((acc: Record<string, number>, m) => {
     acc[m.student_id] = (acc[m.student_id] || 0) + 1;
@@ -26,11 +38,13 @@ export function useStudentListFilters(students: Student[] | undefined, pendingSc
 
   const matchesPayment = (s: Student) => {
     if (paymentFilter === "all") return true;
-    const ps = paymentStatus(s.payment_due_date);
     if (paymentFilter === "none") return !s.payment_due_date;
-    if (paymentFilter === "overdue") return ps?.label === "Vencido";
-    if (paymentFilter === "due_soon") return !!ps && ps.label.startsWith("Vence em");
-    if (paymentFilter === "ok") return ps?.label === "Em dia";
+    // Inativos não entram em filtros de prazo, igual aos selos e contadores.
+    if (!isActive(s)) return false;
+    const ps = paymentStatus(s.payment_due_date);
+    if (paymentFilter === "overdue") return ps?.key === "overdue";
+    if (paymentFilter === "due_soon") return ps?.key === "due_soon";
+    if (paymentFilter === "upcoming") return ps?.key === "upcoming";
     return true;
   };
 

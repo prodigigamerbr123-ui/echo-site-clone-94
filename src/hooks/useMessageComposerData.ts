@@ -13,7 +13,7 @@ export function useMessageComposerData() {
     queryFn: async () => {
       const [students, templates, automationIds] = await Promise.all([
         fetchAllPages((from, to) => supabase.from("students")
-          .select("id, name, phone, had_evaluation", { count: "exact" }).order("name").order("id").range(from, to)),
+          .select("id, name, phone, had_evaluation, messages_enabled, status", { count: "exact" }).order("name").order("id").range(from, to)),
         fetchAllPages((from, to) => supabase.from("predefined_messages")
           .select("*", { count: "exact" }).order("title").order("id").range(from, to)),
         fetchAutomationTemplateIds(),

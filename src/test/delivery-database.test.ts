@@ -37,6 +37,7 @@ beforeAll(async () => {
     "20260716001135_a7b256e3-eb46-469e-946f-327e1ff5672a.sql", "20260720173525_5ce1ace5-ed78-4ef4-9311-b05aa0369d32.sql",
     "20260722230830_8f9d7b8f-b14d-48b2-a27d-59eeb3b651f6.sql",
     "20261011010000_stabilize_message_queue.sql", "20261011020000_atomic_evaluation_actions.sql",
+    "20261018210000_cancel_outdated_payment_reminders.sql",
   ];
   for (const file of files) {
     const sql = readFileSync(resolve("supabase/migrations", file), "utf8").replace(/CREATE EXTENSION IF NOT EXISTS pg_(cron|net);/g, "");
@@ -133,7 +134,31 @@ describe("queue lifecycle in PostgreSQL", () => {
   it("cancels a payment reminder when its due date changes", async () => {
     const id = await insertMessage("payment_reminder_due");
     await db.exec("SELECT * FROM claim_due_scheduled_messages(3); UPDATE students SET payment_due_date=current_date+30");
+    expect(await scalar<string>("SELECT status AS result FROM scheduled_messages WHERE id=$1", [id])).toBe("cancelled");
+    expect(await scalar<string>("SELECT failure_reason AS result FROM scheduled_messages WHERE id=$1", [id])).toBe("Vencimento alterado");
     expect(await prepare(id)).toBeNull();
+  });
+  it("cancels only pending payment reminders and preserves manual messages", async () => {
+    const due = await insertMessage("payment_reminder_due");
+    const before = await insertMessage("payment_reminder_before");
+    const manual = await insertMessage("manual");
+    await db.exec("UPDATE students SET payment_due_date=current_date+7");
+    expect(await scalar<number>("SELECT count(*)::int AS result FROM scheduled_messages WHERE status='cancelled' AND message_type LIKE 'payment_%'")).toBe(2);
+    expect(await scalar<string>("SELECT status AS result FROM scheduled_messages WHERE id=$1", [due])).toBe("cancelled");
+    expect(await scalar<string>("SELECT status AS result FROM scheduled_messages WHERE id=$1", [before])).toBe("cancelled");
+    expect(await scalar<string>("SELECT status AS result FROM scheduled_messages WHERE id=$1", [manual])).toBe("pending");
+  });
+  it("does not cancel reminders when the due date remains unchanged", async () => {
+    const id = await insertMessage("payment_reminder_due");
+    await db.exec("UPDATE students SET payment_due_date=payment_due_date");
+    expect(await scalar<string>("SELECT status AS result FROM scheduled_messages WHERE id=$1", [id])).toBe("pending");
+  });
+  it("keeps a payment notification already handed to the provider", async () => {
+    const id = await insertMessage("payment_overdue");
+    // Simulate the handoff timestamp; delivery eligibility is covered above.
+    await db.query("UPDATE scheduled_messages SET status='processing', dispatch_started_at=now() WHERE id=$1", [id]);
+    await db.exec("UPDATE students SET payment_due_date=current_date+7");
+    expect(await scalar<string>("SELECT status AS result FROM scheduled_messages WHERE id=$1", [id])).toBe("processing");
   });
   it("preserves an in-flight send when cancellation arrives after dispatch begins", async () => {
     await createEvaluation();

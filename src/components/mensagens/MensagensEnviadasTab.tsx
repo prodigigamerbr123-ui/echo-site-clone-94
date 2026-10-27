@@ -1,3 +1,4 @@
+import { useAgendaClock } from "@/hooks/useAgendaClock";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ interface Student {
 }
 
 export default function MensagensEnviadasTab() {
+  useAgendaClock();
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("today");
@@ -66,6 +68,7 @@ export default function MensagensEnviadasTab() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end"><Button variant="outline" disabled={catalog.isFetching} onClick={() => void catalog.refetch()}>{catalog.isFetching ? "Atualizando histórico…" : "Atualizar histórico"}</Button></div>
       <Tabs defaultValue="sent" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sent" className="flex items-center gap-2">

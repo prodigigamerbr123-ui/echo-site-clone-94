@@ -1,5 +1,5 @@
 // Motor de regras que roda 1x/dia (via pg_cron) e agenda mensagens automáticas.
-// - Lembretes de avaliação vencida (>90 dias) ou pendente (>14 dias após cadastro)
+// - Lembretes de avaliação vencida (>90 dias) ou pendente (>14 dias após início; cadastro para legado)
 // - Aniversários
 // - Lembretes de vencimento da mensalidade (antes e no dia)
 // - Distribui horários entre 09:00 e 12:00 para não disparar em massa
@@ -26,7 +26,7 @@ const DEFAULT_PAYMENT_CAP = 200;
 
 type AutomationClient = SupabaseClient<Database>;
 type Student = Pick<Database["public"]["Tables"]["students"]["Row"],
-  "id" | "name" | "birth_date" | "last_evaluation_date" | "had_evaluation" | "created_at" | "status" | "payment_due_date">;
+  "id" | "name" | "birth_date" | "last_evaluation_date" | "had_evaluation" | "created_at" | "enrollment_date" | "status" | "payment_due_date">;
 type QueuedMessage = Database["public"]["Tables"]["scheduled_messages"]["Insert"];
 type SettingsMap = Record<string, { enabled: boolean; params: Record<string, Json | undefined> }>;
 
@@ -206,8 +206,9 @@ serve(async (req: Request) => {
     while (true) {
       const { data, error } = await supabase
         .from("students")
-        .select("id, name, birth_date, last_evaluation_date, had_evaluation, created_at, status, payment_due_date")
+        .select("id, name, birth_date, last_evaluation_date, had_evaluation, created_at, enrollment_date, status, payment_due_date")
         .eq("status", "active")
+        .eq("messages_enabled", true)
         .order("id")
         .range(from, from + pageSize - 1);
       if (error) throw error;
@@ -326,7 +327,7 @@ serve(async (req: Request) => {
           if (s.last_evaluation_date) {
             if (daysSince(s.last_evaluation_date) <= daysOverdue) return false;
           } else {
-            if (s.had_evaluation || daysSince(s.created_at) <= 14) return false;
+            if (s.had_evaluation || daysSince(s.enrollment_date ? `${s.enrollment_date}T00:00:00-03:00` : s.created_at) <= 14) return false;
           }
           // Só conta tentativas feitas DEPOIS da última avaliação (ou desde sempre, se nunca fez).
           const resetRef = s.last_evaluation_date
@@ -342,8 +343,8 @@ serve(async (req: Request) => {
           return true;
         })
         .sort((a, b) => {
-          const aRef = a.last_evaluation_date || a.created_at;
-          const bRef = b.last_evaluation_date || b.created_at;
+          const aRef = a.last_evaluation_date || (a.enrollment_date ? `${a.enrollment_date}T00:00:00-03:00` : a.created_at);
+          const bRef = b.last_evaluation_date || (b.enrollment_date ? `${b.enrollment_date}T00:00:00-03:00` : b.created_at);
           return new Date(aRef).getTime() - new Date(bRef).getTime();
         });
 
@@ -480,17 +481,19 @@ serve(async (req: Request) => {
         .from("scheduled_messages")
         .insert(allInserts, { count: "exact" });
       if (!error) {
-        inserted = count ?? allInserts.length;
+        if (count === null) throw new Error("Não foi possível confirmar o total de mensagens criadas");
+        inserted = count;
       } else if (error.code === "23505") {
         // Corrida rara: duas execuções podem passar pela leitura acima ao
         // mesmo tempo. O INSERT em lote é atômico; se o índice único detectar
         // conflito, repetimos individualmente e ignoramos apenas duplicatas.
         for (const row of allInserts) {
-          const { error: rowError } = await supabase
+          const { error: rowError, count: rowCount } = await supabase
             .from("scheduled_messages")
-            .insert(row);
+            .insert(row, { count: "exact" });
           if (!rowError) {
-            inserted++;
+            if (rowCount === null) throw new Error("Não foi possível confirmar o total de mensagens criadas");
+            inserted += rowCount;
             continue;
           }
           if (rowError.code !== "23505") throw rowError;

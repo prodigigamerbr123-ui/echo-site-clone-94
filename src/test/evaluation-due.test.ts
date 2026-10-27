@@ -6,6 +6,14 @@ const student = { status: "active", had_evaluation: true,
   last_evaluation_date: new Date(now - 31 * 86400000).toISOString(), created_at: "2025-01-01T00:00:00Z" };
 
 describe("prazo da agenda em paridade com a automação", () => {
+  it("usa início real em São Paulo para alunos importados e mantém fallback legado", () => {
+    const imported = { ...student, had_evaluation: false, last_evaluation_date: null,
+      created_at: new Date(now).toISOString(), enrollment_date: "2026-09-01" };
+    expect(needsEvaluation(imported, 90, false, now)).toBe(true);
+    expect(needsEvaluation({ ...imported, enrollment_date: null }, 90, false, now)).toBe(false);
+    expect(needsEvaluation({ ...imported, enrollment_date: "2026-09-29" }, 90, false, now)).toBe(false);
+    expect(needsEvaluation({ ...imported, enrollment_date: "2026-09-29" }, 90, false, now + 1)).toBe(true);
+  });
   it("usa valor configurado, incluindo zero, e 90 somente quando ausente", () => {
     expect(evaluationDaysOverdue(undefined)).toBe(90);
     expect(evaluationDaysOverdue("30")).toBe(30);

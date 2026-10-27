@@ -7,16 +7,17 @@ import { Button } from "@/components/ui/button";
 export function SystemHealthBanner() {
   const navigate = useNavigate();
 
-  const { data: whatsapp } = useQuery({
+  // Falha de consulta e estado transitório não comprovam desconexão; só "close" dispara o alerta crítico.
+  const { data: whatsappState, isError: whatsappCheckFailed } = useQuery({
     queryKey: ["whatsapp-health"],
     queryFn: async () => {
-      try {
-        const { data } = await supabase.functions.invoke("whatsapp-status");
-        return data as { connected?: boolean };
-      } catch {
-        return { connected: false };
-      }
+      const { data, error } = await supabase.functions.invoke("whatsapp-status", { body: { action: "status" } });
+      if (error) throw error;
+      const state = (data as { state?: unknown } | null)?.state;
+      if (typeof state !== "string") throw new Error("Status do WhatsApp inválido.");
+      return state;
     },
+    retry: 1,
     refetchInterval: 120000,
     staleTime: 60000,
   });
@@ -61,12 +62,15 @@ export function SystemHealthBanner() {
     refetchInterval: 120000,
   });
 
-  const disconnected = whatsapp?.connected === false;
+  const disconnected = whatsappState === "close";
+  const whatsappReconnecting = whatsappState === "connecting";
+  const whatsappUnverified = whatsappCheckFailed || whatsappState === "unknown";
+  const whatsappIssue = whatsappReconnecting || whatsappUnverified;
   const staleAutomation = automationRun && Date.now() - new Date(automationRun.started_at).getTime() > 26 * 3600000;
   const stuckAutomation = automationRun?.status === "running" && Date.now() - new Date(automationRun.started_at).getTime() > 20 * 60000;
   const automationIssue = !!(automationError || automationRun === null || automationRun?.status === "failed" || staleAutomation || stuckAutomation);
 
-  if (!disconnected && failedCount === 0 && !automationIssue && !overdueQueueError && overdueQueue === 0) return null;
+  if (!disconnected && !whatsappIssue && failedCount === 0 && !automationIssue && !overdueQueueError && overdueQueue === 0) return null;
 
   if (disconnected) {
     return (
@@ -86,12 +90,14 @@ export function SystemHealthBanner() {
     <div className="w-full bg-amber-500 text-white px-4 py-2 flex items-center gap-3 text-sm animate-in fade-in slide-in-from-top-2">
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span className="flex-1">
+        {whatsappReconnecting && <span>WhatsApp reconectando; envios podem atrasar. </span>}
+        {whatsappUnverified && <span>Não foi possível confirmar a conexão do WhatsApp. </span>}
         {failedCount > 0 && <span><strong>{failedCount}</strong> mensagem(ns) falharam nas últimas 24h. </span>}
         {overdueQueue > 0 && <span><strong>{overdueQueue}</strong> mensagem(ns) atrasadas. </span>}
         {overdueQueueError && <span>Não foi possível consultar a fila. </span>}
         {automationIssue && <span>Motor de automações requer atenção.</span>}
       </span>
-      <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate(automationIssue ? "/automacoes" : "/caixa-de-saida")}>
+      <Button size="sm" variant="secondary" className="h-7" onClick={() => navigate(automationIssue ? "/automacoes" : whatsappIssue && failedCount === 0 && overdueQueue === 0 && !overdueQueueError ? "/whatsapp" : "/caixa-de-saida")}>
         Ver
       </Button>
     </div>

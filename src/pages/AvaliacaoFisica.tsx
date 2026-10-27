@@ -1,5 +1,7 @@
+import { matchesStudentSearch } from "@/lib/studentSearch";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { performedDateLabel } from "@/lib/evaluationPerformedDate";
 import { evaluationDateLabel } from "@/lib/evaluationAgendaDates";
 import { fetchEvaluationHistory } from "@/lib/evaluationHistory";
 import { useNavigate } from "react-router-dom";
@@ -26,6 +28,7 @@ interface Evaluation {
   status: string;
   notes: string | null;
   completed_at: string | null;
+  performed_on?: string | null;
   students?: { name: string; phone: string } | null;
 }
 
@@ -58,10 +61,7 @@ export default function AvaliacaoFisica() {
   });
 
   const filtered = (evaluations || []).filter((e) => {
-    const term = search.toLowerCase();
-    const matchS = !term ||
-      e.students?.name?.toLowerCase().includes(term) ||
-      e.students?.phone?.includes(search);
+    const matchS = matchesStudentSearch(e.students, search);
     let matchSt = true;
     if (statusFilter === "history") matchSt = e.status !== "scheduled";
     else if (statusFilter !== "all") matchSt = e.status === statusFilter;
@@ -205,7 +205,8 @@ export default function AvaliacaoFisica() {
                     <TableHead>Aluno</TableHead>
                     <TableHead>Agendada para</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Fechada em</TableHead>
+                    <TableHead>Atendimento em</TableHead>
+                    <TableHead>Baixa registrada em</TableHead>
                     <TableHead>Observações</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -221,6 +222,7 @@ export default function AvaliacaoFisica() {
                       </TableCell>
                       <TableCell className="text-sm">{evaluationDateLabel(ev.scheduled_at)}</TableCell>
                       <TableCell>{statusBadge(ev.status)}</TableCell>
+                      <TableCell className="text-sm">{ev.status === "completed" ? ev.performed_on ? performedDateLabel(ev.performed_on) : "Não informado (registro antigo)" : "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {ev.completed_at ? evaluationDateLabel(ev.completed_at, false) : "—"}
                       </TableCell>

@@ -2,6 +2,9 @@ import { corsHeaders, requireCronSecret } from "../_shared/auth.ts";
 import { sendEvolutionText } from "../_shared/evolution.ts";
 import { formatPhone } from "../_shared/phone.ts";
 import { inputErrorResponse, readJsonObject } from "../_shared/httpInput.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { diagnosticContactBlocked } from "../_shared/contactPreference.ts";
+import { getSupabaseSecretKey } from "../_shared/supabaseEnv.ts";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
@@ -12,6 +15,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const fail = requireCronSecret(req);
   if (fail) return fail;
+  let dispatchAttempted = false;
   try {
     const { phone, text } = await readJsonObject(req, 8192);
     if (typeof phone !== "string" || phone.length > 40 ||
@@ -20,9 +24,14 @@ Deno.serve(async (req) => {
     }
     const pc = formatPhone(phone);
     if (!pc.ok) return json({ error: pc.reason }, 400);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, getSupabaseSecretKey());
+    const blocked = await diagnosticContactBlocked(pc.number, (from, to) => supabase.from("students")
+      .select("phone").eq("messages_enabled", false).order("id").range(from, to));
+    if (blocked) return json({ error: "Mensagens desativadas para este contato" }, 403);
     const baseUrl = Deno.env.get("EVOLUTION_API_URL")?.replace(/\/$/, "");
     const instanceToken = Deno.env.get("EVOLUTION_INSTANCE_TOKEN");
     if (!baseUrl || !instanceToken) return json({ error: "Evolution API não configurada" }, 500);
+    dispatchAttempted = true;
     const result = await sendEvolutionText({ baseUrl, instanceToken, number: pc.number, text: text.trim() });
     return json({
       ok: result.ok, uncertain: result.uncertain ?? false,
@@ -33,6 +42,8 @@ Deno.serve(async (req) => {
     const invalid = inputErrorResponse(error, corsHeaders);
     if (invalid) return invalid;
     console.error("send-oneshot failed");
-    return json({ ok: false, uncertain: true, error: "Não foi possível confirmar o envio. Confira o WhatsApp antes de tentar novamente." }, 502);
+    return json({ ok: false, uncertain: dispatchAttempted, error: dispatchAttempted
+      ? "Não foi possível confirmar o envio. Confira o WhatsApp antes de tentar novamente."
+      : "Não foi possível validar o contato. Nenhum envio foi iniciado." }, 502);
   }
 });

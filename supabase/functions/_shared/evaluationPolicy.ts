@@ -36,16 +36,16 @@ const FOLLOWUP_TEMPLATES = [
   (n: string) =>
     `E aí ${n}! Passando pra saber como você está depois da avaliação. Bora ajustar o que precisar! 🏋️`,
   (n: string) =>
-    `${n}, tudo certo? Já se passou uma semana da sua avaliação — conta pra gente como está o treino! 💪`,
+    `${n}, tudo certo? Passando para acompanhar sua evolução após a avaliação — conta pra gente como está o treino! 💪`,
 ];
 
 const RESCHEDULE_TEMPLATES = [
   (n: string) =>
-    `Oi ${n}! Sentimos sua falta na avaliação ontem 😊 Vamos remarcar? Me fala qual dia fica melhor pra você!`,
+    `Oi ${n}! Sentimos sua falta na avaliação 😊 Vamos combinar outro horário? Me fala qual dia fica melhor pra você!`,
   (n: string) =>
     `${n}, notamos que você não conseguiu vir na avaliação. 📅 Sem problema — quando podemos remarcar?`,
   (n: string) =>
-    `E aí ${n}! Ficamos com saudades ontem. Bora reagendar sua avaliação física? Me diz o melhor dia!`,
+    `E aí ${n}! Queremos combinar sua avaliação física de novo. Me diz o melhor dia para você!`,
 ];
 
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];

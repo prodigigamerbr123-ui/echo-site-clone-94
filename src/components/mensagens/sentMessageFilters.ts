@@ -1,49 +1,22 @@
+import { messageDateWindow, matchesMessageDate } from "@/lib/messageDateFilter";
+import { matchesSearchText, matchesStudentSearch } from "@/lib/studentSearch";
 import type { Tables } from "@/integrations/supabase/types";
 
 export type Message = Pick<Tables<"messages">, "id" | "content" | "status" | "sent_at" | "student_id"> & {
   students?: Pick<Tables<"students">, "name" | "phone"> | null;
 };
 
-const filterMessagesByDate = (messages: Message[], dateFilter: string, customDateRange: { from?: Date; to?: Date }) => {
-  if (dateFilter === "all") return messages;
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  return messages.filter((message) => {
-    const messageDate = new Date(message.sent_at);
-
-    if (dateFilter === "today") {
-      return messageDate >= today;
-    } else if (dateFilter === "this-month") {
-      return messageDate >= thisMonth;
-    } else if (dateFilter === "custom" && customDateRange.from) {
-      const fromDate = new Date(customDateRange.from.getFullYear(), customDateRange.from.getMonth(), customDateRange.from.getDate());
-      const toDate = customDateRange.to
-        ? new Date(customDateRange.to.getFullYear(), customDateRange.to.getMonth(), customDateRange.to.getDate(), 23, 59, 59)
-        : new Date(customDateRange.from.getFullYear(), customDateRange.from.getMonth(), customDateRange.from.getDate(), 23, 59, 59);
-
-      return messageDate >= fromDate && messageDate <= toDate;
-    }
-
-    return true;
-  });
-};
-
 export const filterSentMessages = (messages: Message[], searchTerm: string, dateFilter: string, customDateRange: { from?: Date; to?: Date }, selectedStudents: string[] = []) => {
   const filteredBySearch = messages.filter((message) => {
-    const matchesSearch =
-      message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.students?.phone.includes(searchTerm);
+    const matchesSearch = matchesSearchText(message.content, searchTerm) || matchesStudentSearch(message.students, searchTerm);
 
     const matchesStudentFilter = selectedStudents.length === 0 || selectedStudents.includes(message.student_id);
 
     return matchesSearch && matchesStudentFilter;
   });
 
-  return filterMessagesByDate(filteredBySearch, dateFilter, customDateRange);
+  const window = messageDateWindow(dateFilter, customDateRange);
+  return filteredBySearch.filter(message => matchesMessageDate(message.sent_at, window));
 };
 
 export const getFilteredMessagesCount = (...args: Parameters<typeof filterSentMessages>) => filterSentMessages(...args).length;

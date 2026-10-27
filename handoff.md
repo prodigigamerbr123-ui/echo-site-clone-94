@@ -1,6 +1,21 @@
 # Workout — handoff e pendências consolidadas
 
-Atualização: 15/10/2026. Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
+Atualização: 18/10/2026. Este é o ponto de entrada para continuar a auditoria. Contém os 63 itens da tabela consolidada da conversa, incluindo implementação, publicação, infraestrutura, documentação e propostas de produto.
+
+## Lote local de produto — 18/10/2026
+
+O trabalho atual é a lógica de cadastro, matrícula, renovação e ficha do aluno. As evidências de produção abaixo continuam históricas de 15/10; o lote descrito aqui está **implementado localmente, sem commit, push ou publicação**. Não tratar os arquivos locais como se já estivessem na VM ou no site público.
+
+**Aprovação e etapa atual:** o cliente pediu continuidade após as buscas. A etapa atual corrige **filtros de data da Caixa de saída**: enviadas/programadas usam os mesmos limites de Brasília, Hoje/Este mês têm início e fim, dia único personalizado não vira intervalo aberto e o histórico exibe fuso explícito. Filtros recalculam na virada do dia para os dados carregados; Atualizar histórico busca registros recentes. Prévia com exemplos fictícios de hoje/ontem: `http://127.0.0.1:18091/.workout-preview.local/index.html#/caixa-de-saida?aba=enviadas`. **510 testes/75 arquivos, lint, tipos, build e alcance aprovados com Node 22.23.3.** Ver `docs/PERIODOS-MENSAGENS-2026-10-18.md`. Sem migração nova; as cinco anteriores continuam locais. Sem commit/push/publicação.
+
+- Cadastro/matrícula e renovação recebidos do bloco anterior foram preservados: início na academia, benefício, avaliação anterior informada sem inventar atendimento, revisão/duplicidades e ação de renovação com datas de calendário. Migrações locais: `20261015210000_student_admission.sql` e `20261018210000_cancel_outdated_payment_reminders.sql`; a segunda cancela lembretes antigos ainda não despachados quando muda o vencimento. Não foram aplicadas em produção neste bloco.
+- Ficha e edição agora confirmam a inativação, impedem submissões repetidas e informam falha ao programar reengajamento mesmo quando a alteração do aluno foi salva. A ficha esclarece que histórico e agendamentos são preservados; avaliação futura exige decisão explícita na agenda.
+- A mudança rápida de status exige o mesmo status lido originalmente e verifica a linha retornada. A edição verifica todos os campos editáveis originais, inclusive valores nulos, antes de atualizar; uma renovação ou edição concorrente deixa de ser sobrescrita silenciosamente. Isso não é um histórico de versões nem resolve indisponibilidade após uma resposta de rede perdida.
+- Lista, filtros e atalhos usam chaves estáveis de prazo (`overdue`, `due_soon`, `upcoming`), com “Prazo vencido”, “Vence hoje” e “Vencimento futuro”. Uma data futura não é apresentada como pagamento confirmado. Preferência de coluna mantém a chave `payment` para compatibilidade.
+- Ficha como ponto de atendimento: ações no início (editar, renovar, agenda e preparar mensagem), situação do prazo e compromisso em aberto mais antigo. Avaliações atrasadas aparecem como “aguardando baixa”; falha de consulta não é apresentada como ausência de agendamento. Editar/renovar retorna à mesma ficha, que consulta o registro atualizado; falha na atualização bloqueia alterações. A ficha aberta após cadastro também oferece essas ações. A prévia local usa os componentes reais com adaptador em memória em `.workout-preview.local/` (ignorado pelo Git), na porta 18091.
+- Verificação deste lote ampliado: 385 testes em 53 arquivos com Node 22.23.3, incluindo retorno à ficha após edição/renovação, preservação do aluno na navegação, agendamento atrasado, falha de consulta e limite por perfil; lint, tipos, build e alcance também verificados. Auditoria npm do bloco anterior retornou zero vulnerabilidades; dependências não mudaram. Detalhes e limites em `docs/ALUNOS-FLUXOS-2026-10-18.md`.
+
+Próxima retomada: colher a revisão do conjunto de fluxos (incluindo buscas e conferência de entregas) com o cliente; preparar homologação e publicação conjunta das cinco migrações locais (cadastro, lembretes por vencimento, histórico de plano, preferência de contato e data real), funções diária/diagnóstico, textos e frontend, com backup verificado e retorno. Não publicar sem mostrar e combinar com o cliente. Motivo/data de inativação, correção de avaliação já encerrada e evento de automação transacional continuam propostas. No reengajamento, o fallback do helper ainda é 20 dias e o catálogo exibe 30 quando não há parâmetro: alinhar a regra antes de evoluir essa automação. Preservar arquivos independentes dos outros chats.
 
 Índice das entregas mais recentes: [evidências](docs/auditoria-2026-10-11/README.md). O histórico detalhado, decisões, arquitetura, commits e procedimentos estão em [HANDOFF-AUDITORIA-2026-10-14.md](docs/HANDOFF-AUDITORIA-2026-10-14.md). As evidências do último bloco estão em [fechamento-basico-2026-10-15.md](docs/auditoria-2026-10-11/fechamento-basico-2026-10-15.md). Em caso de divergência, distinguir data, código local, validação e versão publicada.
 
@@ -137,12 +152,12 @@ São propostas de evolução. Nem todas foram implementadas ou aprovadas como en
 
 | Nº | Melhoria | O que envolveria |
 | --- | --- | --- |
-| 52 | Painel de trabalho diário | Pendências acionáveis: alunos para contatar, avaliações, cobranças e falhas. |
+| 52 | Painel de trabalho diário | Implementado localmente em 18/10: agenda, baixas pendentes, prazos para conferir, falhas e contatos com acesso à ficha. Aguarda revisão visual e publicação; não apresenta vencimento como dívida comprovada. |
 | 53 | Linha do tempo do aluno | Reunir mensagens, avaliações, alterações e eventos relevantes. |
 | 54 | Arquivamento de alunos | Definir desativação, preservação de histórico e prevenção de exclusões indevidas. |
 | 55 | Importação CSV | Prévia, validação, identificação de duplicidades e relatório de erros. |
 | 56 | Campanhas com estados claros | Rascunho, programação, execução, pausa, conclusão e cancelamento. |
-| 57 | Preferências de contato e opt-out | Registrar quem pode receber cada tipo de mensagem e respeitar recusas. |
+| 57 | Preferências de contato e opt-out | Implementado localmente: permissão global por aluno, cancelamento seguro de pendentes, bloqueio no compositor/fila/dispatch e manutenção da matrícula. Aprovado pelo cliente; aguarda homologação e publicação. Categorias por assunto não foram implementadas. |
 | 58 | Horários de silêncio e frequência global | Evitar horários inadequados e excesso de mensagens ao mesmo aluno. |
 | 59 | Recepção de respostas do WhatsApp | Processar eventos e respostas para atualizar o atendimento. |
 | 60 | Interromper sequências após resposta | Evitar lembretes inadequados quando o aluno já respondeu. |

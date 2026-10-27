@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import type { Student } from "@/lib/messageRecipients";
+import { isInactiveRecipient, type Student } from "@/lib/messageRecipients";
 import { Search, Users } from "lucide-react";
 
 interface Props {
@@ -14,9 +14,12 @@ interface Props {
   allVisibleSelected: boolean;
   handleSelectAll: () => void;
   handleStudentToggle: (id: string) => void;
+  inactiveCount: number;
+  showInactive: boolean;
+  setShowInactive: (value: boolean) => void;
 }
 
-export function MessageRecipientPicker({ filteredStudents, selectedStudents, searchTerm, setSearchTerm, allVisibleSelected, handleSelectAll, handleStudentToggle }: Props) {
+export function MessageRecipientPicker({ filteredStudents, selectedStudents, searchTerm, setSearchTerm, allVisibleSelected, handleSelectAll, handleStudentToggle, inactiveCount, showInactive, setShowInactive }: Props) {
   return (
         <Card>
           <CardHeader>
@@ -33,6 +36,12 @@ export function MessageRecipientPicker({ filteredStudents, selectedStudents, sea
                 {allVisibleSelected ? "Desmarcar" : "Todos"}
               </Button>
             </div>
+            {inactiveCount > 0 && (
+              <label className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
+                <Checkbox checked={showInactive} onCheckedChange={checked => setShowInactive(checked === true)} />
+                Incluir alunos inativos ({inactiveCount})
+              </label>
+            )}
           </CardHeader>
           <CardContent className="space-y-2 max-h-96 overflow-y-auto">
             {filteredStudents.length === 0 ? (
@@ -44,13 +53,15 @@ export function MessageRecipientPicker({ filteredStudents, selectedStudents, sea
                   className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 cursor-pointer ${
                     selectedStudents.includes(s.id) ? "bg-accent/50 border-primary/50" : "border-border"
                   }`}
-                  onClick={() => handleStudentToggle(s.id)}
+                  onClick={() => { if (s.messages_enabled !== false) handleStudentToggle(s.id); }}
                 >
-                  <Checkbox checked={selectedStudents.includes(s.id)} className="pointer-events-none" />
+                  <Checkbox disabled={s.messages_enabled === false} aria-label={`Selecionar ${s.name}`} checked={s.messages_enabled !== false && selectedStudents.includes(s.id)} className="pointer-events-none" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium">{s.name}</p>
                     <p className="text-sm text-muted-foreground">{s.phone}</p>
                   </div>
+                  {isInactiveRecipient(s) && <Badge variant="outline" className="text-xs text-muted-foreground">Inativo</Badge>}
+                  {s.messages_enabled === false && <Badge variant="outline" className="text-xs">Mensagens desativadas</Badge>}
                   {s.had_evaluation && <Badge variant="secondary" className="text-xs">Avaliado</Badge>}
                 </div>
               ))

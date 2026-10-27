@@ -1,8 +1,8 @@
 import { MessageRecipientPicker } from "@/components/mensagens/MessageRecipientPicker";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { MessageReviewDialog } from "@/components/mensagens/MessageReviewDialog";
+import { MessageQueueResult, type ConfirmedMessageOperation } from "@/components/mensagens/MessageQueueResult";
+import { buildMessageReview, reviewRecipientsUnchanged, type MessageReview } from "@/lib/messageReview";
+import type { MessageSchedule } from "@/lib/messageSchedule";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,10 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { WhatsAppPreview } from "@/components/whatsapp/WhatsAppPreview";
 import { useToast } from "@/hooks/use-toast";
 import { useMessageComposerData } from "@/hooks/useMessageComposerData";
+import { matchesStudentSearch } from "@/lib/studentSearch";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { enqueueMessages } from "@/lib/messageQueue";
 import { errorMessage } from "@/lib/errorMessage";
-import { toggleVisibleRecipients } from "@/lib/messageRecipients";
+import { isInactiveRecipient, toggleVisibleRecipients } from "@/lib/messageRecipients";
 import { hasNameVar } from "@/lib/phone";
 import { deliverySpread } from "@/lib/messageSchedule";
 import { fmtDateISOSP } from "@/lib/spTime";
@@ -41,7 +42,13 @@ export default function Mensagens() {
   const [selectedPredefined, setSelectedPredefined] = useState("");
   const [sending, setSending] = useState(false);
   const submitting = useRef(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const confirmationAttempted = useRef(false);
+  const [review, setReview] = useState<MessageReview | null>(null);
+  const [confirmedOperation, setConfirmedOperation] = useState<ConfirmedMessageOperation | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const appliedPreselection = useRef<string | null>(null);
+  // Inativos ficam fora da lista padrão; o dono inclui de propósito para uma campanha de retorno.
+  const [showInactive, setShowInactive] = useState(false);
 
   // The URL is the source of truth, including links opened from the dashboard.
   const mode: Mode = searchParams.get("tab") === "agendar" ? "schedule" : "now";
@@ -66,21 +73,37 @@ export default function Mensagens() {
 
   const preselectedId = searchParams.get("aluno");
   useEffect(() => {
-    if (preselectedId && students.some((student) => student.id === preselectedId)) {
+    if (!preselectedId) { appliedPreselection.current = null; return; }
+    if (appliedPreselection.current === preselectedId) return;
+    const preselected = students.find((student) => student.id === preselectedId && student.messages_enabled !== false);
+    if (preselected) {
+      appliedPreselection.current = preselectedId;
+      if (isInactiveRecipient(preselected)) setShowInactive(true);
       setSelectedStudents([preselectedId]);
     }
   }, [students, preselectedId]);
 
-  const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.phone.includes(searchTerm)
-  );
+  useEffect(() => {
+    setSelectedStudents(previous => previous.filter(id => students.some(student => student.id === id && student.messages_enabled !== false)));
+  }, [students]);
 
-  const handleStudentToggle = (id: string) =>
+  const inactiveCount = students.filter(isInactiveRecipient).length;
+  const filteredStudents = students.filter(student => (showInactive || !isInactiveRecipient(student)) && matchesStudentSearch(student, searchTerm));
+  const handleShowInactive = (next: boolean) => {
+    setShowInactive(next);
+    // Ao esconder inativos, nenhum deles pode continuar selecionado fora da vista.
+    if (!next) setSelectedStudents(previous => previous.filter(id => !students.some(student => student.id === id && isInactiveRecipient(student))));
+  };
+
+  const handleStudentToggle = (id: string) => {
+    if (!students.some(student => student.id === id && student.messages_enabled !== false)) return;
     setSelectedStudents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const eligibleVisible = filteredStudents.filter(student => student.messages_enabled !== false);
 
-  const allVisibleSelected = filteredStudents.length > 0 && filteredStudents.every((student) => selectedStudents.includes(student.id));
+  const allVisibleSelected = eligibleVisible.length > 0 && eligibleVisible.every((student) => selectedStudents.includes(student.id));
   const handleSelectAll = () =>
-    setSelectedStudents((previous) => toggleVisibleRecipients(previous, filteredStudents.map((student) => student.id)));
+    setSelectedStudents((previous) => toggleVisibleRecipients(previous, eligibleVisible.map((student) => student.id)));
 
   const handlePredefinedSelect = (id: string) => {
     const m = predefinedMessages.find(x => x.id === id);
@@ -97,31 +120,27 @@ export default function Mensagens() {
     return undefined;
   }, [selectedStudents, students]);
 
-  const enqueue = async (immediate: boolean) => {
-    // React state updates are asynchronous; guard clicks in the same render too.
-    if (submitting.current) return;
+  const enqueue = async () => {
+    if (!review || submitting.current) return;
     submitting.current = true;
     setSending(true);
+    setReviewError(null);
     try {
-      const selected = students.filter(student => selectedStudents.includes(student.id));
-      if (selected.length !== selectedStudents.length) throw new Error("Atualize a seleção de alunos");
-      const schedule = immediate ? { kind: "now" as const } : schedType === "quick"
-        ? { kind: "quick" as const, when: quickWhen, repeat: quickRepeat, days: quick, time: quickTime }
-        : { kind: "custom" as const, date: customDate, time: customTime, intervals: recurrence ? intervals : [] };
-      const result = await enqueueMessages(selected.map(student => student.id), message, schedule, "composer");
-      toast({
-        title: immediate ? `${result.queued} mensagem(ns) na fila` : `${result.queued} mensagem(ns) agendada(s)`,
-        description: immediate ? (spreadInfo.spread
-          ? `Serão enviadas de forma gradual ao longo de ~${spreadInfo.minutes} min.`
-          : "Serão enviadas nos próximos minutos.") : undefined,
-      });
+      if (!reviewRecipientsUnchanged(review, students)) throw new Error("Os dados de um destinatário mudaram. Volte e confira novamente antes de confirmar.");
+      // A scheduled time can expire while its review is open.
+      // On a retry the original transaction may already have committed. Let the
+      // server replay its request ID even if the scheduled time has since passed.
+      if (!confirmationAttempted.current) buildMessageReview(review.recipients, review.message, review.schedule);
+      confirmationAttempted.current = true;
+      const result = await enqueueMessages(review.recipients.map(student => student.id), review.message, review.schedule, "composer");
+      setConfirmedOperation({ queued: result.queued, replayed: result.replayed, review });
+      setReview(null);
       resetForm();
     } catch (error: unknown) {
-      toast({ title: "Erro", description: errorMessage(error), variant: "destructive" });
+      setReviewError(`${errorMessage(error)}${confirmationAttempted.current ? " Se a conexão foi interrompida, confira a Caixa de saída antes de criar outro envio. Tentar confirmar novamente mantém os mesmos dados da tentativa." : ""}`);
     } finally {
       submitting.current = false;
       setSending(false);
-      setConfirmOpen(false);
     }
   };
 
@@ -131,21 +150,37 @@ export default function Mensagens() {
     setSelectedPredefined("");
     setQuick({ days7: false, days21: false, days45: false });
     setQuickRepeat(false);
+    setQuickWhen("today");
+    setQuickTime("10:00");
+    setSchedType("quick");
     setCustomDate("");
     setCustomTime("");
     setRecurrence(false);
+    setIntervals([{ id: crypto.randomUUID(), days: 7, count: 4 }]);
   };
 
   const handleAction = () => {
-    if (!message.trim()) return toast({ title: "Digite uma mensagem", variant: "destructive" });
-    if (selectedStudents.length === 0) return toast({ title: "Selecione pelo menos um aluno", variant: "destructive" });
-    if (mode === "now") {
-      if (selectedStudents.length > 100) { setConfirmOpen(true); return; }
-      enqueue(true);
-    } else {
-      enqueue(false);
+    try {
+      const selected = students.filter(student => selectedStudents.includes(student.id));
+      if (selected.length !== selectedStudents.length) throw new Error("Atualize a seleção de alunos");
+      const schedule: MessageSchedule = mode === "now" ? { kind: "now" } : schedType === "quick"
+        ? { kind: "quick", when: quickWhen, repeat: quickRepeat, days: quick, time: quickTime }
+        : { kind: "custom", date: customDate, time: customTime, intervals: recurrence ? intervals.map(({ days, count }) => ({ days, count })) : [] };
+      setReview(buildMessageReview(selected, message, schedule));
+      confirmationAttempted.current = false;
+      setReviewError(null);
+    } catch (error) {
+      toast({ title: "Confira o envio", description: errorMessage(error), variant: "destructive" });
     }
   };
+
+  if (confirmedOperation) {
+    return <MessageQueueResult operation={confirmedOperation} onNewMessage={() => {
+      resetForm();
+      setSearchTerm("");
+      setConfirmedOperation(null);
+    }} />;
+  }
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -172,6 +207,7 @@ export default function Mensagens() {
         </div>
       </div>
 
+      {students.some(student => student.id === preselectedId && student.messages_enabled === false) && <p role="status" className="rounded-md border p-3 text-sm">Este aluno está com mensagens desativadas. Altere a preferência na ficha somente se ele voltar a permitir contato.</p>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MessageRecipientPicker
           filteredStudents={filteredStudents}
@@ -181,6 +217,9 @@ export default function Mensagens() {
           allVisibleSelected={allVisibleSelected}
           handleSelectAll={handleSelectAll}
           handleStudentToggle={handleStudentToggle}
+          inactiveCount={inactiveCount}
+          showInactive={showInactive}
+          setShowInactive={handleShowInactive}
         />
 
         <Card>
@@ -358,30 +397,16 @@ export default function Mensagens() {
               {sending
                 ? (mode === "now" ? "Enfileirando..." : "Agendando...")
                 : (mode === "now"
-                    ? `Enfileirar envio (${selectedStudents.length})`
-                    : `Agendar para ${selectedStudents.length} aluno(s)`)}
+                    ? `Conferir envio (${selectedStudents.length})`
+                    : `Conferir agendamento (${selectedStudents.length})`)}
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar envio em massa</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está prestes a enviar para <strong>{selectedStudents.length} alunos</strong>.
-              As mensagens serão distribuídas ao longo de <strong>~{spreadInfo.minutes} minutos</strong>{" "}
-              (~{Math.ceil(spreadInfo.minutes / 60)}h) para não ser bloqueado pelo WhatsApp.
-              Deseja continuar?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void enqueue(true)}>Enviar para {selectedStudents.length}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {review && <MessageReviewDialog review={review} saving={sending} error={reviewError}
+        onBack={() => { if (!submitting.current) { setReview(null); setReviewError(null); } }} onConfirm={() => void enqueue()} />}
+
     </div>
   );
 }

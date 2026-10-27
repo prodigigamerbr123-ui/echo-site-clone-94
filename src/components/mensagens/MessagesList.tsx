@@ -1,5 +1,6 @@
 import { filterSentMessages, type Message } from "./sentMessageFilters";
 
+import { fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MessageCircle, Phone, User } from "lucide-react";
 
@@ -25,13 +26,9 @@ const getStatusBadge = (status: Message["status"]) => {
 };
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const date = new Date(dateString);
+  if (!Number.isFinite(date.getTime())) return "Data indisponível";
+  return `${fmtDateISOSP(date).split("-").reverse().join("/")} ${fmtTimeSP(date)} · Brasília`;
 };
 
 export default function MessagesList({ messages, searchTerm, dateFilter, customDateRange, selectedStudents = [] }: MessagesListProps) {

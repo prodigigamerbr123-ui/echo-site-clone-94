@@ -15,6 +15,8 @@ interface Props {
   saving: boolean;
   onDone: (evaluation: AgendaEvaluation) => void;
   onNoShow: (evaluation: AgendaEvaluation) => void;
+  onReschedule?: (evaluation: AgendaEvaluation) => void;
+  onCancel?: (evaluation: AgendaEvaluation) => void;
 }
 
 export function PendingEvaluations({
@@ -22,6 +24,8 @@ export function PendingEvaluations({
   saving,
   onDone,
   onNoShow,
+  onReschedule,
+  onCancel,
 }: Props) {
   if (!evaluations.length) return null;
   return (
@@ -32,7 +36,7 @@ export function PendingEvaluations({
           Avaliações para fechar ({evaluations.length})
         </CardTitle>
         <CardDescription>
-          Marque como realizada ou faltou pra manter o histórico correto.
+          Confira o que aconteceu antes de registrar o resultado. Também é possível remarcar ou cancelar.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -48,7 +52,7 @@ export function PendingEvaluations({
                 {fmtTimeSP(new Date(ev.scheduled_at))} • {ev.students?.phone}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => onDone(ev)} disabled={saving}>
                 <CheckCircle2 className="h-3 w-3 mr-1" /> Realizada
               </Button>
@@ -60,6 +64,8 @@ export function PendingEvaluations({
               >
                 <XCircle className="h-3 w-3 mr-1" /> Faltou
               </Button>
+              {onReschedule && <Button size="sm" variant="outline" disabled={saving} onClick={() => onReschedule(ev)}>Remarcar</Button>}
+              {onCancel && <Button size="sm" variant="ghost" disabled={saving} onClick={() => onCancel(ev)}>Cancelar avaliação</Button>}
             </div>
           </div>
         ))}

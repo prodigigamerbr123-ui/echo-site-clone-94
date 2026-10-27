@@ -111,6 +111,7 @@ export default function MessageFilters({
         </div>
       </div>
 
+      <p className="text-xs text-muted-foreground">Períodos em horário de Brasília.{dateFilter === "custom" ? " Selecione um dia ou o início e o fim do período. Um único dia selecionado filtra somente esse dia; sem seleção, todos os períodos permanecem visíveis." : ""}</p>
       {/* Filtro de Alunos */}
       <div className="flex flex-col sm:flex-row gap-2">
         <Popover>

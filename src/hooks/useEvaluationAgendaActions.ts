@@ -19,6 +19,12 @@ export function useEvaluationAgendaActions() {
       qc.invalidateQueries({ queryKey: ["students-evaluation-agenda"] }),
       qc.invalidateQueries({ queryKey: ["today-evaluations"] }),
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+      qc.invalidateQueries({ queryKey: ["students"] }),
+      qc.invalidateQueries({ queryKey: ["student-record"] }),
+      qc.invalidateQueries({ queryKey: ["student-next-eval"] }),
+      qc.invalidateQueries({ queryKey: ["students-summary"] }),
+      qc.invalidateQueries({ queryKey: ["pending-scheduled-by-student"] }),
+      qc.invalidateQueries({ queryKey: ["student-recent-msgs"] }),
     ]);
   };
 

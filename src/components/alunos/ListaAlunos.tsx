@@ -15,7 +15,8 @@ import { errorMessage } from "@/lib/errorMessage";
 import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, CalendarClock, ClipboardList, Columns3, Filter, Search, Users, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { EditarAlunoDialog } from "./EditarAlunoDialog";
 import { COLUMN_DEFS, DEFAULT_COLUMNS, type ColumnKey } from "./listaAlunosColumns";
 import { type Student } from "./studentListModel";
@@ -24,6 +25,7 @@ import { StudentQuickFilters } from "./StudentQuickFilters";
 import { StudentSheet } from "./StudentSheet";
 
 export function ListaAlunos() {
+  const [searchParams] = useSearchParams();
   const { role } = useAuth();
   const canManageStudents = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
   const canDeleteStudents = import.meta.env.VITE_PREVIEW_MODE === "true" || role === "admin";
@@ -31,18 +33,28 @@ export function ListaAlunos() {
   const queryClient = useQueryClient();
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+  const appliedStudent = useRef<string | null>(null);
+  const requestedStudentId = searchParams.get("aluno");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { visibleColumns, setVisibleColumns, toggleColumn, visibleCount } = useStudentListColumns();
 
   const { students, isLoading, studentsError, pendingScheduled, pendingError } = useStudentListData();
+  useEffect(() => {
+    if (!requestedStudentId) { appliedStudent.current = null; return; }
+    if (appliedStudent.current === requestedStudentId || !students) return;
+    const requested = students.find(student => student.id === requestedStudentId);
+    if (requested) { appliedStudent.current = requestedStudentId; setViewingStudent(requested); }
+  }, [requestedStudentId, students]);
   const {
     searchTerm, setSearchTerm, statusFilter, setStatusFilter,
     paymentFilter, setPaymentFilter, planFilter, setPlanFilter,
     flagFilter, setFlagFilter, sortBy, setSortBy, pendingByStudent,
     isActive, isBirthdayThisMonth, availablePlans, filteredStudents,
     hasActiveFilters, clearFilters,
-  } = useStudentListFilters(students, pendingScheduled);
+  } = useStudentListFilters(students, pendingScheduled, searchParams.get("busca") || "", {
+    payment: searchParams.get("vencimento"), status: searchParams.get("status"), evaluation: searchParams.get("avaliacao"),
+  });
 
   const handleDeleteStudent = async (studentId: string, studentName: string) => {
     if (deletingId) return;
@@ -92,6 +104,7 @@ export function ListaAlunos() {
 
   return (
     <div className="space-y-6">
+      {requestedStudentId && !students?.some(student => student.id === requestedStudentId) && <p role="alert" className="rounded-md border p-3 text-sm">O aluno solicitado não foi encontrado nesta consulta. Confira o cadastro na lista.</p>}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -208,16 +221,16 @@ export function ListaAlunos() {
                 <SelectItem value="inactive">Inativos</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={paymentFilter} onValueChange={(v) => { if (v === "all" || v === "overdue" || v === "due_soon" || v === "ok" || v === "none") setPaymentFilter(v); }}>
+            <Select value={paymentFilter} onValueChange={(v) => { if (v === "all" || v === "overdue" || v === "due_soon" || v === "upcoming" || v === "none") setPaymentFilter(v); }}>
               <SelectTrigger className="w-full sm:w-[170px]">
                 <CalendarClock className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todo pagamento</SelectItem>
-                <SelectItem value="overdue">Vencidos</SelectItem>
-                <SelectItem value="due_soon">Vence em 3 dias</SelectItem>
-                <SelectItem value="ok">Em dia</SelectItem>
+                <SelectItem value="all">Todos os vencimentos</SelectItem>
+                <SelectItem value="overdue">Prazo vencido</SelectItem>
+                <SelectItem value="due_soon">Vence em até 3 dias</SelectItem>
+                <SelectItem value="upcoming">Vencimento futuro</SelectItem>
                 <SelectItem value="none">Sem data</SelectItem>
               </SelectContent>
             </Select>
@@ -290,6 +303,7 @@ export function ListaAlunos() {
       )}
 
       <StudentSheet
+        key={viewingStudent?.id ?? "closed"}
         student={viewingStudent}
         open={!!viewingStudent}
         onOpenChange={(o) => !o && setViewingStudent(null)}

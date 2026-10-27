@@ -9,7 +9,7 @@ export function useEvaluationAgendaQueries() {
     queryKey: ["students-evaluation-agenda"],
     queryFn: () => fetchAllPages((from, to) => supabase
       .from("students")
-      .select("id,name,phone,status,had_evaluation,last_evaluation_date,created_at", { count: "exact" })
+      .select("id,name,phone,status,had_evaluation,last_evaluation_date,created_at,enrollment_date,messages_enabled", { count: "exact" })
       .order("name").order("id").range(from, to)),
   });
 
@@ -18,7 +18,7 @@ export function useEvaluationAgendaQueries() {
     queryFn: async () => {
       const data = await fetchAllPages((from, to) => supabase
         .from("evaluations")
-        .select("id,student_id,scheduled_at,status,notes,completed_at,students(name,phone)", { count: "exact" })
+        .select("id,student_id,scheduled_at,status,notes,completed_at,performed_on,students(name,phone)", { count: "exact" })
         .order("scheduled_at", { ascending: true }).order("id").range(from, to));
       return data;
     },

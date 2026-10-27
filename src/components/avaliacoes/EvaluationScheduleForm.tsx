@@ -1,3 +1,4 @@
+import { matchesStudentSearch } from "@/lib/studentSearch";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -121,14 +122,7 @@ export function EvaluationScheduleForm({
                   <CommandGroup>
                     {students
                       ?.filter((s) => s.status === "active")
-                      .filter((s) => {
-                        const q = studentSearch.toLowerCase();
-                        return (
-                          !q ||
-                          s.name.toLowerCase().includes(q) ||
-                          s.phone.includes(q)
-                        );
-                      })
+                      .filter(student => matchesStudentSearch(student, studentSearch))
                       .slice(0, 100)
                       .map((s) => (
                         <CommandItem

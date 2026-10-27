@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Workout — revisão do cadastro e ficha</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18232d;background:#f4f5f7;font-synthesis:none;--orange:#d54b11;--border:#dce1e6;--muted:#586574}
+    *{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #e58b58;outline-offset:3px}
+    .notice{background:#fff2d9;border-bottom:1px solid #e7cc95;padding:11px 24px;font-size:13px;text-align:center;color:#654c18}.bar{background:#fff;border-bottom:1px solid var(--border);padding:18px 5vw;display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{font-size:22px;font-weight:800;letter-spacing:-1px}.brand span{color:var(--orange)}.quiet{color:var(--muted);font-size:13px}
+    main{max-width:1120px;margin:34px auto;padding:0 24px 60px}h1{font-size:30px;letter-spacing:-.8px;margin:0 0 9px}h2{font-size:19px;margin:0 0 6px}h3{font-size:15px;margin:0 0 7px}p{line-height:1.55;margin:0}.intro{margin-bottom:24px}.intro p{color:var(--muted);max-width:760px}.steps{display:flex;gap:24px;border-bottom:1px solid var(--border);margin-bottom:24px;padding-bottom:16px}.step{font-size:14px;color:var(--muted)}.step strong{display:inline-flex;border:1px solid #cbd2d9;border-radius:50%;width:25px;height:25px;align-items:center;justify-content:center;margin-right:7px}.step[aria-current=step]{color:#a93b0c;font-weight:650}.step[aria-current=step] strong{background:var(--orange);color:white;border-color:var(--orange)}
+    .columns{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;align-items:start}.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:18px}.card>p.sub{color:var(--muted);font-size:14px;margin-bottom:21px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.full{grid-column:1/-1}label.field{display:block;font-size:13px;font-weight:650;margin-bottom:7px}input:not([type=checkbox]),select,textarea{width:100%;border:1px solid #c9d1d9;border-radius:7px;padding:11px 12px;background:#fff;color:#18232d;min-height:44px}input:focus,select:focus,textarea:focus{outline:2px solid #dc7a45;outline-offset:1px}.help{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}.pill{display:inline-block;padding:4px 9px;font-size:12px;background:#eaf5ee;color:#26613e;border-radius:20px;font-weight:650}.proposal{background:#f1f3f5;color:#596574}.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5}.check input{width:17px;height:17px;accent-color:var(--orange);flex:none;margin-top:3px}.inset{margin-top:18px;border-left:3px solid #e8b397;padding-left:16px}details{margin-top:22px;border-top:1px solid var(--border);padding-top:18px}summary{cursor:pointer;font-size:14px;font-weight:650}.details-body{padding-top:20px}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.actions.end{justify-content:flex-end}.btn{padding:11px 16px;min-height:44px;border:1px solid #cbd2d9;border-radius:7px;background:#fff;color:#24303c;font-weight:650;font-size:14px}.btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}.btn:hover{filter:brightness(.96)}.btn.link{border:0;background:transparent;color:#98400f;padding-left:0;text-align:left}.side{position:sticky;top:20px}.side .card{background:#fafbfc;font-size:13px}.side ol{padding-left:20px;line-height:1.8;margin:12px 0}.side h2{font-size:15px}.side p{color:var(--muted)}.side .btn{margin-top:15px;width:100%}.aside-note{border-top:1px solid var(--border);padding-top:15px;margin-top:15px!important}.error{color:#a22923;background:#fff0ef;padding:12px;border-radius:7px;margin-bottom:16px;font-size:14px}.review-list{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:20px}dt{color:var(--muted);font-size:12px;margin-bottom:5px}dd{margin:0;font-size:15px;overflow-wrap:anywhere}.success{background:#edf7f0;border:1px solid #c8e2d1;padding:18px 22px;border-radius:10px;margin-bottom:22px}.success h2{color:#235b38}.success p{font-size:14px;margin-top:5px}.profile-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.profile-head h1{margin:0}.profile-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 24px}.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.profile-grid .card{margin:0}.divider{border-top:1px solid var(--border);margin:18px 0}.status-line{padding:12px;border-radius:7px;background:#f4f6f8;font-size:14px;margin-top:15px}.subtitle{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:18px}dialog{width:min(520px,calc(100% - 24px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--border);border-radius:12px;padding:24px;color:#18232d}dialog::backdrop{background:#12203088}dialog h2{margin-bottom:8px}dialog form{margin-top:22px}dialog .actions{margin-top:22px}[hidden]{display:none!important}@media(max-width:760px){main{padding:0 16px 35px;margin-top:24px}.bar{padding:15px 16px}.columns{grid-template-columns:1fr}.side{position:static}.grid,.profile-grid{grid-template-columns:1fr}.steps{gap:12px}.step{font-size:12px}.step strong{margin-right:3px;width:22px;height:22px}.card{padding:20px}h1{font-size:25px}.review-list{gap:18px 12px}.notice{padding:10px 16px}.bar .quiet{max-width:145px;text-align:right}.profile-head{align-items:flex-start}.actions.end .primary{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="notice"><strong>Protótipo para aprovação.</strong> Dados ficam somente nesta página. Nenhum cadastro, cobrança ou mensagem real é criado.</div>
+  <header class="bar"><div class="brand">work<span>out.</span></div><div class="quiet">Revisão 01 · Cadastro e ficha do aluno</div></header>
+  <main>
+    <div class="intro"><h1 id="page-title">Cadastrar aluno</h1><p id="page-description">Organize a entrada do aluno e escolha o próximo passo do atendimento.</p></div>
+    <nav class="steps" aria-label="Etapas do cadastro"><span class="step" data-step="form" aria-current="step"><strong>1</strong> Cadastro</span><span class="step" data-step="review"><strong>2</strong> Conferência</span><span class="step" data-step="profile"><strong>3</strong> Ficha do aluno</span></nav>
+    <div class="columns">
+      <div>
+        <form id="registration">
+          <section class="card"><h2>Quem é o aluno?</h2><p class="sub">Comece pelas informações usadas no atendimento.</p>
+            <div class="grid"><div><label class="field" for="name">Nome completo *</label><input id="name" name="name" required maxlength="100" autocomplete="off" placeholder="Nome do aluno"></div><div><label class="field" for="phone">WhatsApp *</label><input id="phone" name="phone" required type="tel" maxlength="20" autocomplete="off" placeholder="(43) 99999-0000"><p class="help">DDD e número. A obrigatoriedade atual foi mantida nesta proposta.</p></div></div>
+            <details><summary>Dados complementares · opcionais</summary><div class="grid details-body"><div><label class="field" for="birth">Data de nascimento</label><input id="birth" name="birth" type="date"><p class="help">Usada para os lembretes de aniversário.</p></div><div><label class="field" for="city">Cidade</label><input id="city" name="city" maxlength="100"></div><div><label class="field" for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" maxlength="14"><p class="help">A consulta de duplicidade não está conectada neste protótipo.</p></div></div></details>
+          </section>
+          <section class="card"><h2>Matrícula e vencimento</h2><p class="sub">A data em que o aluno começou a treinar fica separada da data de cadastro no sistema.</p>
+            <div class="grid"><div><label class="field" for="start">Início na academia * <span class="pill proposal">Proposta</span></label><input id="start" name="start" type="date" required><p class="help">Permite cadastrar alunos que já frequentavam a academia.</p></div><div><label class="field" for="plan">Plano *</label><select id="plan" name="plan" required><option value="Mensal">Mensal</option><option value="Trimestral">Trimestral</option><option value="Semestral">Semestral</option><option value="Anual">Anual</option></select></div><div><label class="field" for="due">Próximo vencimento</label><input id="due" name="due" type="date"><p class="help">Informe a data acordada. O plano não calcula cobranças neste exemplo.</p></div><div><label class="field" for="benefit">Benefício ou convênio <span class="pill proposal">Proposta</span></label><select id="benefit" name="benefit"><option>Sem benefício</option><option>Desconto especial</option><option>Convênio</option></select><p class="help">O benefício pode acompanhar qualquer duração de plano.</p></div></div>
+          </section>
+          <section class="card"><h2>Primeiro acompanhamento</h2><p class="sub">Evite tratar um aluno antigo como alguém que nunca foi avaliado.</p>
+            <label class="check"><input id="previous" name="previous" type="checkbox"><span>O aluno já realizou avaliação antes deste cadastro <span class="pill proposal">Proposta</span></span></label>
+            <div id="previous-fields" class="inset" hidden><label class="field" for="evaluation-date">Data da última avaliação *</label><input id="evaluation-date" name="evaluationDate" type="date"><p class="help">Origem: informada no cadastro. Isso não cria um atendimento fictício no histórico.</p></div>
+            <div class="divider"></div><label class="check"><input id="welcome" name="welcome" type="checkbox" checked><span>Preparar uma mensagem de boas-vindas<p class="help">Nesta proposta, a escolha é explícita. A simulação não acessa a automação existente.</p></span></label>
+          </section>
+          <p id="form-error" class="error" role="alert" hidden></p>
+          <div class="actions end"><button class="btn primary" type="submit">Conferir cadastro →</button></div>
+        </form>
+        <section id="review" hidden><div class="card"><h2>Confira antes de concluir</h2><p class="sub">Você pode voltar e ajustar qualquer informação.</p><dl id="review-values" class="review-list"></dl><div id="review-contact" class="status-line"></div></div><div class="actions end"><button class="btn" type="button" id="back">Voltar e editar</button><button class="btn primary" type="button" id="confirm">Concluir na simulação</button></div></section>
+        <section id="profile" hidden>
+          <div class="success"><h2>Cadastro concluído na simulação</h2><p>O aluno já está selecionado para o próximo passo. Nenhum dado foi gravado no sistema real.</p></div>
+          <div class="card"><div class="profile-head"><h1 id="profile-name"></h1><span class="pill">Ativo</span></div><div class="profile-meta"><span id="profile-phone" class="quiet"></span><span class="quiet">• Ficha de demonstração</span></div><div class="actions"><button class="btn primary" type="button" id="schedule">Agendar avaliação</button><button class="btn" type="button" id="edit">Editar cadastro</button><button class="btn" type="button" id="another">Cadastrar outro aluno</button></div></div>
+          <div class="profile-grid"><section class="card"><div class="subtitle">Matrícula</div><dl id="profile-membership" class="review-list"></dl></section><section class="card"><div class="subtitle">Avaliação física</div><dl id="profile-evaluation" class="review-list"></dl><div id="appointment" class="status-line">Nenhuma avaliação agendada nesta simulação.</div></section></div>
+          <div class="card" style="margin-top:18px"><h2>Comunicação</h2><p id="profile-welcome" class="quiet"></p><p class="help">Ao integrar ao sistema, o resultado real da programação deve aparecer aqui, inclusive se houver falha.</p></div>
+        </section>
+      </div>
+      <aside class="side"><div class="card"><h2>O que estamos avaliando?</h2><ol><li>Dados essenciais primeiro.</li><li>Matrícula separada dos dados pessoais.</li><li>Avaliação anterior identificada.</li><li>Conferência antes de concluir.</li><li>Próximo atendimento com o aluno já selecionado.</li></ol><button class="btn" type="button" id="example">Preencher exemplo fictício</button><p class="aside-note">Esta é uma proposta de fluxo. Datas, regras de planos e mensagens ainda precisam da sua aprovação antes da implementação no sistema.</p></div></aside>
+    </div>
+  </main>
+  <dialog id="schedule-dialog" aria-labelledby="schedule-title"><h2 id="schedule-title">Agendar avaliação</h2><p class="quiet">Aluno: <strong id="schedule-student"></strong></p><form id="appointment-form"><div class="grid"><div><label class="field" for="appointment-date">Data *</label><input id="appointment-date" type="date" required></div><div><label class="field" for="appointment-time">Horário *</label><input id="appointment-time" type="time" value="09:00" required></div><div class="full"><label class="field" for="duration">Duração proposta</label><select id="duration"><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">60 minutos</option></select></div></div><p class="help">Simulação de compromisso. Disponibilidade e lembretes reais não são consultados.</p><p class="error" id="appointment-error" role="alert" hidden></p><div class="actions end"><button class="btn" id="cancel-appointment" type="button">Voltar</button><button class="btn primary" type="submit">Simular agendamento</button></div></form></dialog>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let student = null;
+    let appointment = null;
+    const today = new Date();
+    const dateString = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    const currentDay = dateString(today);
+    const dateLabel = (date) => date ? new Date(date+'T12:00:00').toLocaleDateString('pt-BR') : 'Não informado';
+    $('start').value = currentDay;
+    $('birth').max = currentDay;
+    $('evaluation-date').max = currentDay;
+    $('appointment-date').min = currentDay;
+    function showStep(step) {
+      $('registration').hidden = step !== 'form'; $('review').hidden = step !== 'review'; $('profile').hidden = step !== 'profile';
+      document.querySelectorAll('.step').forEach(el => el.dataset.step === step ? el.setAttribute('aria-current','step') : el.removeAttribute('aria-current'));
+      $('page-title').textContent = step === 'form' ? 'Cadastrar aluno' : step === 'review' ? 'Conferir cadastro' : 'Ficha do aluno';
+      $('page-description').textContent = step === 'profile' ? 'Matrícula, avaliações e próximos passos no mesmo lugar.' : 'Organize a entrada do aluno e escolha o próximo passo do atendimento.';
+      window.scrollTo({top:0,behavior:'auto'});
+      $('page-title').tabIndex = -1; $('page-title').focus({preventScroll:true});
+    }
+    function renderPairs(target, pairs) {
+      const fragment = document.createDocumentFragment();
+      pairs.forEach(([label,value]) => {const item=document.createElement('div');const dt=document.createElement('dt');const dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;item.append(dt,dd);fragment.append(item);});
+      $(target).replaceChildren(fragment);
+    }
+    function togglePrevious() {$('previous-fields').hidden=!$('previous').checked; $('evaluation-date').required=$('previous').checked;}
+    $('previous').addEventListener('change',togglePrevious);
+    $('example').addEventListener('click',()=>{
+      $('name').value='Marina · exemplo fictício';$('phone').value='(43) 99999-0000';$('start').value='2026-04-10';$('plan').value='Mensal';$('due').value='2026-11-10';$('benefit').value='Convênio';$('previous').checked=true;$('evaluation-date').value='2026-09-10';$('welcome').checked=false;
+      $('form-error').hidden=true;togglePrevious();showStep('form');
+    });
+    $('registration').addEventListener('submit',event=>{
+      event.preventDefault();const digits=$('phone').value.replace(/\D/g,'');const error=$('form-error');error.hidden=true;
+      if (!$('name').value.trim() || ![10,11,12,13].includes(digits.length)) {error.textContent='Confira o nome e o WhatsApp com DDD.';error.hidden=false;return;}
+      student={name:$('name').value.trim(),phone:$('phone').value.trim(),start:$('start').value,plan:$('plan').value,due:$('due').value,benefit:$('benefit').value,previous:$('previous').checked,evaluationDate:$('previous').checked?$('evaluation-date').value:null,welcome:$('welcome').checked};
+      renderPairs('review-values',[['Nome',student.name],['WhatsApp',student.phone],['Início na academia',dateLabel(student.start)],['Plano',student.plan],['Próximo vencimento',dateLabel(student.due)],['Benefício',student.benefit],['Avaliação anterior',student.previous?dateLabel(student.evaluationDate):'Não informada']]);
+      $('review-contact').textContent=student.welcome?'Sua escolha: preparar boas-vindas após o cadastro. Nenhuma mensagem será enviada neste protótipo.':'Sua escolha: concluir sem preparar boas-vindas.';
+      showStep('review');
+    });
+    $('back').addEventListener('click',()=>showStep('form'));
+    $('confirm').addEventListener('click',()=>{
+      $('profile-name').textContent=student.name;$('profile-phone').textContent=student.phone;
+      renderPairs('profile-membership',[['Início',dateLabel(student.start)],['Plano',student.plan],['Vencimento',dateLabel(student.due)],['Benefício',student.benefit]]);
+      renderPairs('profile-evaluation',[['Última avaliação',student.previous?dateLabel(student.evaluationDate):'Não informada'],['Origem',student.previous?'Informada no cadastro':'—']]);
+      $('profile-welcome').textContent=student.welcome?'Escolha registrada na simulação: preparar boas-vindas.':'Boas-vindas não solicitadas nesta simulação.';
+      showStep('profile');
+    });
+    $('edit').addEventListener('click',()=>showStep('form'));
+    $('another').addEventListener('click',()=>{student=null;appointment=null;$('registration').reset();$('start').value=currentDay;togglePrevious();$('appointment').textContent='Nenhuma avaliação agendada nesta simulação.';showStep('form');});
+    $('schedule').addEventListener('click',()=>{$('schedule-student').textContent=student.name;const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);$('appointment-date').value=dateString(tomorrow);$('appointment-error').hidden=true;$('schedule-dialog').showModal();});
+    $('cancel-appointment').addEventListener('click',()=>$('schedule-dialog').close());
+    $('appointment-form').addEventListener('submit',event=>{event.preventDefault();const when=new Date($('appointment-date').value+'T'+$('appointment-time').value);if(!Number.isFinite(when.getTime())||when<=new Date()){$('appointment-error').textContent='Escolha uma data e um horário futuros.';$('appointment-error').hidden=false;return;}appointment={date:$('appointment-date').value,time:$('appointment-time').value,duration:$('duration').value};$('appointment').textContent=`Compromisso na simulação: ${dateLabel(appointment.date)}, ${appointment.time} · ${appointment.duration} minutos. Nenhum lembrete real criado.`;$('schedule-dialog').close();$('schedule').textContent='Rever agendamento';});
+  </script>
+</body>
+</html>

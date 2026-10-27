@@ -16,10 +16,10 @@ const REENGAGEMENT_TEMPLATES = [
 
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-export async function scheduleWelcomeIfEnabled(studentId: string, name: string): Promise<void> {
+export async function scheduleWelcomeIfEnabled(studentId: string, name: string): Promise<"queued" | "disabled" | "failed"> {
   try {
     const settings = await fetchAutomationSettings();
-    if (!isAutomationEnabled(settings, "welcome_message")) return;
+    if (!isAutomationEnabled(settings, "welcome_message")) return "disabled";
     const when = new Date(Date.now() + 5 * 60 * 1000);
     const fallback = pick(WELCOME_TEMPLATES)(name);
     const content = await resolveAutomationMessage(
@@ -29,16 +29,17 @@ export async function scheduleWelcomeIfEnabled(studentId: string, name: string):
       { nome: name },
       settings,
     );
-    await enqueueMessages([studentId], content, { kind: "at", scheduled_for: when.toISOString(), message_type: "welcome" }, "welcome");
-  } catch (e) {
-    console.error("scheduleWelcomeIfEnabled error:", e);
+    const result = await enqueueMessages([studentId], content, { kind: "at", scheduled_for: when.toISOString(), message_type: "welcome" }, "welcome");
+    return result.queued > 0 ? "queued" : "failed";
+  } catch {
+    return "failed";
   }
 }
 
-export async function scheduleReengagementIfEnabled(studentId: string, name: string): Promise<void> {
+export async function scheduleReengagementIfEnabled(studentId: string, name: string): Promise<"queued" | "disabled" | "failed"> {
   try {
     const settings = await fetchAutomationSettings();
-    if (!isAutomationEnabled(settings, "reengagement")) return;
+    if (!isAutomationEnabled(settings, "reengagement")) return "disabled";
 
     const daysAfter = Number(getAutomationParam(settings, "reengagement", "days_after", 20));
     if (!Number.isInteger(daysAfter) || daysAfter < 1 || daysAfter > 365) throw new Error("Intervalo de reativação inválido");
@@ -55,8 +56,10 @@ export async function scheduleReengagementIfEnabled(studentId: string, name: str
       settings,
     );
 
-    await enqueueMessages([studentId], content, { kind: "at", scheduled_for: when.toISOString(), message_type: "reengagement" }, "reengagement");
+    const result = await enqueueMessages([studentId], content, { kind: "at", scheduled_for: when.toISOString(), message_type: "reengagement" }, "reengagement");
+    return result.queued > 0 ? "queued" : "failed";
   } catch (e) {
     console.error("scheduleReengagementIfEnabled error:", e);
+    return "failed";
   }
 }

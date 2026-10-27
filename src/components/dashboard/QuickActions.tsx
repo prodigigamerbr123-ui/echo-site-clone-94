@@ -1,169 +1,27 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Users,
-  UserPlus,
-  MessageSquare,
-  Send,
-  CalendarClock,
-  History,
-  CalendarPlus,
-  ClipboardList,
-  Bot,
-  MessageCircle,
-} from "lucide-react";
+import { CalendarPlus, Send, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { canVisit } from "@/lib/staffRoles";
 
-type Action = {
-  to: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  className: string;
-};
-
-const groups: { title: string; description: string; actions: Action[] }[] = [
-  {
-    title: "Alunos",
-    description: "Gerenciar sua base de alunos",
-    actions: [
-      {
-        to: "/cadastrar-aluno",
-        icon: UserPlus,
-        label: "Cadastrar Aluno",
-        className:
-          "bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-primary hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/alunos?tab=lista",
-        icon: Users,
-        label: "Ver Alunos",
-        className:
-          "bg-card border border-border hover:border-primary/40 hover:bg-accent text-foreground",
-      },
-    ],
-  },
-  {
-    title: "Mensagens",
-    description: "Enviar e programar comunicações",
-    actions: [
-      {
-        to: "/mensagens",
-        icon: Send,
-        label: "Enviar mensagem",
-        className:
-          "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_4px_20px_-2px_hsl(160_70%_40%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/mensagens?tab=agendar",
-        icon: CalendarClock,
-        label: "Agendar mensagem",
-        className:
-          "bg-card border border-border hover:border-emerald-500/40 hover:bg-accent text-foreground",
-      },
-    ],
-  },
-  {
-    title: "Conteúdo & Histórico",
-    description: "Templates e mensagens enviadas",
-    actions: [
-      {
-        to: "/mensagens-predefinidas",
-        icon: MessageSquare,
-        label: "Pré-definidas",
-        className:
-          "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_4px_20px_-2px_hsl(217_80%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/caixa-de-saida",
-        icon: History,
-        label: "Histórico",
-        className:
-          "bg-card border border-border hover:border-sky-500/40 hover:bg-accent text-foreground",
-      },
-    ],
-  },
-  {
-    title: "Avaliação Física",
-    description: "Agendar e revisar avaliações",
-    actions: [
-      {
-        to: "/agendar-avaliacao",
-        icon: CalendarPlus,
-        label: "Agendar",
-        className:
-          "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_4px_20px_-2px_hsl(250_70%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/avaliacao-fisica",
-        icon: ClipboardList,
-        label: "Histórico",
-        className:
-          "bg-card border border-border hover:border-violet-500/40 hover:bg-accent text-foreground",
-      },
-    ],
-  },
-  {
-    title: "Ferramentas",
-    description: "IA e conexão do WhatsApp",
-    actions: [
-      {
-        to: "/assistente-ia",
-        icon: Bot,
-        label: "Assistente IA",
-        className:
-          "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-[0_4px_20px_-2px_hsl(322_75%_50%/0.35)] hover:shadow-elegant hover:-translate-y-0.5",
-      },
-      {
-        to: "/whatsapp",
-        icon: MessageCircle,
-        label: "WhatsApp",
-        className:
-          "bg-card border border-border hover:border-fuchsia-500/40 hover:bg-accent text-foreground",
-      },
-    ],
-  },
+// Só as três tarefas mais frequentes; o restante da navegação fica no menu lateral.
+const actions = [
+  { to: "/cadastrar-aluno", icon: UserPlus, label: "Cadastrar aluno", primary: true },
+  { to: "/agendar-avaliacao", icon: CalendarPlus, label: "Agendar avaliação", primary: false },
+  { to: "/mensagens", icon: Send, label: "Enviar mensagem", primary: false },
 ];
 
 export function QuickActions() {
   const { role } = useAuth();
-  const visibleGroups = groups.map(group => ({
-    ...group,
-    actions: group.actions.filter(action => import.meta.env.VITE_PREVIEW_MODE === "true" || canVisit(role, action.to.split("?")[0])),
-  })).filter(group => group.actions.length > 0);
+  const visible = actions.filter(action => import.meta.env.VITE_PREVIEW_MODE === "true" || canVisit(role, action.to));
+  if (visible.length === 0) return null;
   return (
-    <Card className="overflow-hidden border-primary/10 shadow-card">
-      <CardContent className="pt-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {visibleGroups.map((group) => (
-            <div key={group.title} className="space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
-                <p className="text-xs text-muted-foreground">{group.description}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {group.actions.map((action) => (
-                  <Button
-                    key={action.to}
-                    asChild
-                    size="sm"
-                    variant="ghost"
-                    className={`h-full min-h-20 w-full min-w-0 flex-col gap-2 px-2 py-3 whitespace-normal transition-all ${action.className}`}
-                  >
-                    <Link to={action.to}>
-                      <action.icon className="h-5 w-5 shrink-0" />
-                      <span className="block max-w-full overflow-hidden break-words text-center text-xs font-medium leading-tight">
-                        {action.label}
-                      </span>
-                    </Link>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <nav aria-label="Ações principais" className="grid gap-2 sm:flex sm:flex-wrap">
+      {visible.map(action => (
+        <Button key={action.to} asChild variant={action.primary ? "default" : "outline"} className="h-11 justify-start gap-2 sm:justify-center">
+          <Link to={action.to}><action.icon className="h-4 w-4" />{action.label}</Link>
+        </Button>
+      ))}
+    </nav>
   );
 }

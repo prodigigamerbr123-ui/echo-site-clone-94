@@ -2,13 +2,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AUTO_EVAL_MESSAGE_TYPES } from "@/lib/evaluationMessages";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { fmtDateISOSP, fmtTimeSP } from "@/lib/spTime";
+import { hasUncertainDelivery } from "@/lib/messageDeliveryState";
+import { MessageConversationLink } from "@/components/mensagens/MessageConversationLink";
 import { AlertCircle, Bot, Calendar, Clock, Edit2, Hand, MessageSquare, RotateCcw, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { filterScheduledMessages, type ScheduledMessage } from "./scheduledMessageFilters";
 
 interface Props {
+  readOnly?: boolean;
   messages: ScheduledMessage[];
   searchTerm: string;
   dateFilter: string;
@@ -74,13 +76,14 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function MessagesList({
-  messages, searchTerm, dateFilter, customDateRange, selectedStudents,
+  readOnly = false, messages, searchTerm, dateFilter, customDateRange, selectedStudents,
   selectedMessages, onMessageSelect, onSelectAll, onDeleteSelected, onEdit, onDelete, onRetry, onCancelSeries,
 }: Props) {
   const [showAll, setShowAll] = useState(false);
   const filtered = filterScheduledMessages(messages, searchTerm, dateFilter, customDateRange, selectedStudents);
   const display = showAll ? filtered : filtered.slice(0, 10);
-  const allSel = filtered.length > 0 && filtered.every(m => selectedMessages.includes(m.id));
+  const selectable = filtered.filter(m => !hasUncertainDelivery(m) && !m.dispatch_started_at && ["pending", "failed", "processing"].includes(m.status));
+  const allSel = selectable.length > 0 && selectable.every(m => selectedMessages.includes(m.id));
 
   if (filtered.length === 0) {
     return (
@@ -93,9 +96,9 @@ export default function MessagesList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {!readOnly && <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Checkbox checked={allSel} onCheckedChange={(c) => onSelectAll(!!c)} />
+          <Checkbox disabled={selectable.length === 0} checked={allSel} onCheckedChange={(c) => onSelectAll(!!c)} />
           <span className="text-sm text-muted-foreground">
             {selectedMessages.length > 0 ? `${selectedMessages.length} selecionada(s)` : "Selecionar todas"}
           </span>
@@ -105,10 +108,11 @@ export default function MessagesList({
             </Button>
           )}
         </div>
-      </div>
+      </div>}
 
       <div className="space-y-2">
         {display.map((m) => {
+          const uncertain = hasUncertainDelivery(m);
           const auto = isAutoType(m.message_type);
           return (
             <div
@@ -118,17 +122,18 @@ export default function MessagesList({
               }`}
             >
               <div className="flex items-start gap-3">
-                <Checkbox
+                {!readOnly && <Checkbox
+                  disabled={uncertain || !!m.dispatch_started_at || !["pending", "failed", "processing"].includes(m.status)}
                   checked={selectedMessages.includes(m.id)}
                   onCheckedChange={(c) => onMessageSelect(m.id, !!c)}
                   className="mt-1"
-                />
+                />}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <User className="h-3 w-3 text-muted-foreground" />
                     <span className="font-medium text-sm">{m.students?.name}</span>
                     <span className="text-xs text-muted-foreground">{m.students?.phone}</span>
-                    {getStatusBadge(m.status)}
+                    {uncertain ? <Badge variant="outline">Entrega a conferir</Badge> : getStatusBadge(m.status)}
                     <Badge variant="outline" className="text-xs gap-1">
                       {auto ? <Bot className="h-3 w-3" /> : <Hand className="h-3 w-3" />}
                       {auto ? "Automática" : "Manual"}
@@ -137,10 +142,11 @@ export default function MessagesList({
                   </div>
                   <p className="text-sm mb-2 break-words">{m.content}</p>
                   <div className="flex items-center gap-3 text-xs text-foreground/80">
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" aria-hidden="true" />{format(new Date(m.scheduled_for), "dd/MM/yyyy", { locale: ptBR })}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" aria-hidden="true" />{format(new Date(m.scheduled_for), "HH:mm")}</span>
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" aria-hidden="true" />{Number.isFinite(Date.parse(m.scheduled_for)) ? fmtDateISOSP(new Date(m.scheduled_for)).split("-").reverse().join("/") : "Data indisponível"}</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" aria-hidden="true" />{Number.isFinite(Date.parse(m.scheduled_for)) ? fmtTimeSP(new Date(m.scheduled_for)) + " · Brasília" : ""}</span>
                   </div>
-                  {m.status === "failed" && (
+                  {uncertain && <div className="mt-2 rounded border border-amber-500/50 p-3 text-sm space-y-1"><p className="font-medium">Resultado incerto. Confira no WhatsApp antes de repetir.</p>{m.failure_reason && <p>{m.failure_reason}</p>}<p>Este registro não confirma falha nem entrega. O histórico do envio será preservado.</p><MessageConversationLink phone={m.students?.phone} /></div>}
+                  {m.status === "failed" && !uncertain && (
                     <div className="mt-2 flex items-start gap-2 text-xs bg-destructive/10 border border-destructive/30 rounded p-2">
                       <AlertCircle className="h-3 w-3 text-destructive mt-0.5" />
                       <div className="flex-1">
@@ -148,7 +154,7 @@ export default function MessagesList({
                           Falhou{m.retry_count ? ` ${m.retry_count}x` : ""}{m.failure_reason ? `: ${m.failure_reason}` : ""}
                         </p>
                       </div>
-                      {onRetry && (
+                      {onRetry && !readOnly && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -162,7 +168,7 @@ export default function MessagesList({
                     </div>
                   )}
                 </div>
-                <div className="flex gap-1 shrink-0">
+                {!readOnly && !uncertain && <div className="flex gap-1 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -188,7 +194,7 @@ export default function MessagesList({
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </div>
+                </div>}
               </div>
             </div>
           );

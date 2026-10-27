@@ -14,7 +14,7 @@ export type AgendaStudent = Pick<
 export type AgendaEvaluation = Pick<
   Tables<"evaluations">,
   "id" | "student_id" | "scheduled_at" | "status" | "notes" | "completed_at"
-> & {
+> & Partial<Pick<Tables<"evaluations">, "performed_on">> & {
   students?: Pick<Tables<"students">, "name" | "phone"> | null;
 };
 

@@ -31,4 +31,15 @@ describe("busca de alunos", () => {
     expect(matchesStudentSearch({ ...student, cpf: null }, " ")).toBe(true);
     expect(matchesStudentSearch({ ...student, cpf: null }, "inexistente")).toBe(false);
   });
+  it("normaliza espaços internos e o DDI sem confundir o DDD 55", () => {
+    expect(matchesStudentSearch(student, "joao   da   silva")).toBe(true);
+    expect(matchesStudentSearch({ name: "Teste", phone: "55999994321" }, "+55 (55) 99999-4321")).toBe(true);
+    expect(matchesStudentSearch({ name: "Teste", phone: "+55 (55) 99999-4321" }, "(55) 99999-4321")).toBe(true);
+  });
+  it("handles absent student relations without matching unrelated terms", () => {
+    expect(matchesStudentSearch(null, "João")).toBe(false);
+    expect(matchesStudentSearch(undefined, "999")).toBe(false);
+    expect(matchesStudentSearch(null, "  ")).toBe(true);
+    expect(matchesStudentSearch(student, "()--")).toBe(false);
+  });
 });

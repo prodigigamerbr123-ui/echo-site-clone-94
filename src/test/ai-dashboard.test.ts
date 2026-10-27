@@ -22,7 +22,7 @@ describe("IA consulta o snapshot do painel", () => {
       messagesSentToday: 7, pendingScheduledMessages: 3, paymentOverdueCount: 9,
       day: "2026-10-12", birthdaysTodayCount: 25, birthdayNamesLimited: true });
     expect(result.birthdayNames).toHaveLength(20);
-    expect(result.criteria.studentsWithoutEvaluation).toContain("incluindo inativos");
+    expect(result.criteria.studentsWithoutEvaluation).toContain("inativos não entram");
     expect(result.criteria.pendingScheduledMessages).toContain("24 horas");
     expect(result.criteria.messagesSentToday).toContain("não confirma entrega");
   });

@@ -68,6 +68,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(resolve("supabase/migrations/20261013020000_dashboard_snapshot.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261013030000_durable_ai_chat.sql"), "utf8"));
   await db.exec(readFileSync(resolve("supabase/migrations/20261014010000_staff_request_quotas.sql"), "utf8"));
+  await db.exec(readFileSync(resolve("supabase/migrations/20261015210000_student_admission.sql"), "utf8"));
   await db.query("INSERT INTO staff_members(user_id,role) VALUES ($1,'recepcao'),($2,'avaliador')", [ids.reception, ids.evaluator]);
   await db.query("INSERT INTO students(id,name,phone,status) VALUES ($1,'Aluno fictício','43999999999','active')", [ids.student]);
   await db.exec(readFileSync(resolve("supabase/migrations/20261014020000_atomic_message_enqueue.sql"), "utf8"));
@@ -92,6 +93,24 @@ async function check(ignore?: string, student = ids.student, at = target, user: 
     "SELECT evaluation_schedule_conflicts($1,$2,$3) AS result",[student,at,ignore ?? null])).rows[0].result;
 }
 describe("authoritative evaluation preflight", () => {
+  it("preserves legacy admission data and records reported assessment without a fake appointment", async () => {
+    const legacy = await db.query("SELECT enrollment_date,benefit,initial_evaluation_date FROM students WHERE id=$1", [ids.student]);
+    expect(legacy.rows[0]).toEqual({ enrollment_date: null, benefit: null, initial_evaluation_date: null });
+    const created = await asUser<{ id: string }>("admin", "INSERT INTO students(name,phone,enrollment_date,benefit,initial_evaluation_date,last_evaluation_date,had_evaluation) VALUES ('Admission QA','43999990000','2026-01-01','Desconto especial','2026-09-01','2026-09-01',true) RETURNING id");
+    try {
+      expect((await db.query("SELECT id FROM evaluations WHERE student_id=$1", [created.rows[0].id])).rows).toHaveLength(0);
+      await db.query<{ id: string }>("INSERT INTO students(name,phone,enrollment_date,had_evaluation) VALUES ('Imported admission','43999990001',current_date-30,false) RETURNING id").then(async result => {
+        const imported = result.rows[0].id;
+        try {
+          const dashboard = await asUser<{ snapshot: { actions: { id: string; type: string }[] } }>("admin", "SELECT get_workout_dashboard() AS snapshot");
+          expect(dashboard.rows[0].snapshot.actions).toEqual(expect.arrayContaining([expect.objectContaining({ id: imported, type: "evaluation" })]));
+        } finally { await db.query("DELETE FROM students WHERE id=$1", [imported]); }
+      });
+      await expect(asUser("admin", "UPDATE students SET enrollment_date='2099-01-01' WHERE id=$1", [created.rows[0].id])).rejects.toMatchObject({ code: "23514" });
+      await expect(asUser("admin", "UPDATE students SET initial_evaluation_date='2026-01-01' WHERE id=$1", [created.rows[0].id])).rejects.toMatchObject({ code: "42501" });
+      await expect(db.query("UPDATE students SET initial_evaluation_date='infinity' WHERE id=$1", [created.rows[0].id])).rejects.toMatchObject({ code: "23514" });
+    } finally { await db.query("DELETE FROM students WHERE id=$1", [created.rows[0].id]); }
+  });
   it("returns explicit empty results", async () => {
     expect(await check()).toEqual({ duplicate: null, conflict: null });
   });

@@ -55,7 +55,7 @@ export function StudentListResults({
               {visibleColumns.plan && <TableHead>Plano</TableHead>}
               {visibleColumns.created && <TableHead>Cadastrado em</TableHead>}
               {visibleColumns.dueDate && <TableHead>Vencimento</TableHead>}
-              {visibleColumns.payment && <TableHead>Pagamento</TableHead>}
+              {visibleColumns.payment && <TableHead>Situação do prazo</TableHead>}
               {visibleColumns.lastEval && <TableHead>Última avaliação</TableHead>}
               {visibleColumns.status && <TableHead>Status</TableHead>}
               <TableHead className="text-right">Ações</TableHead>
@@ -65,7 +65,7 @@ export function StudentListResults({
             {filteredStudents.map((student) => {
               const active = isActive(student);
               const pendingCount = pendingByStudent[student.id] || 0;
-              const pay = paymentStatus(student.payment_due_date);
+              const pay = active ? paymentStatus(student.payment_due_date) : null;
               return (
                 <TableRow key={student.id} className="cursor-pointer" onClick={() => setViewingStudent(student)}>
                   <TableCell>
@@ -196,7 +196,7 @@ export function StudentListResults({
         {filteredStudents.map((student) => {
           const active = isActive(student);
           const pendingCount = pendingByStudent[student.id] || 0;
-          const pay = paymentStatus(student.payment_due_date);
+          const pay = active ? paymentStatus(student.payment_due_date) : null;
           return (
             <div
               key={student.id}

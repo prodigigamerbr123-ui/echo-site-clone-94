@@ -2,6 +2,7 @@ import { EvaluationAgendaList } from "@/components/avaliacoes/EvaluationAgendaLi
 import { EvaluationDueQueue } from "@/components/avaliacoes/EvaluationDueQueue";
 import { EvaluationRescheduleDialog } from "@/components/avaliacoes/EvaluationRescheduleDialog";
 import { EvaluationScheduleForm } from "@/components/avaliacoes/EvaluationScheduleForm";
+import { EvaluationOutcomeDialog, type EvaluationOutcome } from "@/components/avaliacoes/EvaluationOutcomeDialog";
 import { PendingEvaluations } from "@/components/avaliacoes/PendingEvaluations";
 import type {
   AgendaEvaluation,
@@ -9,6 +10,7 @@ import type {
   EvaluationFormValues,
 } from "@/components/avaliacoes/agendaTypes";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { confirm as askConfirm } from "@/components/ui/confirm-dialog-store";
 import { useToast } from "@/hooks/use-toast";
 import { useAgendaClock } from "@/hooks/useAgendaClock";
@@ -17,6 +19,7 @@ import { useEvaluationAgendaMetrics } from "@/hooks/useEvaluationAgendaMetrics";
 import { useEvaluationAgendaQueries } from "@/hooks/useEvaluationAgendaQueries";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { errorMessage } from "@/lib/errorMessage";
+import type { EvaluationActionResult } from "@/lib/evaluationActions";
 import { evaluationDaysOverdue, needsEvaluation } from "@/lib/evaluationDue";
 import {
   fmtDateISOSP,
@@ -28,9 +31,10 @@ import {
   spParts,
   spStartOfDay,
 } from "@/lib/spTime";
+import { performedDateLabel } from "@/lib/evaluationPerformedDate";
 import { CalendarPlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 function isValidCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -47,6 +51,11 @@ export default function AgendarAvaliacao() {
   usePageTitle("Agendar Avaliação");
   const { toast } = useToast();
   const { saving, schedule, finish, invalidate } = useEvaluationAgendaActions();
+  const navigate = useNavigate();
+  const finishRunning = useRef(false);
+  const [outcomeTarget, setOutcomeTarget] = useState<{ evaluation: AgendaEvaluation; outcome: EvaluationOutcome } | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
+  const [finishSummary, setFinishSummary] = useState<{ evaluation: AgendaEvaluation; outcome: EvaluationOutcome; result: EvaluationActionResult } | null>(null);
   const [searchParams] = useSearchParams();
   const appliedPreselection = useRef<string | null>(null);
 
@@ -257,35 +266,14 @@ export default function AgendarAvaliacao() {
     }
   };
 
-  const handleCancel = async (ev: AgendaEvaluation) => {
-    const ok = await askConfirm({
-      title: `Cancelar avaliação${ev.students?.name ? " de " + ev.students.name : ""}?`,
-      description:
-        "Os lembretes ainda não enviados serão cancelados. Envios já iniciados podem chegar ao aluno.",
-      confirmLabel: "Cancelar avaliação",
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      const result = await finish(
-        ev.id,
-        ev.students?.name ?? "aluno",
-        "cancel",
-      );
-      toast({
-        title: "Avaliação cancelada",
-        description: result.in_flight
-          ? "Há envio já iniciado; ele pode chegar ao aluno. Confira no WhatsApp."
-          : "Lembretes ainda não enviados foram cancelados.",
-      });
-    } catch (e) {
-      toast({
-        title: "Erro ao cancelar",
-        description: errorMessage(e),
-        variant: "destructive",
-      });
-    }
+  const openOutcome = (ev: AgendaEvaluation, outcome: EvaluationOutcome) => {
+    if (saving || finishRunning.current) return;
+    setFinishError(null);
+    setOutcomeTarget({ evaluation: ev, outcome });
   };
+  const handleCancel = (ev: AgendaEvaluation) => openOutcome(ev, "cancel");
+  const handleDone = (ev: AgendaEvaluation) => openOutcome(ev, "completed");
+  const handleNoShow = (ev: AgendaEvaluation) => openOutcome(ev, "no_show");
 
   const openReschedule = (ev: AgendaEvaluation) => {
     const d = new Date(ev.scheduled_at);
@@ -349,58 +337,25 @@ export default function AgendarAvaliacao() {
     }
   };
 
-  const handleDone = async (ev: AgendaEvaluation) => {
+  const confirmOutcome = async (sendAutomaticMessage: boolean, performedOn?: string) => {
+    if (!outcomeTarget || finishRunning.current || saving) return;
+    finishRunning.current = true;
+    setFinishError(null);
+    const { evaluation, outcome } = outcomeTarget;
     try {
-      const result = await finish(
-        ev.id,
-        ev.students?.name ?? "aluno",
-        "completed",
-      );
-      const followupScheduled = result.messages_created > 0;
-      toast({
-        title: "Avaliação marcada como realizada",
-        description: followupScheduled
-          ? "Follow-up agendado."
-          : "Follow-up não agendado (automação desligada ou já existente).",
-      });
-    } catch (e: unknown) {
-      toast({
-        title: "Erro",
-        description: errorMessage(e),
-        variant: "destructive",
-      });
+      const result = await finish(evaluation.id, evaluation.students?.name ?? "aluno", outcome, { sendAutomaticMessage, performedOn });
+      setFinishSummary({ evaluation: { ...evaluation, performed_on: outcome === "completed" ? performedOn ?? null : null }, outcome, result });
+      setOutcomeTarget(null);
+    } catch (error) {
+      setFinishError(errorMessage(error));
+    } finally {
+      finishRunning.current = false;
     }
   };
 
-  const handleNoShow = async (ev: AgendaEvaluation) => {
-    const ok = await askConfirm({
-      title: `Marcar${ev.students?.name ? " " + ev.students.name : ""} como faltou?`,
-      description:
-        "Uma mensagem de remarcação será agendada automaticamente para amanhã.",
-      confirmLabel: "Registrar falta",
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      const result = await finish(
-        ev.id,
-        ev.students?.name ?? "aluno",
-        "no_show",
-      );
-      const rescheduled = result.messages_created > 0;
-      toast({
-        title: "Falta registrada",
-        description: rescheduled
-          ? "Mensagem de remarcação agendada."
-          : "Remarcação automática desligada.",
-      });
-    } catch (e: unknown) {
-      toast({
-        title: "Erro",
-        description: errorMessage(e),
-        variant: "destructive",
-      });
-    }
+  const prepareNextAppointment = (evaluation: AgendaEvaluation) => {
+    setForm({ studentId: evaluation.student_id, date: "", time: "09:00", notes: "" });
+    document.getElementById("date")?.focus();
   };
 
   const today = fmtDateISOSP(new Date(now));
@@ -464,12 +419,24 @@ export default function AgendarAvaliacao() {
         </Card>
       </div>
 
+      {finishSummary && <section aria-label="Resultado do atendimento" aria-live="polite" className="rounded-lg border border-primary/30 bg-primary/5 p-5 space-y-3">
+        <h2 className="font-semibold">{finishSummary.outcome === "completed" ? "Avaliação registrada como realizada" : finishSummary.outcome === "no_show" ? "Falta registrada" : "Avaliação cancelada"} · {finishSummary.evaluation.students?.name ?? "Aluno"}</h2>
+        <p className="text-sm">{finishSummary.result.already_applied ? "Esse resultado já estava registrado. Nenhuma nova mensagem foi criada nesta tentativa." : finishSummary.result.messages_created > 0 ? `${finishSummary.result.messages_created} mensagem automática programada. Isso não confirma envio ou entrega.` : "Nenhuma nova mensagem automática foi programada neste fechamento."}</p>
+        {finishSummary.result.in_flight > 0 && <p className="text-sm text-amber-700 dark:text-amber-400">Há envio que já começou e ainda pode chegar ao aluno. Confira a caixa de saída e o WhatsApp antes de repetir mensagens.</p>}
+        {finishSummary.outcome === "completed" && finishSummary.evaluation.performed_on && <p className="text-sm">Atendimento realizado em <strong>{performedDateLabel(finishSummary.evaluation.performed_on)}</strong>. A data do compromisso foi preservada.</p>}
+        <p className="text-sm text-muted-foreground">O resultado foi preservado no histórico. Agendar outro horário cria um novo compromisso e exige escolher a data.</p>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => prepareNextAppointment(finishSummary.evaluation)}>{finishSummary.outcome === "completed" ? "Agendar próximo acompanhamento" : "Combinar novo horário"}</Button><Button variant="outline" onClick={() => navigate(`/alunos?aluno=${encodeURIComponent(finishSummary.evaluation.student_id)}`)}>Abrir ficha do aluno</Button><Button variant="outline" onClick={() => navigate("/avaliacao-fisica")}>Ver histórico</Button><Button variant="ghost" onClick={() => setFinishSummary(null)}>Fechar resumo</Button></div>
+      </section>}
+
       <PendingEvaluations
         evaluations={pendingClose}
         saving={saving}
         onDone={handleDone}
         onNoShow={handleNoShow}
+        onReschedule={openReschedule}
+        onCancel={handleCancel}
       />
+
 
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Coluna esquerda: Nova avaliação + fila de vencidos */}
@@ -534,6 +501,19 @@ export default function AgendarAvaliacao() {
         onClose={() => setRescheduleTarget(null)}
         onSubmit={confirmReschedule}
       />
+      {outcomeTarget && <EvaluationOutcomeDialog
+        key={`${outcomeTarget.evaluation.id}-${outcomeTarget.outcome}`}
+        evaluation={outcomeTarget.evaluation}
+        outcome={outcomeTarget.outcome}
+        now={now}
+        messagesAllowed={students?.find(student => student.id === outcomeTarget.evaluation.student_id)?.messages_enabled !== false}
+        settings={settingsQuery.data}
+        settingsUnavailable={!!settingsQuery.error || !settingsQuery.data}
+        saving={saving}
+        error={finishError}
+        onClose={() => { if (!finishRunning.current) setOutcomeTarget(null); }}
+        onConfirm={confirmOutcome}
+      />}
     </div>
   );
 }

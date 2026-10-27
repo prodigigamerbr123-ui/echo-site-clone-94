@@ -7,6 +7,8 @@ import { resolveAutomationMessage } from "./messageTemplates";
 import { planEvaluationFollowup } from "../../supabase/functions/_shared/evaluationPolicy";
 import { assertEvaluationIdentity, completeEvaluationIntent, evaluationUserId, prepareEvaluationIntent, type EvaluationIntent } from "./evaluationIntent";
 
+import { validPerformedDate } from "./evaluationPerformedDate";
+
 export type EvaluationActionResult = EvaluationResult;
 
 /** Reconcile a lost response before duplicate checks, including after its scheduled time. */
@@ -60,6 +62,7 @@ export async function saveEvaluationWithMessages(
 
 export async function finishEvaluationWithMessages(
   evaluationId: string, name: string, outcome: "completed" | "no_show" | "cancel",
+  options: { sendAutomaticMessage: boolean; performedOn?: string } = { sendAutomaticMessage: true },
 ): Promise<EvaluationActionResult> {
   const actor = { userId: await evaluationUserId() };
   if (outcome === "cancel") {
@@ -68,20 +71,26 @@ export async function finishEvaluationWithMessages(
     if (error) throw error;
     return evaluationResult(data);
   }
-  const settings = await fetchAutomationSettings();
+  if (outcome === "completed" && options.performedOn !== undefined && !validPerformedDate(options.performedOn)) {
+    throw new Error("Informe uma data de atendimento válida até hoje");
+  }
   const key = outcome === "completed" ? "evaluation_followup" : "no_show_reschedule";
   const messages = [];
-  if (isAutomationEnabled(settings, key)) {
-    // Follow-up starts at completion, including when closing an old appointment.
-    const days = outcome === "completed" ? Number(getAutomationParam(settings, key, "days_after", 7)) : 1;
-    const message = planEvaluationFollowup(name, outcome, days);
-    message.content = await resolveAutomationMessage(key, message.message_type, message.content, { nome: name }, settings);
-    messages.push(message);
+  if (options.sendAutomaticMessage) {
+    const settings = await fetchAutomationSettings();
+    if (isAutomationEnabled(settings, key)) {
+      // Follow-up starts when the result is recorded, if the user requests it.
+      const days = outcome === "completed" ? Number(getAutomationParam(settings, key, "days_after", 7)) : 1;
+      const message = planEvaluationFollowup(name, outcome, days);
+      message.content = await resolveAutomationMessage(key, message.message_type, message.content, { nome: name }, settings);
+      messages.push(message);
+    }
   }
   await assertEvaluationIdentity(actor);
-  const { data, error } = await supabase.rpc("mutate_evaluation_tx", {
-    _action: outcome, _evaluation_id: evaluationId, _messages: messages.map(message => ({ ...message })),
-  });
+  const queuedMessages = messages.map(message => ({ ...message }));
+  const { data, error } = outcome === "completed" && options.performedOn !== undefined
+    ? await supabase.rpc("complete_evaluation_on_tx", { _evaluation_id: evaluationId, _performed_on: options.performedOn, _messages: queuedMessages })
+    : await supabase.rpc("mutate_evaluation_tx", { _action: outcome, _evaluation_id: evaluationId, _messages: queuedMessages });
   if (error) throw error;
   return evaluationResult(data);
 }

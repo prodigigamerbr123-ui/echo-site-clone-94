@@ -19,7 +19,7 @@ export async function getAssistantDashboard(
     agendaLimited: snapshot.stats.evaluationsToday > snapshot.agenda.length,
     criteria: {
       timeZone: "America/Sao_Paulo",
-      studentsWithoutEvaluation: "Todos os alunos com had_evaluation=false, com ou sem data de nascimento, incluindo inativos.",
+      studentsWithoutEvaluation: "Somente alunos ativos com had_evaluation=false; inativos não entram.",
       pendingScheduledMessages: "Mensagens pendentes agendadas do momento da consulta até as próximas 24 horas; não é o total da fila.",
       payments: "Somente alunos ativos; vencidas antes de hoje, próximas de hoje até três dias.",
       evaluationsOverdue: "Compromissos agendados antes de hoje que ainda não foram fechados; não é prazo para reavaliação.",

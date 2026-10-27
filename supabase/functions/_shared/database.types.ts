@@ -150,6 +150,7 @@ export type Database = {
       }
       evaluations: {
         Row: {
+          performed_on: string | null
           completed_at: string | null
           created_at: string
           id: string
@@ -160,6 +161,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          performed_on?: string | null
           completed_at?: string | null
           created_at?: string
           id?: string
@@ -170,6 +172,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          performed_on?: string | null
           completed_at?: string | null
           created_at?: string
           id?: string
@@ -353,8 +356,51 @@ export type Database = {
         }
         Relationships: []
       }
+      student_plan_history: {
+        Row: {
+          id: string
+          student_id: string
+          previous_plan: string | null
+          plan: string | null
+          previous_due_date: string | null
+          payment_due_date: string | null
+          created_at: string
+          actor_id: string | null
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          previous_plan?: string | null
+          plan?: string | null
+          previous_due_date?: string | null
+          payment_due_date?: string | null
+          created_at?: string
+          actor_id?: string | null
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          previous_plan?: string | null
+          plan?: string | null
+          previous_due_date?: string | null
+          payment_due_date?: string | null
+          created_at?: string
+          actor_id?: string | null
+        }
+        Relationships: [{
+          foreignKeyName: "student_plan_history_student_id_fkey"
+          columns: ["student_id"]
+          isOneToOne: false
+          referencedRelation: "students"
+          referencedColumns: ["id"]
+        }]
+      }
       students: {
         Row: {
+          enrollment_date: string | null
+          benefit: string | null
+          messages_enabled: boolean
+          initial_evaluation_date: string | null
           birth_date: string | null
           city: string | null
           cpf: string | null
@@ -371,6 +417,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          enrollment_date?: string | null
+          benefit?: string | null
+          messages_enabled?: boolean
+          initial_evaluation_date?: string | null
           birth_date?: string | null
           city?: string | null
           cpf?: string | null
@@ -387,6 +437,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          enrollment_date?: string | null
+          benefit?: string | null
+          messages_enabled?: boolean
+          initial_evaluation_date?: string | null
           birth_date?: string | null
           city?: string | null
           cpf?: string | null
@@ -429,6 +483,7 @@ export type Database = {
         Args: { _action: string; _evaluation_id: string; _student_id?: string; _scheduled_at?: string; _notes?: string | null; _messages?: Json; _allow_conflict?: boolean }
         Returns: Json
       }
+      complete_evaluation_on_tx: { Args: { _evaluation_id: string; _performed_on: string; _messages?: Json }; Returns: Json }
       cancel_scheduled_messages_tx: { Args: { _ids: string[]; _whole_series?: boolean }; Returns: Json }
       acquire_whatsapp_delivery_lease: { Args: { _token: string }; Returns: boolean }
       release_whatsapp_delivery_lease: { Args: { _token: string }; Returns: undefined }

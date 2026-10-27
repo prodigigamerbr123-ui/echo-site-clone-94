@@ -17,14 +17,42 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
 vi.mock("@/components/agendarmensagem/MessageFilters", () => ({ default: () => null }));
 vi.mock("@/components/agendarmensagem/MessagesList", () => ({ default: (props: {
   onEdit: (row: typeof message) => void; onDelete: (id: string) => void;
+  onRetry?: (id: string) => void;
 }) => <div><button onClick={() => props.onEdit(message)}>Editar fixture</button>
-  <button onClick={() => props.onDelete(message.id)}>Cancelar fixture</button></div> }));
+  <button onClick={() => props.onDelete(message.id)}>Cancelar fixture</button>
+  <button onClick={() => props.onRetry?.(message.id)}>Reenviar fixture</button></div> }));
 
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.pages.mockResolvedValueOnce([message]).mockResolvedValueOnce([{ id: "student-1", name: "Fixture", phone: "000" }]);
 });
 afterEach(cleanup);
+
+it("refreshes the list on demand without changing or requeueing messages", async () => {
+  render(<ScheduledList statusFilter="failed" />);
+  const refresh = await screen.findByRole("button", { name: "Atualizar lista" });
+  mocks.pages.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  fireEvent.click(refresh);
+  expect(await screen.findByText("Nenhuma mensagem.")).toBeVisible();
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+
+it("does not retry a failed message after the student has disabled contact", async () => {
+  mocks.pages.mockReset().mockResolvedValueOnce([message]).mockResolvedValueOnce([{ id: "student-1", name: "Fixture", phone: "000", messages_enabled: false }]);
+  render(<ScheduledList statusFilter="failed" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Reenviar fixture" }));
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Mensagens desativadas para este aluno" }));
+});
+
+it("does not claim a retry when a concurrent opt-out cancels it in the database", async () => {
+  mocks.update.mockResolvedValue({ data: { id: message.id, status: "cancelled" }, error: null });
+  render(<ScheduledList statusFilter="failed" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Reenviar fixture" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("aluno está com mensagens desativadas");
+  expect(mocks.toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "Reenfileirada — próxima tentativa em 1 min" }));
+});
 
 it("shows query failure instead of an empty queue and allows retry", async () => {
   mocks.pages.mockReset().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([]);
