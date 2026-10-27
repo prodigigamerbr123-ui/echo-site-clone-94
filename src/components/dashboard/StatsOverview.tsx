@@ -28,23 +28,29 @@ type Stat = {
   icon: React.ComponentType<{ className?: string }>;
   description: string;
   to?: string;
+  gradient: string;
 };
 
-// Bloco neutro; com destino, o bloco inteiro abre a lista correspondente.
+// Cores de cada indicador mantidas a pedido do dono; com destino, o card inteiro abre a lista.
 function StatCard({ stat }: { stat: Stat }) {
   const body = (
     <>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-        <stat.icon aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className={`absolute inset-0 opacity-5 transition-opacity group-hover:opacity-10 ${stat.gradient}`} />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{stat.title}</p>
+          <p className="text-3xl font-bold tabular-nums text-foreground">{stat.value}</p>
+          <p className="text-xs text-muted-foreground">{stat.description}</p>
+        </div>
+        <div className={`shrink-0 rounded-xl p-3 shadow-lg ${stat.gradient}`}>
+          <stat.icon aria-hidden className="h-5 w-5 text-white" />
+        </div>
       </div>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{stat.value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
     </>
   );
-  const frame = "block h-full rounded-lg border bg-card p-4";
+  const frame = "group relative block h-full overflow-hidden rounded-lg border bg-card p-5 transition-all duration-300";
   return stat.to
-    ? <Link to={stat.to} className={`${frame} transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>{body}</Link>
+    ? <Link to={stat.to} className={`${frame} hover:-translate-y-0.5 hover:shadow-elegant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>{body}</Link>
     : <div className={frame}>{body}</div>;
 }
 
@@ -66,6 +72,7 @@ export function StatsOverview() {
     {
       title: "Total de alunos",
       to: "/alunos",
+      gradient: "bg-gradient-to-br from-primary to-primary-glow",
       value: v(stats?.totalStudents),
       icon: Users,
       description: "Cadastrados na base",
@@ -73,6 +80,7 @@ export function StatsOverview() {
     {
       title: "Alunos ativos",
       to: "/alunos?status=active",
+      gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
       value: v(stats?.activeStudents),
       icon: Activity,
       description: "Com status ativo",
@@ -80,6 +88,7 @@ export function StatsOverview() {
     {
       title: "Alunos inativos",
       to: "/alunos?status=inactive",
+      gradient: "bg-gradient-to-br from-slate-500 to-slate-700",
       value: v(stats?.inactiveStudents),
       icon: Users,
       description: "Sem status ativo",
@@ -89,10 +98,12 @@ export function StatsOverview() {
       value: v(stats?.newStudentsMonth),
       icon: UserPlus,
       description: "Cadastrados este mês",
+      gradient: "bg-gradient-to-br from-sky-500 to-blue-600",
     },
     {
       title: "Vencem em 3 dias",
       to: "/alunos?status=active&vencimento=due_soon",
+      gradient: "bg-gradient-to-br from-amber-500 to-orange-600",
       value: v(stats?.paymentDueIn3DaysCount),
       icon: CalendarClock,
       description: "Alunos ativos: hoje até 3 dias",
@@ -103,6 +114,7 @@ export function StatsOverview() {
     {
       title: "Próximas 24h",
       to: "/caixa-de-saida?aba=agendadas",
+      gradient: "bg-gradient-to-br from-[hsl(var(--warning))] to-orange-600",
       value: v(stats?.scheduledMessages),
       icon: Clock,
       description: "Programadas em breve",
@@ -113,6 +125,7 @@ export function StatsOverview() {
     {
       title: "Nesta semana",
       to: "/agendar-avaliacao",
+      gradient: "bg-gradient-to-br from-blue-500 to-indigo-600",
       value: v(stats?.evaluationsWeek),
       icon: Calendar,
       description: "Programadas na semana",
@@ -120,6 +133,7 @@ export function StatsOverview() {
     {
       title: "Nesse mês",
       to: "/agendar-avaliacao",
+      gradient: "bg-gradient-to-br from-cyan-500 to-blue-600",
       value: v(stats?.evaluationsMonth),
       icon: CalendarRange,
       description: "Programadas no mês",
@@ -127,6 +141,7 @@ export function StatsOverview() {
     {
       title: "Atrasadas",
       to: "/agendar-avaliacao",
+      gradient: "bg-gradient-to-br from-red-500 to-rose-600",
       value: v(stats?.evaluationsOverdue),
       icon: AlertTriangle,
       description: "Vencidas sem conclusão",
@@ -134,6 +149,7 @@ export function StatsOverview() {
     {
       title: "Concluídas no mês",
       to: "/avaliacao-fisica",
+      gradient: "bg-gradient-to-br from-emerald-500 to-green-600",
       value: v(stats?.evaluationsCompletedMonth),
       icon: ClipboardCheck,
       description: "Finalizadas este mês",
@@ -141,6 +157,7 @@ export function StatsOverview() {
     {
       title: "Nunca avaliados",
       to: "/alunos?status=active&avaliacao=nunca",
+      gradient: "bg-gradient-to-br from-amber-500 to-orange-600",
       value: v(stats?.studentsWithoutEvaluation),
       icon: Users,
       description: "Alunos ativos sem nenhuma avaliação",
@@ -151,6 +168,7 @@ export function StatsOverview() {
     {
       title: "Para enviar hoje",
       to: "/caixa-de-saida?aba=agendadas",
+      gradient: "bg-gradient-to-br from-[hsl(var(--success))] to-emerald-600",
       value: v(stats?.messagesToSendToday),
       icon: Mail,
       description: "Agendadas para hoje",
@@ -158,6 +176,7 @@ export function StatsOverview() {
     {
       title: "Enviadas hoje",
       to: "/caixa-de-saida?aba=enviadas",
+      gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
       value: v(stats?.messagesSentToday),
       icon: CheckCircle2,
       description: "Envios aceitos pelo provedor",
@@ -165,6 +184,7 @@ export function StatsOverview() {
     {
       title: "Avaliações hoje",
       to: "/agendar-avaliacao",
+      gradient: "bg-gradient-to-br from-indigo-500 to-violet-600",
       value: v(stats?.evaluationsToday),
       icon: ClipboardList,
       description: "Agendadas para hoje",
@@ -174,10 +194,12 @@ export function StatsOverview() {
       value: v(stats?.birthdaysToday),
       icon: Cake,
       description: "Alunos ativos aniversariantes",
+      gradient: "bg-gradient-to-br from-purple-500 to-pink-600",
     },
     {
       title: "Prazos vencidos",
       to: "/alunos?status=active&vencimento=overdue",
+      gradient: "bg-gradient-to-br from-red-500 to-rose-600",
       value: v(stats?.paymentOverdueCount),
       icon: DollarSign,
       description: "Datas vencidas de alunos ativos; conferir renovação",
@@ -195,10 +217,10 @@ export function StatsOverview() {
   }) => (
     <section>
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <Icon aria-hidden className="h-4 w-4 text-muted-foreground" />
+        <Icon aria-hidden className="h-4 w-4 text-primary" />
         {title}
       </h2>
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">{children}</div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
     </section>
   );
 

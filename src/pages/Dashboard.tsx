@@ -13,9 +13,9 @@ export default function Dashboard() {
     <div className="space-y-8 max-w-7xl mx-auto">
       <DailyWorkPanel />
 
-      <details className="rounded-lg border bg-card p-5"><summary className="cursor-pointer font-semibold">Consultar todos os números da academia</summary><div className="mt-5"><StatsOverview /></div></details>
+      <section aria-labelledby="dashboard-numbers" className="space-y-4"><h2 id="dashboard-numbers" className="text-lg font-semibold">Números da academia</h2><StatsOverview /></section>
 
-      {canUseAI && <details className="rounded-lg border bg-card p-5"><summary className="cursor-pointer font-semibold">Ideias de comunicação · opcional</summary><div className="mt-5"><AISuggestions /></div></details>}
+      {canUseAI && <AISuggestions />}
     </div>
   );
 }
