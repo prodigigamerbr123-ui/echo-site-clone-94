@@ -19,12 +19,12 @@ export function AppHeader() {
   return (
     <header className="h-16 bg-card border-b border-border shadow-card">
       <div className="h-full flex items-center justify-between pl-1 pr-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-0">
           <SidebarTrigger />
           <img
             src={workoutLogo}
             alt="Workout Academia"
-            className="max-h-14 w-32 object-contain sm:w-48"
+            className="max-h-10 w-28 object-contain sm:w-36"
           />
         </div>
 
