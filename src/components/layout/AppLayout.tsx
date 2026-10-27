@@ -16,7 +16,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="min-w-0 flex-1 flex flex-col">
           <SystemHealthBanner />
           <AppHeader />
-          <main className="flex-1 p-6">{children}</main>
+          <main className="flex-1 p-4 sm:p-6">{children}</main>
         </div>
       </div>
     </SidebarProvider>

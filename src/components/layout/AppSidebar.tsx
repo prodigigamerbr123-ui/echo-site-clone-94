@@ -1,6 +1,7 @@
 import { useSidebar } from "@/components/ui/sidebar-context";
 import { useAuth } from "@/hooks/useAuth";
 import { canVisit } from "@/lib/staffRoles";
+import { useWhatsAppHealth } from "@/hooks/useWhatsAppHealth";
 import { NavLink, useLocation } from "react-router-dom";
 
 import {
@@ -28,12 +29,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
+// Rotina primeiro; conexão e manutenção no fim, com o status do WhatsApp visível no próprio item.
 const menuGroups = [
   {
     label: "Principal",
     items: [
-      { title: "Conexão WhatsApp", url: "/whatsapp", icon: MessageCircle },
-      { title: "Dashboard", url: "/", icon: LayoutDashboard },
+      { title: "Início", url: "/", icon: LayoutDashboard },
       { title: "Alunos", url: "/alunos", icon: Users },
     ],
   },
@@ -53,7 +54,7 @@ const menuGroups = [
     ],
   },
   {
-    label: "Inteligência",
+    label: "Ferramentas",
     items: [
       { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
     ],
@@ -61,11 +62,23 @@ const menuGroups = [
   {
     label: "Manutenção",
     items: [
+      { title: "Conexão WhatsApp", url: "/whatsapp", icon: MessageCircle },
       { title: "Automações", url: "/automacoes", icon: Zap },
       { title: "Configurações", url: "/configuracoes", icon: Settings },
     ],
   },
 ];
+
+function WhatsAppDot() {
+  const { connected, disconnected, state } = useWhatsAppHealth();
+  const [tone, label] = connected ? ["bg-success", "conectado"]
+    : disconnected ? ["bg-destructive", "desconectado"]
+      : state === undefined ? ["bg-muted-foreground/40", "verificando"] : ["bg-amber-500", "não confirmado"];
+  return <>
+    <span aria-hidden className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-sidebar ${tone}`} />
+    <span className="sr-only">Status: {label}</span>
+  </>;
+}
 
 export function AppSidebar() {
   const location = useLocation();
@@ -99,7 +112,10 @@ export function AppSidebar() {
                             : "text-foreground"
                         }
                       >
-                        <item.icon className="h-4 w-4" />
+                        <span className="relative shrink-0">
+                          <item.icon className="h-4 w-4" />
+                          {item.url === "/whatsapp" && <WhatsAppDot />}
+                        </span>
                         <span className="flex-1">{item.title}</span>
                       </NavLink>
 

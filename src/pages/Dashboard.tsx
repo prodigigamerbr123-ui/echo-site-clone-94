@@ -6,7 +6,7 @@ import { FRONT_DESK, hasRole } from "@/lib/staffRoles";
 import { DailyWorkPanel } from "@/components/dashboard/DailyWorkPanel";
 
 export default function Dashboard() {
-  usePageTitle("Dashboard");
+  usePageTitle("Início");
   const { role } = useAuth();
   const canUseAI = import.meta.env.VITE_PREVIEW_MODE === "true" || hasRole(role, FRONT_DESK);
   return (

@@ -3,24 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useWhatsAppHealth } from "@/hooks/useWhatsAppHealth";
 
 export function SystemHealthBanner() {
   const navigate = useNavigate();
 
-  // Falha de consulta e estado transitório não comprovam desconexão; só "close" dispara o alerta crítico.
-  const { data: whatsappState, isError: whatsappCheckFailed } = useQuery({
-    queryKey: ["whatsapp-health"],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("whatsapp-status", { body: { action: "status" } });
-      if (error) throw error;
-      const state = (data as { state?: unknown } | null)?.state;
-      if (typeof state !== "string") throw new Error("Status do WhatsApp inválido.");
-      return state;
-    },
-    retry: 1,
-    refetchInterval: 120000,
-    staleTime: 60000,
-  });
+  const { disconnected, reconnecting: whatsappReconnecting, unverified: whatsappUnverified } = useWhatsAppHealth();
 
   const { data: failedCount = 0 } = useQuery({
     queryKey: ["failed-24h"],
@@ -62,9 +50,6 @@ export function SystemHealthBanner() {
     refetchInterval: 120000,
   });
 
-  const disconnected = whatsappState === "close";
-  const whatsappReconnecting = whatsappState === "connecting";
-  const whatsappUnverified = whatsappCheckFailed || whatsappState === "unknown";
   const whatsappIssue = whatsappReconnecting || whatsappUnverified;
   const staleAutomation = automationRun && Date.now() - new Date(automationRun.started_at).getTime() > 26 * 3600000;
   const stuckAutomation = automationRun?.status === "running" && Date.now() - new Date(automationRun.started_at).getTime() > 20 * 60000;
